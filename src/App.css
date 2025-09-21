@@ -1,0 +1,46 @@
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  color: #333; /* Dark gray for better contrast */
+  font-family: sans-serif; /* A common, readable font */
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  grid-template-rows: 50px 1fr;
+  grid-template-areas:
+    "top-bar top-bar top-bar"
+    "left-panel center-canvas right-panel";
+  height: 100vh;
+  width: 100vw;
+}
+
+.top-bar {
+  grid-area: top-bar;
+  border-bottom: 1px solid #ccc;
+  background-color: #f5f5f5;
+}
+
+.left-panel {
+  grid-area: left-panel;
+  border-right: 1px solid #ccc;
+  background-color: #f5f5f5;
+}
+
+.center-canvas {
+  grid-area: center-canvas;
+  overflow: auto;
+  background-color: #fff;
+}
+
+.right-panel {
+  grid-area: right-panel;
+  border-left: 1px solid #ccc;
+  background-color: #f5f5f5;
+}
