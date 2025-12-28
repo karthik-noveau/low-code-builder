@@ -1,0 +1,127 @@
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  background-color: #fff;
+}
+
+.leftActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rightActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.viewModeToggle {
+  display: flex;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.viewModeButton {
+  padding: 6px 12px;
+  background-color: transparent;
+  color: #374151;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.viewModeButton.active {
+  background-color: #4F46E5;
+  color: white;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background-color: #d1d5db;
+}
+
+.button {
+  padding: 6px 12px;
+  background-color: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.button:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.buttonSecondary {
+  composes: button;
+  background-color: #6B7280;
+  color: white;
+  border-color: #6B7280;
+}
+
+.buttonSecondary:hover {
+  background-color: #4B5563;
+  border-color: #4B5563;
+}
+
+.buttonSuccess {
+  composes: button;
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.buttonSuccess:hover {
+  background-color: #218838;
+  border-color: #218838;
+}
+
+.buttonPrimary {
+  composes: button;
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.buttonPrimary:hover {
+  background-color: #c82333;
+  border-color: #c82333;
+}
+
+.deviceSelector {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.deviceLabel {
+  font-size: 14px;
+  color: #666;
+}
+
+.deviceSelect {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+}

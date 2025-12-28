@@ -1,0 +1,162 @@
+.codeEditor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #252526;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.tabs {
+  display: flex;
+  gap: 5px;
+}
+
+.tab {
+  padding: 8px 16px;
+  background-color: transparent;
+  color: #ccc;
+  border: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background-color: #2d2d30;
+  color: #fff;
+}
+
+.tab.active {
+  background-color: #1e1e1e;
+  color: #fff;
+  border-bottom: 2px solid #4F46E5;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.saveButton {
+  padding: 6px 14px;
+  background-color: #4F46E5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.saveButton:hover {
+  background-color: #4338CA;
+}
+
+.editorContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorPanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.info {
+  padding: 12px;
+  background-color: #252526;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border-left: 3px solid #4F46E5;
+}
+
+.info strong {
+  color: #4F46E5;
+  font-size: 14px;
+}
+
+.info p {
+  margin: 0;
+}
+
+.codeArea {
+  flex: 1;
+  width: 100%;
+  padding: 15px;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+  overflow: auto;
+}
+
+.codeArea:focus {
+  outline: none;
+  border-color: #4F46E5;
+}
+
+.codeArea::placeholder {
+  color: #6a6a6a;
+}
+
+.footer {
+  padding: 10px 15px;
+  background-color: #252526;
+  border-top: 1px solid #3e3e42;
+}
+
+.tips {
+  font-size: 12px;
+  color: #cccccc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tips strong {
+  color: #4F46E5;
+}
+
+/* Syntax highlighting for code areas */
+.codeArea:focus {
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Scrollbar styling for code areas */
+.codeArea::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.codeArea::-webkit-scrollbar-track {
+  background: #252526;
+}
+
+.codeArea::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 6px;
+}
+
+.codeArea::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}

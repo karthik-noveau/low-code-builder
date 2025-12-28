@@ -1,0 +1,34 @@
+/**
+ * Alignment Guides Styles
+ * Styles for the SVG overlay and guide lines
+ */
+
+.guidesOverlay {
+  animation: fadeIn 0.15s ease;
+}
+
+.guideLine {
+  stroke: #8B5CF6; /* Purple/violet color for snap lines */
+  stroke-width: 2;
+  opacity: 0.8;
+  animation: pulseLine 0.6s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulseLine {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}

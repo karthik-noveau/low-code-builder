@@ -1,0 +1,16 @@
+@import '../../styles/variables.module.css';
+
+.toastContainer {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: var(--z-index-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.toastContainer > * {
+  pointer-events: auto;
+}

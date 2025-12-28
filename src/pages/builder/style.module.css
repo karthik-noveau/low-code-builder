@@ -1,0 +1,44 @@
+.appLayout {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  grid-template-rows: 50px 1fr;
+  grid-template-areas:
+    'top-bar top-bar top-bar'
+    'left-panel center-canvas right-panel';
+  height: 100vh;
+  width: 100vw;
+}
+
+.topBar {
+  grid-area: top-bar;
+  border-bottom: 1px solid #ccc;
+  background-color: #f5f5f5;
+}
+
+.leftPanel {
+  grid-area: left-panel;
+  border-right: 1px solid #ccc;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.centerCanvas {
+  grid-area: center-canvas;
+  overflow: auto;
+  background-color: #fff;
+}
+
+.rightPanel {
+  grid-area: right-panel;
+  border-left: 1px solid #ccc;
+  background-color: #f5f5f5;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.codeEditorFull {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  overflow: hidden;
+}

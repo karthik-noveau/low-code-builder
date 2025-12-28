@@ -1,0 +1,420 @@
+.canvas {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: 60px;
+  gap: 0px;
+  padding: 20px;
+  min-height: 100vh;
+  background-color: #fff;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.canvasGridOverlay {
+  background-image: repeating-linear-gradient(
+      90deg,
+      rgba(79, 70, 229, 0.08) 0px,
+      rgba(79, 70, 229, 0.08) 1px,
+      transparent 1px,
+      transparent calc(100% / 12)
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(79, 70, 229, 0.04) 0px,
+      rgba(79, 70, 229, 0.04) 1px,
+      transparent 1px,
+      transparent 60px
+    );
+}
+
+.dropIndicator {
+  border: 3px dashed #4f46e5;
+  background-color: rgba(79, 70, 229, 0.1);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4f46e5;
+  animation: fadeIn 0.2s ease;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.emptyState {
+  grid-column: 1 / 13;
+  grid-row: 1;
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 16px;
+}
+
+.emptyStateDragging {
+  color: #4f46e5;
+  font-weight: 600;
+  margin: 0;
+}
+
+.emptyStateDefault {
+  margin: 0;
+}
+
+/* ============================================================================
+   GHOST PREVIEW (Drag Feedback)
+   ============================================================================ */
+
+.ghostPreview {
+  position: relative;
+  border: 2px dashed var(--color-primary);
+  background-color: rgba(79, 70, 229, 0.08);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 999;
+  transition: all var(--transition-fast);
+  animation: ghostFadeIn 0.15s ease;
+  overflow: visible;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.ghostPreview[data-collision="true"] {
+  border-color: var(--color-warning);
+  background-color: rgba(245, 158, 11, 0.15);
+}
+
+.ghostPreviewContent {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  position: relative;
+}
+
+.ghostPreviewLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-gray-700);
+}
+
+.collisionWarning {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-warning);
+}
+
+.ghostPreview[data-snapped="true"] {
+  border-color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+}
+
+.snapIndicator {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b5cf6;
+  padding: 2px 6px;
+  background-color: rgba(139, 92, 246, 0.1);
+  border-radius: 4px;
+}
+
+@keyframes ghostFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================================================
+   RESIZE HANDLES - Refined UI
+   ============================================================================ */
+
+.resizeHandles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.resizeHandle {
+  position: absolute;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3), 0 1px 3px rgba(0, 0, 0, 0.1);
+  pointer-events: all;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.95;
+}
+
+.resizeHandle:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  transform: scale(1.15);
+  border-color: #e0e7ff;
+}
+
+.resizeHandle:active {
+  background: linear-gradient(135deg, #818cf8 0%, #a5b4fc 100%);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.5), 0 1px 4px rgba(0, 0, 0, 0.2);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+/* Southeast corner handle - resize both width and height */
+.resizeHandleSe {
+  bottom: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleSe::after {
+  content: "⋰";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.resizeHandleSe:hover::after {
+  opacity: 1;
+}
+
+/* East edge handle - resize width */
+.resizeHandleE {
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 40px;
+  border-radius: 5px;
+  cursor: ew-resize;
+  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleE::before {
+  content: "";
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+  box-shadow: 3px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+.resizeHandleE:hover {
+  transform: translateY(-50%) scale(1.15);
+}
+
+.resizeHandleE:active {
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* South edge handle - resize height */
+.resizeHandleS {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 10px;
+  border-radius: 5px;
+  cursor: ns-resize;
+  background: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleS::before {
+  content: "";
+  width: 12px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+  box-shadow: 0 3px 0 rgba(255, 255, 255, 0.4);
+}
+
+.resizeHandleS:hover {
+  transform: translateX(-50%) scale(1.15);
+}
+
+.resizeHandleS:active {
+  transform: translateX(-50%) scale(1.05);
+}
+
+/* Southwest corner handle - resize from bottom-left */
+.resizeHandleSw {
+  bottom: -8px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: nesw-resize;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleSw::after {
+  content: "⋱";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.resizeHandleSw:hover::after {
+  opacity: 1;
+}
+
+/* Northeast corner handle - resize from top-right */
+.resizeHandleNe {
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: nesw-resize;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleNe::after {
+  content: "⋱";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.resizeHandleNe:hover::after {
+  opacity: 1;
+}
+
+/* Northwest corner handle - resize from top-left */
+.resizeHandleNw {
+  top: -8px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleNw::after {
+  content: "⋰";
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.resizeHandleNw:hover::after {
+  opacity: 1;
+}
+
+/* North edge handle - resize height from top */
+.resizeHandleN {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 10px;
+  border-radius: 5px;
+  cursor: ns-resize;
+  background: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleN::before {
+  content: "";
+  width: 12px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+  box-shadow: 0 3px 0 rgba(255, 255, 255, 0.4);
+}
+
+.resizeHandleN:hover {
+  transform: translateX(-50%) scale(1.15);
+}
+
+.resizeHandleN:active {
+  transform: translateX(-50%) scale(1.05);
+}
+
+/* West edge handle - resize width from left */
+.resizeHandleW {
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 40px;
+  border-radius: 5px;
+  cursor: ew-resize;
+  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandleW::before {
+  content: "";
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+  box-shadow: 3px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+.resizeHandleW:hover {
+  transform: translateY(-50%) scale(1.15);
+}
+
+.resizeHandleW:active {
+  transform: translateY(-50%) scale(1.05);
+}

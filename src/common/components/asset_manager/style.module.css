@@ -1,0 +1,134 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: auto;
+  width: 90%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.closeBtn {
+  padding: 5px 15px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background-color: #e0e0e0;
+}
+
+.uploadSection {
+  margin-bottom: 20px;
+}
+
+.uploadBtn {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.uploadBtn:hover {
+  background-color: #0056b3;
+}
+
+.fileInput {
+  display: none;
+}
+
+.assetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.emptyMessage {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #666;
+  padding: 40px 20px;
+}
+
+.assetItem {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.assetItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.assetImage {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 3px;
+  margin-bottom: 5px;
+}
+
+.assetPlaceholder {
+  width: 100%;
+  height: 120px;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  color: #666;
+}
+
+.assetName {
+  font-size: 12px;
+  margin: 5px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleteBtn {
+  padding: 3px 8px;
+  font-size: 11px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background-color: #c82333;
+}
