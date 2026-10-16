@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Brand, Arrow } from "./Brand";
 import { Icon } from "../studio/Icon";
 import { useMotionSurface } from "./useMotionSurface";
+import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 // The workspace still relies on these older sheets; they load app-wide from here.
 import "./product.css";
@@ -46,6 +47,7 @@ export function Header({
           ))}
         </nav>
         <div className="pub-header-actions">
+          <ThemeSwitch variant="button" />
           <a
             className="pub-signin"
             href={authenticated ? "/workspace" : "/login"}

@@ -46,7 +46,7 @@
   --workspace: var(--fx-bg);
   --canvas-highlight: var(--fx-accent);
   --focus: var(--fx-accent);
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
   background: var(--fx-bg);
   color: var(--fx-text);
   font-family: var(--fx-font);
@@ -122,7 +122,7 @@ html
   :is(.site-navigator, .context-drawer, .studio-modal)
   .field
   :is(input, select, textarea):hover:not(:disabled, :focus) {
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: var(--fx-border-hover);
 }
 html
   body
@@ -148,7 +148,7 @@ html
 
 /* Dialogs: neutral elevation instead of a coloured outline. */
 html body .studio.canvas-first .modal-backdrop {
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--fx-overlay);
   backdrop-filter: blur(3px);
 }
 html body .studio.canvas-first .studio-modal {
@@ -236,7 +236,7 @@ html
   background-color: var(--fx-bg-raised);
   border-color: var(--fx-border-strong);
   color: var(--fx-text);
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
 }
 html
   body

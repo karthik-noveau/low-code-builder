@@ -38,6 +38,7 @@ import "./blocks.css";
 import "./chrome.css";
 import "./data.css";
 import "./editor-admin.css";
+import { ThemeSwitch } from "../design/ThemeSwitch";
 import { CloudWorkspace } from "../cloud/CloudWorkspace";
 import type { TextEditTarget, TextField } from "./InlineText";
 
@@ -658,6 +659,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             label="Export site"
             onClick={() => setDialog("export")}
           />
+          <ThemeSwitch variant="button" className="studio-theme" />
           <button
             className="preview-button"
             aria-label={preview ? "Back to editor" : "Preview"}

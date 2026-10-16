@@ -23,8 +23,7 @@
   --a-pressed: var(--fx-pressed);
   --a-accent: var(--fx-accent);
   --a-card: var(--fx-shadow);
-  --a-card-hover:
-    0 0 0 1px var(--fx-border-strong), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+  --a-card-hover: var(--fx-shadow-hover);
   --a-pop: var(--fx-shadow-pop);
   --a-radius: var(--fx-radius-lg);
   --a-radius-control: var(--fx-radius-sm);
@@ -52,7 +51,7 @@
   --ui-danger-soft: var(--fx-danger-soft);
   --ui-shadow-sm: none;
   --ui-shadow-card: var(--fx-shadow);
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
 }
 
 /* ---------- Frame ---------- */
@@ -95,7 +94,7 @@ html body .admin-ui .admin-logo .brand-mark {
 }
 html body .admin-ui .admin-logo .brand-wordmark {
   font-size: 22px;
-  color: #fff;
+  color: var(--a-top-text);
 }
 html body .admin-ui .admin-logo .brand-mark-background {
   fill: var(--fx-accent);
@@ -117,14 +116,14 @@ html body .admin-ui .dashboard-crumbs .crumb {
   text-overflow: ellipsis;
 }
 html body .admin-ui .dashboard-crumbs a.crumb:hover {
-  color: #fff;
+  color: var(--a-top-text);
 }
 html body .admin-ui .dashboard-crumbs .crumb-sep {
   color: var(--fx-faint);
   margin: 0;
 }
 html body .admin-ui .dashboard-crumbs strong {
-  color: #fff;
+  color: var(--a-top-text);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -142,10 +141,10 @@ html body .admin-ui .admin-topbar .admin-topbar-extra select {
   border: 1px solid transparent;
   border-radius: var(--a-radius-control);
   background-color: var(--a-top-raised);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8d2cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a96' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  color: #fff;
+  color: var(--a-top-text);
   font-size: 14px;
   font-weight: 600;
   box-shadow: none;
@@ -171,7 +170,7 @@ html body .admin-ui .admin-menu-button {
   border: 0;
   border-radius: var(--a-radius-control);
   background: transparent;
-  color: #fff;
+  color: var(--a-top-text);
   cursor: pointer;
 }
 html body .admin-ui .admin-menu-button:hover {
@@ -282,7 +281,7 @@ html body .admin-ui .admin-account-menu svg {
 }
 html body .admin-ui .admin-login {
   margin-left: auto;
-  color: #fff;
+  color: var(--a-top-text);
   font-size: 14px;
   font-weight: 600;
   display: flex;
@@ -793,7 +792,7 @@ html body .admin-ui .admin-setup-check {
 html body .admin-ui .admin-setup li.is-done .admin-setup-check {
   border: 0;
   background: var(--fx-success);
-  color: #0b0b0d;
+  color: #fff;
 }
 html body .admin-ui .admin-setup li strong {
   display: block;
@@ -1278,7 +1277,7 @@ html body .admin-ui .dashboard-zero p {
     display: block;
     border: 0;
     padding: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--fx-overlay);
     opacity: 0;
     pointer-events: none;
     transition: opacity 200ms ease;
@@ -1624,7 +1623,7 @@ html body .admin-ui .admin-palette-backdrop {
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--fx-overlay);
   animation: admin-fade 140ms ease;
 }
 html body .admin-ui .admin-palette {
@@ -2192,7 +2191,7 @@ html body .admin-ui .commerce-index .commerce-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
-/* ---------- Dark finish ---------- */
+/* ---------- Finish (both themes) ---------- */
 html body .admin-ui {
   font-family: var(--fx-font);
   -webkit-font-smoothing: antialiased;
@@ -2243,11 +2242,11 @@ html body .admin-ui .dashboard-heading h1 {
   letter-spacing: -0.025em;
 }
 
-/* Controls on dark. */
+/* Controls. */
 html body .admin-ui :is(.brand-button, .commerce-button) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 1px 2px rgba(0, 0, 0, 0.5);
+    0 1px 2px rgba(17, 17, 20, 0.2);
 }
 html
   body
@@ -2292,13 +2291,13 @@ html
   background-color: var(--fx-bg-raised);
   border-color: var(--fx-border-strong);
   color: var(--fx-text);
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
 }
 html body .admin-ui :is(input, textarea)::placeholder {
   color: var(--fx-faint);
 }
 html body .admin-ui :is(input, select, textarea):hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: var(--fx-border-hover);
 }
 html body .admin-ui :is(input, select, textarea):focus-visible {
   outline: 0;
@@ -2365,11 +2364,11 @@ html body .admin-ui .dashboard-site-card > .site-card-preview {
   background: var(--fx-bg-raised);
 }
 html body .admin-ui .site-card-monogram {
-  color: #fff;
+  color: var(--fx-text);
   background:
     radial-gradient(
       120% 90% at 0% 0%,
-      hsl(var(--monogram-hue) 80% 62% / 0.55),
+      hsl(var(--monogram-hue) 80% 62% / var(--monogram-glow, 0.4)),
       transparent 60%
     ),
     radial-gradient(
@@ -2378,7 +2377,6 @@ html body .admin-ui .site-card-monogram {
       transparent 60%
     ),
     var(--fx-surface-2);
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
 }
 html body .admin-ui .dashboard-site-card:hover {
   transform: translateY(-2px);
@@ -2448,7 +2446,7 @@ html body .admin-ui input[type="radio"] {
 }
 html body .admin-ui input[type="checkbox"]:hover,
 html body .admin-ui input[type="radio"]:hover {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--fx-border-hover);
 }
 html body .admin-ui input[type="checkbox"]:checked,
 html body .admin-ui input[type="checkbox"]:indeterminate,
@@ -2511,4 +2509,22 @@ html
     flex: 1 1 auto;
     min-width: 150px;
   }
+}
+
+/* Theme controls in the top bar and account menu. */
+html body .admin-ui .admin-theme {
+  color: var(--a-top-text);
+}
+html body .admin-ui .admin-account-theme {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 4px 6px 10px;
+  border-bottom: 1px solid var(--a-divider);
+}
+html body .admin-ui .admin-account-theme > span {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--a-muted);
 }

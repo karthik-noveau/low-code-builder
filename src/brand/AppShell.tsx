@@ -11,6 +11,7 @@ import { useSession } from "./useSession";
 import { Icon } from "../studio/Icon";
 import * as cloud from "../cloud/client";
 import { GlobalSearch, Notifications, type SearchItem } from "./ShellTools";
+import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 import "./admin.css";
 
@@ -138,6 +139,7 @@ export function AppShell({
         {session.account && (
           <div className="admin-topbar-tools">
             <GlobalSearch extra={searchItems} />
+            <ThemeSwitch variant="button" className="admin-theme" />
             <Notifications account={session.account.email} />
           </div>
         )}
@@ -160,6 +162,10 @@ export function AppShell({
                 Signed in as
                 <strong>{session.account.email}</strong>
               </p>
+              <div className="admin-account-theme">
+                <span>Theme</span>
+                <ThemeSwitch />
+              </div>
               <a href="/account">
                 <Icon name="settings" size={15} /> Account settings
               </a>

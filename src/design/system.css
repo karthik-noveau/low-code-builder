@@ -1,68 +1,81 @@
 /*
  * Forma design system: one source for the app's look (workspace, store admin,
- * editor, public pages). Dark, design-tool chrome in the spirit of Framer and
- * Webflow: near-black surfaces, hairline borders, a 14px base, one vivid accent
- * and soft glows. Storefronts use the light set at the bottom.
+ * editor, public pages), in the spirit of Framer and Webflow: hairline borders,
+ * a 14px base, one vivid accent and soft glows. Light is the default; the dark
+ * set applies under [data-theme="dark"] (see src/design/theme.ts). Storefronts
+ * always use the light store set at the bottom.
  * Website/template styles never read these tokens.
  */
 :root {
-  --fx-font: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  --fx-font:
+    "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   --fx-font-display: "Inter Variable", "Inter", -apple-system, sans-serif;
 
-  /* Surfaces, darkest to lightest. */
-  --fx-bg: #0b0b0d;
-  --fx-bg-raised: #111114;
-  --fx-surface: #17171b;
-  --fx-surface-2: #1f1f24;
-  --fx-surface-3: #2a2a30;
-  --fx-hover: rgba(255, 255, 255, 0.06);
-  --fx-pressed: rgba(255, 255, 255, 0.1);
+  /* Colours: light is the default theme; [data-theme="dark"] below. */
+  --fx-scheme: light;
+  --fx-bg: #f6f6f7;
+  --fx-bg-raised: #ffffff;
+  --fx-surface: #ffffff;
+  --fx-surface-2: #f3f3f5;
+  --fx-surface-3: #e8e8ec;
+  --fx-hover: rgba(17, 17, 20, 0.045);
+  --fx-pressed: rgba(17, 17, 20, 0.08);
+  --fx-tint: rgba(17, 17, 20, 0.025);
+  --fx-tint-2: rgba(17, 17, 20, 0.045);
+  --fx-grid-line: rgba(17, 17, 20, 0.05);
 
-  /* Lines. */
-  --fx-border: rgba(255, 255, 255, 0.08);
-  --fx-border-strong: rgba(255, 255, 255, 0.14);
-  --fx-border-focus: rgba(109, 141, 255, 0.7);
+  --fx-border: rgba(17, 17, 20, 0.09);
+  --fx-border-strong: rgba(17, 17, 20, 0.16);
+  --fx-border-hover: rgba(17, 17, 20, 0.28);
+  --fx-border-focus: rgba(59, 104, 240, 0.7);
 
-  /* Text. */
-  --fx-text: #ededf0;
-  --fx-text-2: #b4b4bd;
-  --fx-muted: #8a8a96;
-  --fx-faint: #5d5d68;
+  --fx-text: #111114;
+  --fx-text-2: #3f3f48;
+  --fx-muted: #6b6b76;
+  --fx-faint: #a1a1ab;
+  /* Inverse pair for high-contrast pills and chips. */
+  --fx-contrast: #111114;
+  --fx-on-contrast: #ffffff;
 
-  /* Accent: one vivid blue, with a violet partner for gradients. */
-  --fx-accent: #4f7cff;
-  --fx-accent-hover: #6b91ff;
-  --fx-accent-press: #3d68ea;
-  --fx-accent-soft: rgba(79, 124, 255, 0.14);
-  --fx-accent-text: #8fadff;
-  --fx-violet: #9b6bff;
-  --fx-gradient: linear-gradient(135deg, #4f7cff 0%, #9b6bff 100%);
+  --fx-accent: #3b68f0;
+  --fx-accent-hover: #2f5ae0;
+  --fx-accent-press: #2549c4;
+  --fx-accent-soft: rgba(59, 104, 240, 0.1);
+  --fx-accent-text: #2f5ae0;
+  --fx-violet: #8b5cf6;
+  --fx-gradient: linear-gradient(135deg, #3b68f0 0%, #8b5cf6 100%);
   --fx-glow: radial-gradient(
     60% 50% at 50% 0%,
-    rgba(79, 124, 255, 0.16),
+    rgba(59, 104, 240, 0.09),
     transparent 70%
   );
 
-  /* Status. */
-  --fx-success: #3ecf8e;
-  --fx-success-soft: rgba(62, 207, 142, 0.14);
-  --fx-warning: #f5b544;
-  --fx-warning-soft: rgba(245, 181, 68, 0.14);
-  --fx-danger: #ff5f5f;
-  --fx-danger-soft: rgba(255, 95, 95, 0.14);
+  --fx-success: #0f9f6e;
+  --fx-success-soft: rgba(15, 159, 110, 0.12);
+  --fx-warning: #b7791f;
+  --fx-warning-soft: rgba(245, 158, 11, 0.14);
+  --fx-danger: #dc3545;
+  --fx-danger-soft: rgba(220, 53, 69, 0.1);
+
+  --fx-overlay: rgba(17, 17, 20, 0.32);
+  --fx-glass: rgba(255, 255, 255, 0.78);
+  --fx-glass-strong: rgba(255, 255, 255, 0.96);
+  --fx-deep-shadow: rgba(17, 17, 20, 0.22);
+  --fx-shadow:
+    0 0 0 1px var(--fx-border), 0 1px 2px rgba(17, 17, 20, 0.04),
+    0 4px 16px -8px rgba(17, 17, 20, 0.08);
+  --fx-shadow-hover:
+    0 0 0 1px var(--fx-border-strong), 0 12px 32px -14px rgba(17, 17, 20, 0.2);
+  --fx-shadow-pop:
+    0 0 0 1px var(--fx-border), 0 24px 56px -16px rgba(17, 17, 20, 0.25);
+  --fx-ring: 0 0 0 3px rgba(59, 104, 240, 0.25);
 
   /* Shape and depth. */
   --fx-radius-sm: 8px;
   --fx-radius: 10px;
   --fx-radius-lg: 14px;
   --fx-radius-xl: 20px;
-  --fx-shadow:
-    0 0 0 1px var(--fx-border), 0 1px 2px rgba(0, 0, 0, 0.4),
-    0 8px 24px -12px rgba(0, 0, 0, 0.6);
-  --fx-shadow-pop:
-    0 0 0 1px var(--fx-border-strong), 0 24px 64px -16px rgba(0, 0, 0, 0.8);
-  --fx-ring: 0 0 0 3px rgba(79, 124, 255, 0.35);
 
   /* Type scale (14px base). */
   --fx-text-xs: 12px;
@@ -98,8 +111,68 @@
   --fx-store-accent: #111114;
 }
 
-/* Pages showing the app's dark chrome get dark page scrollbars and overscroll. */
+/* Dark theme: near-black design-tool chrome. */
+:root[data-theme="dark"] {
+  --fx-scheme: dark;
+  --fx-bg: #0b0b0d;
+  --fx-bg-raised: #111114;
+  --fx-surface: #17171b;
+  --fx-surface-2: #1f1f24;
+  --fx-surface-3: #2a2a30;
+  --fx-hover: rgba(255, 255, 255, 0.06);
+  --fx-pressed: rgba(255, 255, 255, 0.1);
+  --fx-tint: rgba(255, 255, 255, 0.035);
+  --fx-tint-2: rgba(255, 255, 255, 0.05);
+  --fx-grid-line: rgba(255, 255, 255, 0.035);
+
+  --fx-border: rgba(255, 255, 255, 0.08);
+  --fx-border-strong: rgba(255, 255, 255, 0.14);
+  --fx-border-hover: rgba(255, 255, 255, 0.24);
+  --fx-border-focus: rgba(109, 141, 255, 0.7);
+
+  --fx-text: #ededf0;
+  --fx-text-2: #b4b4bd;
+  --fx-muted: #8a8a96;
+  --fx-faint: #5d5d68;
+  --fx-contrast: #ffffff;
+  --fx-on-contrast: #0b0b0d;
+
+  --fx-accent: #4f7cff;
+  --fx-accent-hover: #6b91ff;
+  --fx-accent-press: #3d68ea;
+  --fx-accent-soft: rgba(79, 124, 255, 0.14);
+  --fx-accent-text: #8fadff;
+  --fx-violet: #9b6bff;
+  --fx-gradient: linear-gradient(135deg, #4f7cff 0%, #9b6bff 100%);
+  --fx-glow: radial-gradient(
+    60% 50% at 50% 0%,
+    rgba(79, 124, 255, 0.16),
+    transparent 70%
+  );
+
+  --fx-success: #3ecf8e;
+  --fx-success-soft: rgba(62, 207, 142, 0.14);
+  --fx-warning: #f5b544;
+  --fx-warning-soft: rgba(245, 181, 68, 0.14);
+  --fx-danger: #ff5f5f;
+  --fx-danger-soft: rgba(255, 95, 95, 0.14);
+
+  --fx-overlay: rgba(0, 0, 0, 0.6);
+  --fx-glass: rgba(11, 11, 13, 0.7);
+  --fx-glass-strong: rgba(11, 11, 13, 0.96);
+  --fx-deep-shadow: rgba(0, 0, 0, 0.9);
+  --fx-shadow:
+    0 0 0 1px var(--fx-border), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --fx-shadow-hover:
+    0 0 0 1px var(--fx-border-strong), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+  --fx-shadow-pop:
+    0 0 0 1px var(--fx-border-strong), 0 24px 64px -16px rgba(0, 0, 0, 0.8);
+  --fx-ring: 0 0 0 3px rgba(79, 124, 255, 0.35);
+}
+
+/* Pages showing the app's chrome match the theme in scrollbars and overscroll. */
 :root:has(.brand-public, .admin-ui, .studio.canvas-first) {
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
   background: var(--fx-bg);
 }

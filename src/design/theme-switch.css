@@ -1,0 +1,57 @@
+/* Theme switch: a three-way segmented control, or one cycling icon button. */
+.theme-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--fx-radius);
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+}
+.theme-switch > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--fx-radius-sm);
+  background: transparent;
+  color: var(--fx-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.theme-switch > button:hover {
+  color: var(--fx-text);
+}
+.theme-switch > button[aria-checked="true"] {
+  background: var(--fx-surface);
+  color: var(--fx-text);
+  box-shadow:
+    0 0 0 1px var(--fx-border),
+    0 1px 2px rgba(17, 17, 20, 0.08);
+}
+.theme-switch > button:focus-visible,
+.theme-cycle:focus-visible {
+  outline: 0;
+  box-shadow: var(--fx-ring);
+}
+.theme-cycle {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--fx-radius-sm);
+  background: transparent;
+  color: var(--fx-text-2);
+  cursor: pointer;
+}
+.theme-cycle:hover {
+  background: var(--fx-hover);
+  color: var(--fx-text);
+}

@@ -10,7 +10,7 @@ html body .brand-app.brand-public {
   font-family: var(--fx-font);
   font-size: 16px;
   line-height: 1.6;
-  color-scheme: dark;
+  color-scheme: var(--fx-scheme);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -99,8 +99,8 @@ html body .brand-public .pub-btn:active {
   transform: translateY(1px);
 }
 html body .brand-public .pub-btn-primary {
-  background: #fff;
-  color: #0b0b0d;
+  background: var(--fx-contrast);
+  color: var(--fx-on-contrast);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
 }
 html body .brand-public .pub-btn-primary:hover {
@@ -117,7 +117,7 @@ html body .brand-public .pub-btn-accent:hover {
   background: var(--fx-accent-hover);
 }
 html body .brand-public .pub-btn-ghost {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--fx-tint);
   color: var(--fx-text);
   box-shadow: inset 0 0 0 1px var(--fx-border-strong);
 }
@@ -156,7 +156,7 @@ html body .brand-public .pub-eyebrow {
   width: fit-content;
   padding: 5px 12px 5px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--fx-tint);
   box-shadow: inset 0 0 0 1px var(--fx-border-strong);
   color: var(--fx-text-2);
   font-size: 13px;
@@ -179,13 +179,7 @@ html body .brand-public .pub-label {
   letter-spacing: -0.005em;
 }
 html body .brand-public .pub-gradient-text {
-  background: linear-gradient(
-    100deg,
-    #ffffff 0%,
-    #c9d6ff 40%,
-    #8fadff 70%,
-    #b79bff 100%
-  );
+  background: linear-gradient(100deg, #2f5ae0 0%, #6b4fe0 60%, #9b5cf6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -205,7 +199,7 @@ html body .brand-public .pub-header {
   top: 0;
   z-index: 50;
   border-bottom: 1px solid transparent;
-  background: rgba(11, 11, 13, 0.6);
+  background: var(--fx-glass);
   backdrop-filter: saturate(1.4) blur(18px);
   -webkit-backdrop-filter: saturate(1.4) blur(18px);
   transition: border-color 200ms ease;
@@ -225,7 +219,7 @@ html body .brand-public .pub-logo {
 }
 html body .brand-public .brand-lockup {
   gap: 9px;
-  color: #fff;
+  color: var(--fx-text);
 }
 html body .brand-public .brand-mark {
   width: 28px;
@@ -238,7 +232,7 @@ html body .brand-public .brand-mark-cutout {
   fill: #fff;
 }
 html body .brand-public .brand-wordmark {
-  color: #fff;
+  color: var(--fx-text);
   font-size: 21px;
   font-weight: 650;
   letter-spacing: -0.04em;
@@ -327,8 +321,8 @@ html body .brand-public .pub-hero::after {
   height: 720px;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(var(--fx-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fx-grid-line) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(60% 55% at 50% 10%, #000 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(
@@ -407,7 +401,7 @@ html body .brand-public .pub-window {
   background: var(--fx-surface);
   box-shadow:
     inset 0 0 0 1px var(--fx-border-strong),
-    0 40px 120px -40px rgba(0, 0, 0, 0.9);
+    0 40px 120px -40px var(--fx-deep-shadow);
 }
 html body .brand-public .pub-window-bar {
   display: flex;
@@ -485,7 +479,7 @@ html body .brand-public .motion-tabs {
   padding: 4px !important;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fx-tint-2);
   box-shadow: inset 0 0 0 1px var(--fx-border-strong);
 }
 html body .brand-public .motion-tabs > .motion-tab-indicator {
@@ -493,7 +487,7 @@ html body .brand-public .motion-tabs > .motion-tab-indicator {
   top: 4px;
   bottom: 4px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--fx-contrast);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 html body .brand-public .motion-tabs > button {
@@ -507,7 +501,7 @@ html body .brand-public .motion-tabs > button:hover {
   color: var(--fx-text);
 }
 html body .brand-public .motion-tabs > button[aria-pressed="true"] {
-  color: #0b0b0d;
+  color: var(--fx-on-contrast);
   font-weight: 600;
 }
 html body .brand-public .pub-segmented {
@@ -516,7 +510,7 @@ html body .brand-public .pub-segmented {
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fx-tint-2);
   box-shadow: inset 0 0 0 1px var(--fx-border-strong);
 }
 html body .brand-public .pub-segmented button {
@@ -539,8 +533,8 @@ html body .brand-public .pub-segmented button:hover {
   color: var(--fx-text);
 }
 html body .brand-public .pub-segmented button[aria-pressed="true"] {
-  background: #fff;
-  color: #0b0b0d;
+  background: var(--fx-contrast);
+  color: var(--fx-on-contrast);
   font-weight: 600;
 }
 
@@ -652,7 +646,7 @@ html body .brand-public .pub-template-visual::after {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
   pointer-events: none;
 }
 html body .brand-public .pub-template-cta {
@@ -830,8 +824,8 @@ html body .brand-public .pub-cta::after {
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--fx-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fx-grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(60% 70% at 50% 0%, #000, transparent 80%);
   -webkit-mask-image: radial-gradient(60% 70% at 50% 0%, #000, transparent 80%);
@@ -971,7 +965,7 @@ html body .brand-public .pub-input {
   padding: 0 16px;
   border: 1px solid var(--fx-border-strong);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--fx-tint);
   color: var(--fx-text);
   font: inherit;
   font-size: 15px;
@@ -991,7 +985,7 @@ html body .brand-public .pub-search input:focus,
 html body .brand-public .pub-input:focus {
   outline: 0;
   border-color: var(--fx-border-focus);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fx-tint-2);
   box-shadow: var(--fx-ring);
 }
 html body .brand-public .pub-count {
@@ -1145,7 +1139,7 @@ html body .brand-public .pub-swatches button {
 html body .brand-public .pub-swatches button[aria-pressed="true"] {
   box-shadow:
     0 0 0 2px var(--fx-bg),
-    0 0 0 4px #fff;
+    0 0 0 4px var(--fx-text);
 }
 html body .brand-public .pub-swatches span {
   margin-left: 6px;
@@ -1667,8 +1661,8 @@ html body .brand-public .pub-auth-story::after {
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--fx-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fx-grid-line) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(70% 60% at 30% 10%, #000, transparent 80%);
   -webkit-mask-image: radial-gradient(
@@ -1702,7 +1696,7 @@ html body .brand-public .pub-auth-art {
   background: #fff;
   box-shadow:
     0 0 0 1px var(--fx-border-strong),
-    0 40px 80px -30px rgba(0, 0, 0, 0.9);
+    0 40px 80px -30px var(--fx-deep-shadow);
   transform: perspective(1400px) rotateY(8deg) rotateX(4deg);
   transform-origin: left center;
 }
@@ -1792,7 +1786,7 @@ html body .brand-public .pub-field-row a {
   font-weight: 550;
 }
 html body .brand-public .pub-field-row a:hover {
-  color: #fff;
+  color: var(--fx-text);
 }
 html body .brand-public .pub-field input {
   width: 100%;
@@ -1813,7 +1807,7 @@ html body .brand-public .pub-field input::placeholder {
   color: var(--fx-faint);
 }
 html body .brand-public .pub-field input:hover {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--fx-border-hover);
 }
 html body .brand-public .pub-field input:focus {
   outline: 0;
@@ -1974,7 +1968,7 @@ html body .brand-public .pub-preview-bar {
   height: 60px;
   padding: 0 16px;
   border-bottom: 1px solid var(--fx-border);
-  background: rgba(11, 11, 13, 0.8);
+  background: var(--fx-glass);
   backdrop-filter: saturate(1.4) blur(18px);
   -webkit-backdrop-filter: saturate(1.4) blur(18px);
 }
@@ -2033,7 +2027,7 @@ html body .brand-public .pub-preview-frame {
   background: #fff;
   box-shadow:
     0 0 0 1px var(--fx-border-strong),
-    0 40px 100px -40px rgba(0, 0, 0, 0.9);
+    0 40px 100px -40px var(--fx-deep-shadow);
   transition: max-width 400ms var(--fx-ease);
 }
 html body .brand-public .pub-preview-frame.is-mobile {
@@ -2087,7 +2081,7 @@ html body .brand-public .pub-preview-frame.is-mobile {
     gap: 2px;
     padding: 12px 16px 20px;
     border-bottom: 1px solid var(--fx-border);
-    background: rgba(11, 11, 13, 0.96);
+    background: var(--fx-glass-strong);
     backdrop-filter: blur(18px);
   }
   html body .brand-public .pub-nav[data-open="true"] {
@@ -2259,4 +2253,14 @@ html body .brand-public .pub-preview-frame.is-mobile {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+:root[data-theme="dark"] .brand-public .pub-gradient-text {
+  background-image: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #c9d6ff 40%,
+    #8fadff 70%,
+    #b79bff 100%
+  );
 }
