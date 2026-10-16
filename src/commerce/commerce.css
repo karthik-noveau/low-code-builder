@@ -84,6 +84,30 @@
   gap: 16px;
   align-items: center;
 }
+.commerce-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.commerce-crumbs > span {
+  color: var(--ui-border-strong);
+}
+.commerce-site-switch {
+  min-width: 0;
+  max-width: 260px;
+  padding: 7px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background-color: white;
+  color: var(--ui-ink);
+  font-size: 13px !important;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+.commerce-site-switch:hover {
+  border-color: var(--ui-border-strong);
+}
 .commerce-heading {
   display: flex;
   gap: 20px;
@@ -117,6 +141,16 @@
   font: inherit;
 }
 .commerce-app button {
+  cursor: pointer;
+}
+/* One select look everywhere instead of each browser's own arrow. */
+.commerce-app select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b66' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
   cursor: pointer;
 }
 .commerce-app button:disabled {
@@ -268,6 +302,12 @@
   display: block;
   margin-bottom: 4px;
 }
+/* A trailing value (e.g. a count) sits level with its label. */
+.commerce-step > strong:last-child {
+  margin: 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
 .commerce-empty {
   padding: 42px 24px;
   text-align: center;
@@ -317,6 +357,8 @@
 }
 .commerce-field {
   display: grid;
+  /* Without this, a taller neighbour in the row stretches the input. */
+  align-content: start;
   gap: 8px;
   font-size: 12px;
   color: var(--ui-text);
@@ -332,7 +374,7 @@
   padding: 12px 13px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 10px;
-  background: white;
+  background-color: white;
   color: var(--ui-ink);
   font-size: 14px;
   font-weight: 400;
@@ -344,6 +386,7 @@
   line-height: 1.6;
 }
 .commerce-field small {
+  font-size: 12px;
   font-weight: 400;
   color: var(--ui-muted);
   line-height: 1.5;
@@ -351,6 +394,39 @@
 .commerce-form {
   display: grid;
   gap: 20px;
+}
+/* Submit buttons size to their label instead of spanning the form. */
+.commerce-form > .commerce-button {
+  justify-self: end;
+  min-width: 160px;
+}
+.commerce-form > h2,
+.commerce-form > p {
+  margin: 0;
+}
+.commerce-form > h2 + .commerce-muted {
+  margin-top: -12px;
+}
+details.commerce-panel > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #a23232;
+}
+details.commerce-panel[open] > summary {
+  margin-bottom: 18px;
+}
+.commerce-form > .commerce-toolbar {
+  margin-bottom: 0;
+}
+.commerce-form-grid > .commerce-check {
+  grid-column: 1/-1;
+}
+/* A panel holding only its empty message (tables hide when empty). */
+.commerce-panel > p.commerce-muted:only-child {
+  margin: 0;
+  padding: 20px 0;
+  text-align: center;
 }
 .commerce-form-grid {
   display: grid;
@@ -582,7 +658,7 @@
   padding: 10px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 10px;
-  background: white;
+  background-color: white;
   color: var(--ui-text);
   margin: 12px 0;
 }
@@ -686,8 +762,25 @@
   }
   .commerce-nav nav {
     display: flex;
-    overflow: auto;
+    overflow-x: auto;
     gap: 6px;
+    margin: 0 -16px;
+    padding: 0 16px;
+    scrollbar-width: none;
+    /* Fades the edge so a cut-off item reads as "scroll for more". */
+    mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+  }
+  .commerce-nav nav::-webkit-scrollbar {
+    display: none;
+  }
+  .commerce-nav > div:has(> .commerce-eyebrow) {
+    display: none;
+  }
+  .commerce-top {
+    flex-wrap: wrap;
+  }
+  .commerce-form > .commerce-button {
+    justify-self: stretch;
   }
   .commerce-nav nav button {
     white-space: nowrap;

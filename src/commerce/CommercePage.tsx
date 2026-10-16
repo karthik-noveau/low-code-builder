@@ -1,4 +1,5 @@
 import {
+  Children,
   useCallback,
   useEffect,
   useRef,
@@ -73,6 +74,8 @@ function Table({
   headings: string[];
   children: ReactNode;
 }) {
+  // Column headings over no rows read as broken; the caller's empty message is enough.
+  if (!Children.count(children)) return null;
   return (
     <div className="commerce-scroll">
       <table className="commerce-table">
@@ -1337,6 +1340,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </tr>
             ))}
           </Table>
+          {!data.audit.length && (
+            <p className="commerce-muted">
+              Changes you and your team make will be listed here.
+            </p>
+          )}
         </section>
       </>
     );
@@ -1356,6 +1364,14 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               <button
                 key={item}
                 aria-current={section === item ? "page" : undefined}
+                // On phones the menu scrolls sideways; keep the current section in view.
+                ref={(el) => {
+                  if (el && section === item)
+                    el.scrollIntoView?.({
+                      block: "nearest",
+                      inline: "nearest",
+                    });
+                }}
                 onClick={() => go(item)}
               >
                 <Icon
@@ -1388,9 +1404,35 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         </aside>
         <main className="commerce-main">
           <header className="commerce-top">
-            <a href="/workspace">
-              <Icon name="layers" size={15} /> Your websites
-            </a>
+            <nav className="commerce-crumbs" aria-label="Breadcrumb">
+              <a href="/workspace">
+                <Icon name="layers" size={15} /> Your websites
+              </a>
+              {sites.length > 1 && (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <select
+                    className="commerce-site-switch"
+                    aria-label="Website"
+                    value={siteId}
+                    onChange={(e) => {
+                      setData(undefined);
+                      setLoading(true);
+                      setSiteId(e.target.value);
+                      setSection("Overview");
+                      setError("");
+                    }}
+                    disabled={busy}
+                  >
+                    {sites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </nav>
             <div>
               {data && (
                 <span className="commerce-badge neutral">{data.role}</span>
@@ -1417,31 +1459,6 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </a>
             )}
           </div>
-          {sites.length > 1 && (
-            <label
-              className="commerce-field"
-              style={{ maxWidth: 300, marginBottom: 20 }}
-            >
-              Website
-              <select
-                value={siteId}
-                onChange={(e) => {
-                  setData(undefined);
-                  setLoading(true);
-                  setSiteId(e.target.value);
-                  setSection("Overview");
-                  setError("");
-                }}
-                disabled={busy}
-              >
-                {sites.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {site.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {(error || session.error) && (
             <div className="commerce-notice error" role="alert">
               <button aria-label="Dismiss error" onClick={() => setError("")}>
