@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, type FormEvent } from "react";
-import { Shell } from "./Shell";
+import { AppShell, PageHeading } from "./AppShell";
 import { Arrow } from "./Brand";
 import { useSession } from "./useSession";
 import * as cloud from "../cloud/client";
@@ -184,28 +184,30 @@ export function DomainsPage({ siteId }: { siteId: string }) {
   };
   const publishing = !!site && ["queued", "publishing"].includes(site.status);
   return (
-    <Shell path="/domains" authenticated={!!session.account}>
+    <AppShell
+      area="websites"
+      crumbs={[
+        { label: "Workspace", href: "/workspace" },
+        ...(site ? [{ label: site.name }] : []),
+        { label: "Domains & publishing" },
+      ]}
+    >
       <div className="domain-page">
-        <a className="brand-text-link" href="/workspace">
-          ← Your websites
-        </a>
-        <header className="domain-heading">
-          <div>
-            <span className="brand-kicker">WEBSITE SETTINGS</span>
-            <h1>Domains & publishing</h1>
-            <p>
-              Manage your domain, publish updates, and keep track of releases.
-            </p>
-          </div>
-          {site && (
-            <a
-              className="brand-button brand-button-outline"
-              href={`/editor?site=${site.id}`}
-            >
-              Back to the editor <Arrow />
-            </a>
-          )}
-        </header>
+        <PageHeading
+          kicker="WEBSITE SETTINGS"
+          title="Domains & publishing"
+          description="Manage your domain, publish updates, and keep track of releases."
+          action={
+            site && (
+              <a
+                className="brand-button brand-button-outline"
+                href={`/editor?site=${site.id}`}
+              >
+                Back to the editor <Arrow />
+              </a>
+            )
+          }
+        />
         <ol className="domain-steps">
           {steps.map((step, index) => (
             <li key={step}>
@@ -695,6 +697,6 @@ export function DomainsPage({ siteId }: { siteId: string }) {
           </>
         )}
       </div>
-    </Shell>
+    </AppShell>
   );
 }

@@ -7,9 +7,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Brand } from "../brand/Brand";
+import { AppShell, PageHeading } from "../brand/AppShell";
 import { useSession } from "../brand/useSession";
-import { Icon } from "../studio/Icon";
 import { listSites, request, type Site } from "../cloud/client";
 import { commerceRequest, download, loadCommerce } from "./client";
 import {
@@ -1349,153 +1348,126 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       </>
     );
   };
+  const sectionButtons = (scroll: boolean) =>
+    sections.map((item) => (
+      <button
+        key={item}
+        aria-current={section === item ? "page" : undefined}
+        // The phone tab row scrolls sideways; keep the current section in view.
+        ref={
+          scroll
+            ? (el) => {
+                if (el && section === item)
+                  el.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+              }
+            : undefined
+        }
+        onClick={() => go(item)}
+      >
+        {item}
+      </button>
+    ));
   return (
-    <div className="commerce-app">
-      <div className="commerce-layout">
-        <aside className="commerce-nav">
-          <a href="/workspace" aria-label="Forma workspace">
-            <Brand />
-          </a>
-          <div>
-            <span className="commerce-eyebrow">Store management</span>
-          </div>
-          <nav aria-label="Store navigation">
-            {sections.map((item, i) => (
-              <button
-                key={item}
-                aria-current={section === item ? "page" : undefined}
-                // On phones the menu scrolls sideways; keep the current section in view.
-                ref={(el) => {
-                  if (el && section === item)
-                    el.scrollIntoView?.({
-                      block: "nearest",
-                      inline: "nearest",
-                    });
-                }}
-                onClick={() => go(item)}
-              >
-                <Icon
-                  name={
-                    [
-                      "grid",
-                      "layers",
-                      "checklist",
-                      "heart",
-                      "megaphone",
-                      "pages",
-                      "mail",
-                      "globe",
-                      "lock",
-                      "code",
-                      "alignLeft",
-                    ][i]
-                  }
-                  size={18}
-                />
-                {item}
-              </button>
+    <AppShell
+      area="store"
+      crumbs={[
+        { label: "Workspace", href: "/workspace" },
+        { label: "Store" },
+        { label: section },
+      ]}
+      headerExtra={
+        sites.length > 1 && (
+          <select
+            className="commerce-site-switch"
+            aria-label="Website"
+            value={siteId}
+            onChange={(e) => {
+              setData(undefined);
+              setLoading(true);
+              setSiteId(e.target.value);
+              setSection("Overview");
+              setError("");
+            }}
+            disabled={busy}
+          >
+            {sites.map((site) => (
+              <option key={site.id} value={site.id}>
+                {site.name}
+              </option>
             ))}
-          </nav>
-          <div className="commerce-nav-note">
-            Local commerce workspace
-            <br />
-            Payment and email sandbox
+          </select>
+        )
+      }
+      subnav={<nav aria-label="Store sections">{sectionButtons(false)}</nav>}
+    >
+      <div className="commerce-app commerce-embedded">
+        <nav className="commerce-tabs" aria-label="Store sections">
+          {sectionButtons(true)}
+        </nav>
+        <PageHeading
+          kicker={(data?.settings.name || "Your store").toUpperCase()}
+          title={section}
+          description={descriptions[section]}
+          action={
+            siteId && (
+              <div className="commerce-actions">
+                {data && (
+                  <span className="commerce-badge neutral">{data.role}</span>
+                )}
+                <a
+                  className="commerce-button secondary"
+                  href={`/editor?site=${siteId}`}
+                >
+                  Website editor
+                </a>
+                <a
+                  className="commerce-button secondary"
+                  href={`/store?site=${siteId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open storefront ↗
+                </a>
+              </div>
+            )
+          }
+        />
+        {(error || session.error) && (
+          <div className="commerce-notice error" role="alert">
+            <button aria-label="Dismiss error" onClick={() => setError("")}>
+              ×
+            </button>
+            {error || session.error}
           </div>
-        </aside>
-        <main className="commerce-main">
-          <header className="commerce-top">
-            <nav className="commerce-crumbs" aria-label="Breadcrumb">
-              <a href="/workspace">
-                <Icon name="layers" size={15} /> Your websites
-              </a>
-              {sites.length > 1 && (
-                <>
-                  <span aria-hidden="true">/</span>
-                  <select
-                    className="commerce-site-switch"
-                    aria-label="Website"
-                    value={siteId}
-                    onChange={(e) => {
-                      setData(undefined);
-                      setLoading(true);
-                      setSiteId(e.target.value);
-                      setSection("Overview");
-                      setError("");
-                    }}
-                    disabled={busy}
-                  >
-                    {sites.map((site) => (
-                      <option key={site.id} value={site.id}>
-                        {site.name}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-            </nav>
-            <div>
-              {data && (
-                <span className="commerce-badge neutral">{data.role}</span>
-              )}
-              <a href={`/editor?site=${siteId}`}>Website editor ↗</a>
-            </div>
-          </header>
-          <div className="commerce-heading">
-            <div>
-              <span className="commerce-eyebrow">
-                {data?.settings.name || "Your store"}
-              </span>
-              <h1>{section}</h1>
-              <p>{descriptions[section]}</p>
-            </div>
-            {siteId && (
-              <a
-                className="commerce-button secondary"
-                href={`/store?site=${siteId}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open storefront ↗
-              </a>
-            )}
+        )}
+        {notice && (
+          <div className="commerce-notice" role="status">
+            {notice}
           </div>
-          {(error || session.error) && (
-            <div className="commerce-notice error" role="alert">
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                ×
-              </button>
-              {error || session.error}
-            </div>
-          )}
-          {notice && (
-            <div className="commerce-notice" role="status">
-              {notice}
-            </div>
-          )}
-          {session.loading ? (
-            <p role="status">Opening your workspace…</p>
-          ) : !session.account ? (
-            <Empty title="Sign in to manage your store">
-              <p>Your products and orders are private to your workspace.</p>
-              <a className="commerce-button" href="/login">
-                Sign in
-              </a>
-            </Empty>
-          ) : !siteId ? (
-            <Empty title="Create a website first">
-              <p>Each website has its own catalog, orders, and settings.</p>
-              <a className="commerce-button" href="/new">
-                Create website
-              </a>
-            </Empty>
-          ) : loading ? (
-            <p role="status">Loading store…</p>
-          ) : (
-            panel()
-          )}
-        </main>
+        )}
+        {session.loading ? (
+          <p role="status">Opening your workspace…</p>
+        ) : !session.account ? (
+          <Empty title="Sign in to manage your store">
+            <p>Your products and orders are private to your workspace.</p>
+            <a className="commerce-button" href="/login">
+              Sign in
+            </a>
+          </Empty>
+        ) : !siteId ? (
+          <Empty title="Create a website first">
+            <p>Each website has its own catalog, orders, and settings.</p>
+            <a className="commerce-button" href="/new">
+              Create website
+            </a>
+          </Empty>
+        ) : loading ? (
+          <p role="status">Loading store…</p>
+        ) : (
+          panel()
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }
 

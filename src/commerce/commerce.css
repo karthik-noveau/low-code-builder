@@ -874,3 +874,62 @@ details.commerce-panel[open] > summary {
     flex-wrap: wrap;
   }
 }
+
+/* Store pages inside the shared workspace shell. */
+.commerce-app.commerce-embedded {
+  min-height: 0;
+  background: transparent;
+}
+.commerce-embedded .commerce-site-switch {
+  font-family: inherit;
+}
+.commerce-tabs {
+  display: none;
+}
+.dashboard-crumbs .commerce-site-switch {
+  min-width: 0;
+  max-width: 220px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background-color: white;
+  color: var(--ui-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (max-width: 800px) {
+  .commerce-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    margin: 0 0 20px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+  }
+  .commerce-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .commerce-tabs button {
+    flex-shrink: 0;
+    border: 1px solid var(--ui-border);
+    background: white;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    color: var(--ui-text);
+  }
+  .commerce-tabs button[aria-current] {
+    background: var(--ui-accent-soft);
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 800px) {
+  .dashboard-heading .commerce-actions .commerce-button {
+    min-height: 38px;
+    padding: 8px 12px;
+  }
+}

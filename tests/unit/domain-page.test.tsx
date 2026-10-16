@@ -77,9 +77,10 @@ describe("domain workspace", () => {
     expect(
       screen.queryByRole("link", { name: "Log in", exact: true }),
     ).toBeNull();
+    // Signed in, the page sits in the shared workspace shell.
     expect(
-      screen.getByRole("link", { name: /Create website/ }).getAttribute("href"),
-    ).toBe("/new");
+      screen.getByRole("link", { name: /Your websites/ }).getAttribute("href"),
+    ).toBe("/workspace");
     expect(cloud.domainAction).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText("Local DNS simulator"));
     fireEvent.click(
