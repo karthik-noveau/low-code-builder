@@ -67,23 +67,92 @@ function Empty({ title, children }: { title: string; children: ReactNode }) {
     </div>
   );
 }
+/** Row selection for a table: checkboxes, select-all, and the selected ids still on screen. */
+interface Selection {
+  ids: string[];
+  selected: string[];
+  cell: (id: string, label: string) => ReactNode;
+  toggleAll: () => void;
+  clear: () => void;
+}
+function useSelection(ids: string[]): Selection {
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // Rows that disappear (filtered, deleted, refreshed) drop out of the selection.
+  const selected = ids.filter((id) => picked.has(id));
+  return {
+    ids,
+    selected,
+    cell: (id, label) => (
+      <td className="commerce-select-cell">
+        <input
+          type="checkbox"
+          aria-label={`Select ${label}`}
+          checked={picked.has(id)}
+          onChange={() =>
+            setPicked((current) => {
+              const next = new Set(current);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+        />
+      </td>
+    ),
+    toggleAll: () =>
+      setPicked(selected.length === ids.length ? new Set() : new Set(ids)),
+    clear: () => setPicked(new Set()),
+  };
+}
 function Table({
   headings,
   children,
+  selection,
+  bulkActions,
 }: {
   headings: string[];
   children: ReactNode;
+  selection?: Selection;
+  /** Shown in place of the headings while rows are selected. */
+  bulkActions?: ReactNode;
 }) {
   // Column headings over no rows read as broken; the caller's empty message is enough.
   if (!Children.count(children)) return null;
+  const count = selection?.selected.length ?? 0;
+  const all = !!selection && count === selection.ids.length;
   return (
     <div className="commerce-scroll">
-      <table className="commerce-table">
+      <table
+        className={`commerce-table ${selection ? "is-selectable" : ""} ${count ? "has-selection" : ""}`}
+      >
         <thead>
           <tr>
-            {headings.map((h) => (
-              <th key={h}>{h}</th>
-            ))}
+            {selection && (
+              <th className="commerce-select-cell">
+                <input
+                  type="checkbox"
+                  aria-label={all ? "Deselect all" : "Select all"}
+                  checked={all}
+                  ref={(el) => {
+                    if (el) el.indeterminate = count > 0 && !all;
+                  }}
+                  onChange={selection.toggleAll}
+                />
+              </th>
+            )}
+            {count ? (
+              <th colSpan={headings.length} className="commerce-bulk">
+                <div>
+                  <strong>{count} selected</strong>
+                  {bulkActions}
+                  <button className="commerce-link" onClick={selection!.clear}>
+                    Clear
+                  </button>
+                </div>
+              </th>
+            ) : (
+              headings.map((h) => <th key={h}>{h}</th>)
+            )}
           </tr>
         </thead>
         <tbody>{children}</tbody>
@@ -226,7 +295,117 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         .includes(search.toLowerCase()),
     ) || [];
   const selected = data?.orders.find((order) => order.id === selectedOrder);
-  const exportProducts = () => {
+  const filteredOrders =
+    data?.orders.filter((o) =>
+      `${o.id} ${o.email} ${o.address.name}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    ) || [];
+  const productSelection = useSelection(filteredProducts.map((p) => p.id));
+  const orderSelection = useSelection(filteredOrders.map((o) => o.id));
+  const customerSelection = useSelection(
+    data?.customers.map((c) => c.id) || [],
+  );
+  /** Runs one request per selected row, then reports what worked. */
+  const bulk = async <T,>(
+    items: T[],
+    run: (item: T) => Promise<unknown>,
+    done: (count: number) => string,
+    after?: () => void,
+  ) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    let ok = 0;
+    let failure = "";
+    for (const item of items) {
+      try {
+        await run(item);
+        ok++;
+      } catch (e) {
+        failure ||= e instanceof Error ? e.message : "Something went wrong.";
+      }
+    }
+    try {
+      await refresh();
+    } catch {
+      /* the next load shows the current state */
+    }
+    setBusy(false);
+    after?.();
+    if (ok) setNotice(done(ok));
+    if (failure)
+      setError(
+        `${items.length - ok} of ${items.length} couldn’t be updated: ${failure}`,
+      );
+  };
+  const setProductStatus = (status: Product["status"]) => {
+    const items = (data?.products || []).filter(
+      (p) => productSelection.selected.includes(p.id) && p.status !== status,
+    );
+    if (!items.length) {
+      setNotice(`Selected products are already ${status}.`);
+      return;
+    }
+    void bulk(
+      items,
+      (p) => commerceRequest(siteId, "products", { ...p, status }),
+      (n) => `${n} product${n === 1 ? "" : "s"} set to ${status}.`,
+      productSelection.clear,
+    );
+  };
+  const fulfillOrders = () => {
+    const chosen = (data?.orders || []).filter((o) =>
+      orderSelection.selected.includes(o.id),
+    );
+    const items = chosen.filter((o) => o.status === "paid");
+    if (!items.length) {
+      setError("Only paid orders can be fulfilled.");
+      return;
+    }
+    void bulk(
+      items,
+      (o) =>
+        commerceRequest(siteId, `orders/${o.id}`, {
+          action: "fulfill",
+          revision: o.revision,
+        }),
+      (n) =>
+        `${n} order${n === 1 ? "" : "s"} marked fulfilled.` +
+        (chosen.length > items.length
+          ? ` ${chosen.length - items.length} skipped (not paid).`
+          : ""),
+      orderSelection.clear,
+    );
+  };
+  const exportOrders = (orders: Order[]) =>
+    download(
+      "orders.csv",
+      toCsv([
+        ["order", "email", "status", "currency", "total", "created"],
+        ...orders.map((o) => [
+          o.id,
+          o.email,
+          o.status,
+          o.currency,
+          String(o.total / 100),
+          o.createdAt,
+        ]),
+      ]),
+      "text/csv",
+    );
+  const exportCustomers = (ids: string[]) =>
+    download(
+      "customers.csv",
+      toCsv([
+        ["name", "email", "orders", "last purchase"],
+        ...(data?.customers || [])
+          .filter((c) => ids.includes(c.id))
+          .map((c) => [c.name, c.email, String(c.orders), c.updatedAt]),
+      ]),
+      "text/csv",
+    );
+  const exportProducts = (only?: string[]) => {
     if (data)
       download(
         "products.csv",
@@ -242,19 +421,21 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             "price",
             "stock",
           ],
-          ...data.products.flatMap((p) =>
-            p.variants.map((v) => [
-              p.title,
-              p.description,
-              p.collection,
-              p.image,
-              p.status,
-              v.title,
-              v.sku,
-              String(v.price / 100),
-              String(v.stock),
-            ]),
-          ),
+          ...data.products
+            .filter((p) => !only || only.includes(p.id))
+            .flatMap((p) =>
+              p.variants.map((v) => [
+                p.title,
+                p.description,
+                p.collection,
+                p.image,
+                p.status,
+                v.title,
+                v.sku,
+                String(v.price / 100),
+                String(v.stock),
+              ]),
+            ),
         ]),
         "text/csv",
       );
@@ -506,7 +687,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             <div className="commerce-actions">
               <button
                 className="commerce-button secondary"
-                onClick={exportProducts}
+                onClick={() => exportProducts()}
               >
                 Export CSV
               </button>
@@ -548,9 +729,48 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             </Empty>
           ) : (
             <div className="commerce-panel">
-              <Table headings={["Product", "Status", "Inventory", "Price", ""]}>
+              <Table
+                headings={["Product", "Status", "Inventory", "Price", ""]}
+                selection={productSelection}
+                bulkActions={
+                  <>
+                    {canEdit && (
+                      <>
+                        <button
+                          className="commerce-button secondary"
+                          disabled={busy}
+                          onClick={() => setProductStatus("active")}
+                        >
+                          Set active
+                        </button>
+                        <button
+                          className="commerce-button secondary"
+                          disabled={busy}
+                          onClick={() => setProductStatus("draft")}
+                        >
+                          Set draft
+                        </button>
+                        <button
+                          className="commerce-button secondary"
+                          disabled={busy}
+                          onClick={() => setProductStatus("archived")}
+                        >
+                          Archive
+                        </button>
+                      </>
+                    )}
+                    <button
+                      className="commerce-button secondary"
+                      onClick={() => exportProducts(productSelection.selected)}
+                    >
+                      Export
+                    </button>
+                  </>
+                }
+              >
                 {filteredProducts.map((p) => (
                   <tr key={p.id}>
+                    {productSelection.cell(p.id, p.title)}
                     <td>
                       <div className="commerce-product-cell">
                         {p.image && <img src={p.image} alt="" />}
@@ -778,30 +998,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             />
             <button
               className="commerce-button secondary"
-              onClick={() =>
-                download(
-                  "orders.csv",
-                  toCsv([
-                    [
-                      "order",
-                      "email",
-                      "status",
-                      "currency",
-                      "total",
-                      "created",
-                    ],
-                    ...data.orders.map((o) => [
-                      o.id,
-                      o.email,
-                      o.status,
-                      o.currency,
-                      String(o.total / 100),
-                      o.createdAt,
-                    ]),
-                  ]),
-                  "text/csv",
-                )
-              }
+              onClick={() => exportOrders(data.orders)}
             >
               Export orders
             </button>
@@ -815,40 +1012,63 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             </Empty>
           ) : (
             <div className="commerce-panel">
-              <Table headings={["Order", "Customer", "Status", "Total", ""]}>
-                {data.orders
-                  .filter((o) =>
-                    `${o.id} ${o.email} ${o.address.name}`
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-                  )
-                  .map((o) => (
-                    <tr key={o.id}>
-                      <td>
-                        <strong>#{o.id.slice(0, 8)}</strong>
-                        <small>{date(o.createdAt)}</small>
-                      </td>
-                      <td>
-                        {o.address.name}
-                        <small>{o.email}</small>
-                      </td>
-                      <td>
-                        <span className="commerce-badge">{o.status}</span>
-                      </td>
-                      <td>{money(o.total, o.currency)}</td>
-                      <td>
-                        <button
-                          className="commerce-link"
-                          onClick={() => {
-                            setSelectedOrder(o.id);
-                            setTracking(o.tracking);
-                          }}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+              <Table
+                headings={["Order", "Customer", "Status", "Total", ""]}
+                selection={orderSelection}
+                bulkActions={
+                  <>
+                    {canManage && (
+                      <button
+                        className="commerce-button secondary"
+                        disabled={busy}
+                        onClick={fulfillOrders}
+                      >
+                        Mark fulfilled
+                      </button>
+                    )}
+                    <button
+                      className="commerce-button secondary"
+                      onClick={() =>
+                        exportOrders(
+                          data.orders.filter((o) =>
+                            orderSelection.selected.includes(o.id),
+                          ),
+                        )
+                      }
+                    >
+                      Export
+                    </button>
+                  </>
+                }
+              >
+                {filteredOrders.map((o) => (
+                  <tr key={o.id}>
+                    {orderSelection.cell(o.id, `order ${o.id.slice(0, 8)}`)}
+                    <td>
+                      <strong>#{o.id.slice(0, 8)}</strong>
+                      <small>{date(o.createdAt)}</small>
+                    </td>
+                    <td>
+                      {o.address.name}
+                      <small>{o.email}</small>
+                    </td>
+                    <td>
+                      <span className="commerce-badge">{o.status}</span>
+                    </td>
+                    <td>{money(o.total, o.currency)}</td>
+                    <td>
+                      <button
+                        className="commerce-link"
+                        onClick={() => {
+                          setSelectedOrder(o.id);
+                          setTracking(o.tracking);
+                        }}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </Table>
             </div>
           )}
@@ -859,9 +1079,19 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         <div className="commerce-panel">
           <Table
             headings={["Customer", "Orders", "Net spend", "Last purchase"]}
+            selection={customerSelection}
+            bulkActions={
+              <button
+                className="commerce-button secondary"
+                onClick={() => exportCustomers(customerSelection.selected)}
+              >
+                Export
+              </button>
+            }
           >
             {data.customers.map((c) => (
               <tr key={c.id}>
+                {customerSelection.cell(c.id, c.name || c.email)}
                 <td>
                   <strong>{c.name}</strong>
                   <small>{c.email}</small>
@@ -1362,6 +1592,39 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   return (
     <AppShell
       area="store"
+      searchItems={[
+        ...sections.map((item) => ({
+          id: `section-${item}`,
+          label: item,
+          hint: descriptions[item],
+          group: "Store",
+          icon: "store",
+          run: () => go(item),
+        })),
+        ...(data?.products || []).map((p) => ({
+          id: `product-${p.id}`,
+          label: p.title,
+          hint: `Product · ${p.status}`,
+          group: "Products",
+          icon: "edit",
+          run: () => {
+            go("Products");
+            if (canEdit) setEditingProduct(p);
+          },
+        })),
+        ...(data?.orders || []).map((o) => ({
+          id: `order-${o.id}`,
+          label: `Order #${o.id.slice(0, 8)} · ${o.address.name}`,
+          hint: `${o.status} · ${money(o.total, o.currency)}`,
+          group: "Orders",
+          icon: "checklist",
+          run: () => {
+            go("Orders");
+            setSelectedOrder(o.id);
+            setTracking(o.tracking);
+          },
+        })),
+      ]}
       crumbs={[
         { label: "Workspace", href: "/workspace" },
         { label: "Store" },

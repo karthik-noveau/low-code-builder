@@ -108,7 +108,12 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const { project } = store;
   const page = project.pages.find((p) => p.id === store.activePage)!;
   const [panel, setPanel] = useState<Panel>("sections");
-  const [dialog, setDialog] = useState<Dialog>(null);
+  // Notifications link to /editor?site=…&open=inbox.
+  const [dialog, setDialog] = useState<Dialog>(() =>
+    new URLSearchParams(location.search).get("open") === "inbox"
+      ? "inbox"
+      : null,
+  );
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">(
     "desktop",
   );

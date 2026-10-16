@@ -10,6 +10,7 @@ import { Arrow, Brand } from "./Brand";
 import { useSession } from "./useSession";
 import { Icon } from "../studio/Icon";
 import * as cloud from "../cloud/client";
+import { GlobalSearch, Notifications, type SearchItem } from "./ShellTools";
 import "./brand.css";
 import "./admin.css";
 
@@ -33,6 +34,7 @@ export function AppShell({
   subnav,
   headerExtra,
   contentRef,
+  searchItems,
 }: {
   area: ShellArea;
   crumbs: Crumb[];
@@ -44,6 +46,8 @@ export function AppShell({
   /** Controls placed after the breadcrumbs, such as a website switcher. */
   headerExtra?: ReactNode;
   contentRef?: Ref<HTMLDivElement>;
+  /** Page-specific results for the top bar search, listed first. */
+  searchItems?: SearchItem[];
 }) {
   const session = useSession();
   const [error, setError] = useState("");
@@ -131,6 +135,12 @@ export function AppShell({
           ))}
         </nav>
         {headerExtra && <div className="admin-topbar-extra">{headerExtra}</div>}
+        {session.account && (
+          <div className="admin-topbar-tools">
+            <GlobalSearch extra={searchItems} />
+            <Notifications account={session.account.email} />
+          </div>
+        )}
         {session.account ? (
           <details className="admin-account" ref={accountRef}>
             <summary aria-label="Account menu">

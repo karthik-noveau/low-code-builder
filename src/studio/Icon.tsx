@@ -52,6 +52,7 @@ const paths: Record<string, string> = {
   type: "M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3",
   quote: "M4 5h6v7H5c0 3 2 4 4 5M14 5h6v7h-5c0 3 2 4 4 5",
   mail: "M3 5h18v14H3V5Zm0 0 9 8 9-8",
+  bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4",
   send: "m3 3 19 9-19 9 4-9-4-9Zm4 9h15",
   leaf: "M20 3C7 2 1 8 5 16s16 3 15-13ZM4 21 16 9",
   truck:
