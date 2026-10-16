@@ -4,15 +4,43 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test": "vitest run src/studio tests/unit",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/build-pages.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "local:setup": "node scripts/setup-local.mjs",
+    "dev:local": "node scripts/dev-local.mjs",
+    "backend:build": "node scripts/build-backend.mjs",
+    "typecheck": "tsc -b && tsc -p tsconfig.backend.json",
+    "test:integration": "vitest run tests/integration",
+    "lint:current": "eslint backend scripts infra src/studio src/commerce src/cloud src/brand src/App.tsx vite.config.ts --max-warnings 0",
+    "check": "npm run typecheck && npm run lint:current && npm test && npm run build && npm run backend:build",
+    "infra:build": "node infra/template.mjs && node infra/bootstrap.mjs && node scripts/build-domain-template.mjs",
+    "aws:bootstrap": "node scripts/bootstrap-aws.mjs",
+    "aws:editor-domain": "node scripts/editor-domain.mjs",
+    "dns:configure": "node scripts/apply-dns.mjs",
+    "aws:deploy": "node scripts/deploy-aws.mjs",
+    "local:start": "node scripts/local-services.mjs start",
+    "local:stop": "node scripts/local-services.mjs stop",
+    "local:restart": "node scripts/local-services.mjs restart",
+    "local:status": "node scripts/local-services.mjs status",
+    "release:readiness": "node scripts/release-readiness.mjs",
+    "local:backup": "node scripts/local-backup.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-acm": "^3.1149.0",
+    "@aws-sdk/client-cloudformation": "^3.1149.0",
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.1149.0",
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/client-sqs": "^3.1149.0",
+    "@aws-sdk/lib-dynamodb": "^3.1149.0",
     "jszip": "^3.10.1",
+    "oidc-client-ts": "^3.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tldts": "^7.4.18",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
@@ -20,19 +48,25 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
+    "@types/aws-lambda": "^8.10.164",
     "@types/jszip": "^3.4.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "happy-dom": "^20.0.11",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^2.1.9"
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

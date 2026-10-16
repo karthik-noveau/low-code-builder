@@ -33,7 +33,9 @@ export const CardComponent = ({ component, index, pageId, isSelected, onSelect, 
   }
 
   const title = content.title || 'Card Title';
-  const description = content.description || 'Card description';
+  const description = content.description || 'Card description goes here';
+  const image = content.image || '';
+  const link = content.link || '';
 
   return (
     <div className={`${styles.componentWrapper} ${isSelected ? styles.selected : ''}`}>
@@ -45,8 +47,31 @@ export const CardComponent = ({ component, index, pageId, isSelected, onSelect, 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>{title}</h3>
-        <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#6b7280' }}>{description}</p>
+        {image && (
+          <img
+            src={image}
+            alt={title}
+            style={{
+              width: '100%',
+              height: '200px',
+              objectFit: 'cover',
+              borderRadius: '8px 8px 0 0',
+              marginBottom: '16px'
+            }}
+            loading="lazy"
+          />
+        )}
+        <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', color: '#111827' }}>{title}</h3>
+        <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#6b7280', marginBottom: '16px' }}>{description}</p>
+        {link && (
+          <a
+            href={link}
+            style={{ color: '#4F46E5', fontWeight: '600', textDecoration: 'none' }}
+            onClick={(e) => e.preventDefault()}
+          >
+            Learn More →
+          </a>
+        )}
       </div>
     </div>
   );

@@ -45,6 +45,7 @@ export interface DraftStore extends DraftState {
   updateComponentProperty: (id: string, propertyKey: string, propertyValue: any) => void;
   updateComponentConfig: (id: string, configKey: string, configValue: any) => void;
   updateComponentPosition: (componentId: string, position: Partial<GridPosition>) => void;
+  updateComponentPositionAndSize: (componentId: string, position: Partial<GridPosition>, width: string, height: string) => void;
   batchUpdatePositions: (updatedComponents: ComponentSchema[]) => void;
   deleteComponent: (componentId: string) => void;
   duplicateComponent: (componentId: string) => void;

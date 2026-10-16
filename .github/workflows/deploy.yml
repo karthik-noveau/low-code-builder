@@ -1,0 +1,80 @@
+name: Development to production (opt in)
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [development, production]
+        required: true
+      confirm:
+        description: Type DEPLOY to create or update billable AWS resources
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: deploy-${{ inputs.environment || 'development' }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: vars.AWS_DEPLOY_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'DEPLOY')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: ${{ inputs.environment || 'development' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      EDITOR_DOMAIN: ${{ vars.EDITOR_DOMAIN }}
+      EDITOR_CERTIFICATE_ARN: ${{ vars.EDITOR_CERTIFICATE_ARN }}
+      PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      FORMA_STACK: ${{ vars.FORMA_STACK }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      CF_EXECUTION_ROLE: ${{ vars.CF_EXECUTION_ROLE }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Enforce pre-deployment requirements
+        run: node scripts/release-readiness.mjs --enforce
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm run check && npm audit --audit-level=high && npm run infra:build
+      - name: Validate application, CI bootstrap and domain infrastructure
+        run: |
+          pipx install cfn-lint
+          cfn-lint .build/stack.json .build/bootstrap.json .build/domain-stack.json .build/editor-certificate.json
+      - name: Exercise the same revision against local DynamoDB
+        run: |
+          npm run local:setup
+          node scripts/dev-local.mjs --backend-only > .build/local.log 2>&1 &
+          LOCAL_PID=$!
+          trap 'kill "$LOCAL_PID" || true' EXIT
+          for attempt in $(seq 1 60); do
+            curl --fail --silent http://127.0.0.1:8787/health && break
+            sleep 1
+          done
+          npm run test:integration
+      - uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Deploy the tested revision
+        run: node scripts/deploy-aws.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-${{ inputs.environment || 'development' }}-${{ github.sha }}
+          path: .build/deployment.json
+          include-hidden-files: true
+          retention-days: 3

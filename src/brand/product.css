@@ -1,0 +1,1765 @@
+/* Shared product components and layouts. Colors are defined in theme.css. */
+.brand-app {
+  --brand-ink: var(--ui-ink);
+  --brand-paper: var(--ui-surface);
+  --brand-muted: var(--ui-muted);
+  --brand-line: var(--ui-border);
+  --brand-lime: var(--ui-accent-soft);
+  --brand-green: var(--ui-accent);
+  font-family: var(--ui-font);
+}
+.brand-app h1,
+.brand-app h2,
+.brand-app h3 {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+.brand-app :focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 4px;
+}
+.brand-app .brand-mark {
+  width: 30px;
+  height: 30px;
+}
+.brand-mark-background {
+  fill: var(--ui-accent);
+}
+.brand-mark-cutout {
+  fill: #fff !important;
+}
+.brand-wordmark {
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -1.4px;
+}
+.brand-period {
+  color: var(--ui-accent);
+}
+.brand-header {
+  height: 80px;
+  padding-inline: max(28px, calc((100vw - 1200px) / 2));
+  gap: 80px;
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+.brand-nav {
+  gap: 30px;
+  font-size: 13px;
+  color: var(--ui-text);
+}
+.brand-nav a:after {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ui-accent);
+}
+.brand-nav a:hover,
+.brand-nav a[aria-current] {
+  color: var(--ui-accent);
+}
+.brand-app .brand-button {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  border-radius: 7px;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 46px;
+  padding: 12px 19px;
+  gap: 16px;
+  box-shadow: 0 3px 8px #6254e821;
+}
+.brand-app .brand-button:hover {
+  background: var(--ui-accent-hover);
+  border-color: var(--ui-accent-hover);
+  transform: none;
+}
+.brand-app .brand-button-small {
+  min-height: 38px;
+  padding: 9px 15px;
+  font-size: 12px;
+}
+.brand-app .brand-button-outline {
+  color: var(--ui-text) !important;
+  background: var(--ui-surface);
+  border-color: var(--ui-border-strong);
+}
+.brand-app .brand-button-outline:hover {
+  background: var(--ui-canvas);
+  border-color: var(--ui-subtle);
+}
+.brand-app .brand-text-link {
+  font-size: 13px;
+  font-weight: 500;
+  gap: 8px;
+}
+.brand-app .brand-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ui-muted);
+}
+.brand-section {
+  max-width: 1280px;
+  padding: 80px 40px;
+}
+.brand-section-heading h2 {
+  font-size: clamp(30px, 3vw, 42px);
+  margin-top: 14px;
+  line-height: 1.18;
+}
+.brand-section-heading {
+  margin-bottom: 34px;
+}
+.brand-page-intro {
+  padding: 72px 40px 46px;
+  max-width: 1280px;
+  margin-inline: auto;
+  text-align: left;
+}
+.brand-page-intro h1 {
+  font-size: clamp(38px, 4.3vw, 58px);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  margin: 18px 0 22px;
+}
+.brand-page-intro > p {
+  margin: 0;
+  max-width: 570px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.brand-page-intro + .brand-collection {
+  padding-top: 32px;
+}
+.brand-template-visual {
+  background: var(--ui-canvas) !important;
+  padding: 25px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+}
+.brand-template-visual > .template-art {
+  box-shadow: 0 4px 18px #1018280d;
+  border-radius: 3px;
+}
+.brand-template-caption {
+  padding: 18px 2px;
+}
+.brand-template-caption h3 {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.brand-template-caption p {
+  font-size: 12px;
+}
+.brand-filter-tabs {
+  gap: 4px;
+}
+.brand-filter-tabs button {
+  font-size: 12px;
+  border-radius: 6px;
+  color: var(--ui-muted);
+  min-height: 36px;
+}
+.brand-filter-tabs button[aria-pressed="true"] {
+  color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+  border-color: transparent;
+}
+.brand-search {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  min-height: 40px;
+}
+.brand-search input {
+  font-size: 13px;
+}
+.brand-app .brand-field {
+  font-size: 13px;
+  color: var(--ui-text);
+}
+.brand-app .brand-field > input,
+.brand-password-field {
+  background: var(--ui-surface);
+  border-color: var(--ui-border-strong);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.brand-app input::placeholder {
+  color: var(--ui-subtle);
+}
+.brand-password-field > input {
+  font-size: 14px;
+}
+.brand-form-error {
+  color: var(--ui-danger);
+  border-color: #fecdc8;
+  background: var(--ui-danger-soft);
+}
+.brand-app .brand-faq {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr);
+  gap: 70px;
+}
+.brand-faq h2 {
+  font-size: 36px;
+  margin-top: 15px;
+}
+.brand-faq summary {
+  font-size: 15px;
+  padding-block: 24px;
+  font-weight: 500;
+}
+.brand-faq details p {
+  font-size: 14px;
+}
+.brand-final-cta {
+  background: var(--ui-dark);
+  color: #fff;
+  border: 0;
+  padding: 72px 24px;
+}
+.brand-app .brand-final-cta h2 {
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 1.15;
+  margin: 18px 0 28px;
+}
+.brand-app .brand-final-cta > .brand-kicker,
+.brand-final-cta .brand-cta-note {
+  color: var(--ui-on-dark-muted);
+}
+.brand-final-cta .brand-cta-note {
+  font-size: 12px;
+  margin-top: 20px;
+}
+.brand-footer {
+  max-width: 1280px;
+  padding: 64px 40px 28px;
+}
+.brand-footer-top {
+  padding-bottom: 48px;
+}
+.brand-footer-top h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.brand-footer-intro p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.brand-footer-bottom {
+  font-size: 11px;
+}
+.brand-price-card {
+  border-color: var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
+}
+.brand-price-card.price-hosting {
+  background: var(--ui-canvas);
+}
+.brand-price {
+  font-size: 64px;
+  letter-spacing: -0.05em;
+}
+.brand-price.price-words {
+  font-size: 49px;
+}
+.brand-guide-grid > a {
+  border-radius: 8px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-sm);
+}
+.brand-guide-grid > a:hover {
+  background: var(--ui-canvas);
+  border-color: var(--ui-border-strong);
+}
+.brand-guide-grid h3 {
+  font-size: 25px;
+  line-height: 1.2;
+}
+.brand-guide-article h1 {
+  font-size: clamp(36px, 4vw, 56px);
+}
+.brand-guide-article > section h2 {
+  font-size: 25px;
+}
+.brand-feature-content h2 {
+  font-size: clamp(36px, 4vw, 54px);
+}
+.brand-app .brand-check-list {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.brand-check-list li:before {
+  color: var(--ui-accent);
+}
+.brand-blank-banner,
+.brand-help-note,
+.brand-article-cta {
+  border-radius: 8px;
+  background: var(--ui-canvas);
+  border: 1px solid var(--ui-border);
+}
+
+.brand-final-cta .brand-button {
+  background: #ffffff;
+  color: var(--ui-dark) !important;
+  border-color: #ffffff;
+}
+.brand-final-cta .brand-button:hover {
+  background: #dce7ff;
+  border-color: #dce7ff;
+}
+.brand-template-visual {
+  padding: 28px;
+  box-shadow: none;
+}
+.brand-filter-tabs button[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+/* Split composition keeps the product and the proposition in the first viewport. */
+.saas-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr);
+  gap: clamp(35px, 5vw, 80px);
+  align-items: center;
+  max-width: none;
+  margin-inline: 0;
+  padding: 64px max(40px, calc((100vw - 1200px) / 2)) 72px;
+  background: var(--ui-dark);
+  color: var(--ui-on-dark);
+  border-bottom: 1px solid #263958;
+}
+.saas-hero-copy {
+  min-width: 0;
+  text-align: left;
+}
+.saas-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  font-weight: 600;
+  color: #c6d5f4;
+}
+.saas-eyebrow > span {
+  height: 6px;
+  width: 6px;
+  background: #7799ff;
+}
+.brand-app .saas-hero h1 {
+  font-size: clamp(58px, 5.65vw, 82px);
+  letter-spacing: -0.055em;
+  font-weight: 600;
+  line-height: 1.03;
+  margin: 26px 0 24px;
+}
+.saas-hero h1 > span {
+  color: #b3a5ff;
+}
+.saas-hero-copy > p {
+  max-width: 370px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #d4deef;
+}
+.saas-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+.saas-hero-actions .brand-button {
+  min-height: 48px;
+  padding-inline: 20px;
+}
+.saas-hero-actions .brand-text-link {
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 600;
+}
+.saas-hero-notes {
+  display: flex;
+  gap: 20px;
+  margin-top: 19px;
+  font-size: 11px;
+  color: #c0cfe8;
+}
+.saas-hero-notes > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.saas-preview-wrap {
+  min-width: 0;
+  padding: 25px 22px 20px;
+  background: #4b3abb;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px #050c1e4d;
+}
+.saas-preview-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.saas-preview-topline > span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  font-weight: 600;
+}
+.saas-preview-topline > div {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid #a492f3;
+  border-radius: 5px;
+  background: #322675;
+}
+.saas-preview-topline button {
+  border: 0;
+  border-radius: 3px;
+  padding: 7px 10px;
+  color: #ffffff;
+  background: transparent;
+  font-size: 10px;
+}
+.saas-preview-topline button[aria-pressed="true"] {
+  background: #fff;
+  color: #4b378f;
+  box-shadow: var(--ui-shadow-sm);
+  font-weight: 600;
+}
+.saas-product-preview {
+  background: #fff;
+  border: 1px solid #b7a9e9;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px #07153c38;
+  color: var(--ui-ink);
+}
+.saas-product-bar {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  gap: 9px;
+  border-bottom: 1px solid var(--ui-border);
+  font-size: 10px;
+}
+.brand-app .saas-product-bar .brand-mark {
+  height: 19px;
+  width: 19px;
+}
+.saas-product-bar > strong {
+  font-size: 10px;
+  font-weight: 600;
+}
+.saas-demo-label {
+  color: var(--ui-muted);
+  font-size: 9px;
+  border-left: 1px solid var(--ui-border);
+  padding-left: 9px;
+}
+.saas-product-bar > a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--ui-text);
+}
+.saas-product-bar > a svg {
+  width: 13px;
+}
+.saas-product-body {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+}
+.saas-demo-sidebar {
+  padding: 18px 9px 14px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--ui-border);
+}
+.saas-demo-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 5px 10px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--ui-muted);
+}
+.saas-demo-page,
+.saas-demo-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  font-size: 9px;
+  border-radius: 4px;
+  color: var(--ui-text);
+}
+.saas-demo-page > span {
+  margin-left: auto;
+}
+.saas-demo-page.selected {
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
+}
+.saas-demo-page + .saas-demo-heading {
+  margin-top: 22px;
+}
+.saas-demo-layer {
+  color: var(--ui-muted);
+  font-size: 8px;
+}
+.saas-demo-style {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding: 18px 5px 0;
+  font-size: 9px;
+}
+.saas-demo-style small {
+  display: block;
+  margin-top: 3px;
+  font-size: 7px;
+  color: var(--ui-muted);
+}
+.saas-demo-style > svg:last-child {
+  display: none;
+}
+.saas-demo-stage {
+  min-width: 0;
+  background: #ebebf3;
+  padding: 13px 14px 20px;
+}
+.saas-demo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--ui-muted);
+  font-size: 8px;
+}
+.saas-demo-toolbar > span,
+.saas-demo-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.saas-demo-stage > .template-art {
+  aspect-ratio: 1.55;
+  border: 1px solid var(--ui-border);
+  border-radius: 2px;
+  box-shadow: 0 2px 4px #20221f05;
+}
+.saas-preview-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 17px;
+  color: #ffffff;
+  font-size: 9px;
+}
+.saas-preview-caption > span,
+.saas-preview-caption > a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffffff;
+}
+.saas-preview-caption > a {
+  color: #ffffff;
+}
+.saas-preview-caption svg {
+  width: 13px;
+}
+.saas-capabilities {
+  max-width: 1200px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 36px auto 0;
+  padding: 0 0 38px;
+  border-block: 1px solid var(--ui-border);
+  padding-top: 12px;
+}
+.saas-capabilities article {
+  padding: 28px 35px 0;
+  border-left: 1px solid var(--ui-border);
+}
+.saas-capabilities article:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.saas-capability-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--ui-accent);
+  font-size: 10px;
+  margin-bottom: 26px;
+  font-weight: 600;
+}
+.brand-app .saas-capabilities h2 {
+  font-size: 17px;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.saas-capabilities p {
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  max-width: 215px;
+}
+.saas-template-section .brand-section-heading {
+  align-items: flex-end;
+}
+.saas-workflow {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 100px;
+  background: #f0edfb;
+  padding: 64px;
+  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-color: #cdc2f2;
+}
+.brand-app .saas-workflow h2 {
+  font-size: 46px;
+  line-height: 1.12;
+  margin: 18px 0 22px;
+}
+.saas-workflow-heading > p {
+  max-width: 340px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ui-muted);
+  margin-bottom: 24px;
+}
+.saas-workflow-steps article {
+  display: flex;
+  gap: 24px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+.saas-workflow-steps article:first-child {
+  padding-top: 0;
+}
+.saas-workflow-steps article:last-child {
+  border: 0;
+  padding-bottom: 0;
+}
+.saas-workflow-steps article > span {
+  font-size: 11px;
+  color: var(--ui-muted);
+  padding-top: 3px;
+}
+.saas-workflow-steps h3 {
+  font-size: 17px;
+}
+.saas-workflow-steps p {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ui-muted);
+  line-height: 1.8;
+}
+
+/* Account screens use the same quiet palette and compact control sizing. */
+.brand-auth {
+  grid-template-columns: 46% 54%;
+  background: #fff;
+}
+.brand-auth-story {
+  background: var(--ui-dark);
+  color: #fff;
+  padding: 42px 56px;
+  min-height: 100dvh;
+}
+.brand-auth-story .brand-mark-background {
+  fill: #fff;
+}
+.brand-auth-story .brand-kicker,
+.auth-story-copy p,
+.auth-story-footer {
+  color: var(--ui-on-dark-muted);
+}
+.auth-story-copy {
+  margin-top: 76px;
+}
+.auth-story-copy h1 {
+  font-size: clamp(36px, 3.7vw, 54px);
+  letter-spacing: -0.055em;
+  line-height: 1.12;
+}
+.auth-story-copy h1 em {
+  color: #b3a5ff;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: inherit;
+}
+.auth-art {
+  transform: none;
+  margin-top: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--ui-dark-border);
+  box-shadow: none;
+}
+.auth-story-footer {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding-top: 32px;
+}
+.auth-form-wrap {
+  max-width: 380px;
+}
+.auth-form-wrap h2 {
+  font-size: 32px;
+  letter-spacing: -0.045em;
+  margin: 16px 0;
+}
+.auth-form-wrap > p {
+  font-size: 14px;
+}
+.auth-top,
+.auth-switch,
+.auth-bottom-note,
+.brand-auth-main > footer {
+  font-size: 12px;
+}
+.auth-local-note {
+  font-size: 11px;
+}
+.auth-switch a {
+  font-weight: 600;
+  border: 0;
+  color: var(--ui-ink);
+}
+
+/* The workspace is a collection browser: compact cards, filters, and a real list view. */
+.dashboard-app {
+  background: var(--ui-canvas);
+}
+.dashboard-sidebar {
+  width: 216px;
+  padding: 26px 14px 24px;
+  background: var(--ui-dark);
+  border-color: var(--ui-dark);
+  color: #ffffff;
+}
+.dashboard-sidebar > a:first-child {
+  padding-left: 10px;
+}
+.dashboard-sidebar .brand-mark {
+  width: 28px;
+  height: 28px;
+}
+.dashboard-sidebar .brand-wordmark {
+  font-size: 29px;
+}
+.dashboard-workspace-label {
+  margin: 32px 0 24px;
+  padding: 12px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--ui-dark-raised);
+  border-color: var(--ui-dark-border);
+  color: #ffffff;
+}
+.dashboard-workspace-label > span {
+  width: 28px;
+  height: 28px;
+  background: #36314f;
+  color: #dfd8ff;
+  border: 0;
+}
+.dashboard-workspace-label small {
+  font-size: 10px;
+  margin-top: 4px;
+  color: #c9c3de;
+}
+.dashboard-nav-label {
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  color: #ada5c7;
+  padding: 0 10px 12px;
+}
+.dashboard-sidebar > nav {
+  gap: 4px;
+}
+.dashboard-sidebar > nav > a {
+  min-height: 40px;
+  padding: 10px;
+  font-size: 13px;
+  gap: 11px;
+  border-radius: 5px;
+  color: #d7d2e7;
+}
+.dashboard-sidebar > nav > a[aria-current] {
+  color: #fff;
+  background: var(--ui-accent);
+  font-weight: 600;
+}
+.dashboard-sidebar > nav > a:not([aria-current]):hover {
+  background: #2d2940;
+  color: #ffffff;
+}
+.dashboard-sidebar > nav > a > span {
+  display: flex;
+  color: inherit;
+  width: 17px;
+  height: 17px;
+}
+.dashboard-nav-count {
+  margin-left: auto;
+  background: #ffffff1a;
+  font-size: 10px;
+  line-height: 18px;
+  min-width: 18px;
+  text-align: center;
+  border-radius: 3px;
+}
+.dashboard-sidebar-tip {
+  padding: 16px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: #232135;
+  border-color: #48405d;
+}
+.dashboard-sidebar-tip > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #b7a8ff;
+}
+.dashboard-sidebar-tip > p {
+  margin: 12px 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #ffffff;
+}
+.dashboard-sidebar-tip > a {
+  font-size: 11px;
+  color: #ded6f9;
+}
+.dashboard-sidebar-bottom {
+  gap: 20px;
+}
+.dashboard-sidebar-bottom > a {
+  font-size: 11px;
+  color: #cdc5df;
+}
+.dashboard-header {
+  height: 70px;
+  padding-inline: 38px;
+  background: #fff;
+  border-color: var(--ui-border);
+  font-size: 11px;
+}
+.dashboard-header > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dashboard-header > span > span {
+  margin-inline: 3px;
+}
+.dashboard-header strong {
+  color: var(--ui-ink);
+}
+.dashboard-header > div {
+  font-size: 11px;
+}
+.dashboard-account-email {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-avatar {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.dashboard-header > div > button {
+  font-size: 11px;
+}
+.dashboard-main {
+  padding: 42px 38px;
+  max-width: 1420px;
+}
+.dashboard-heading {
+  margin-bottom: 36px;
+  align-items: center;
+}
+.dashboard-heading h1 {
+  font-size: 36px;
+  line-height: 1.2;
+  font-weight: 550;
+  margin: 10px 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dashboard-heading-count {
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  min-width: 28px;
+  padding: 3px 6px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: center;
+}
+.dashboard-heading p {
+  font-size: 13px;
+}
+.dashboard-heading .brand-kicker {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+.dashboard-heading > .brand-button {
+  min-height: 40px;
+  padding: 10px 15px;
+  font-size: 12px;
+  gap: 9px;
+}
+.dashboard-site-toolbar {
+  padding-bottom: 15px;
+  margin-bottom: 26px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.dashboard-site-toolbar .brand-filter-tabs {
+  gap: 5px;
+}
+.dashboard-site-toolbar .brand-filter-tabs button {
+  border: 0;
+  border-radius: 5px;
+  padding: 9px 11px;
+  font-size: 12px;
+  min-height: 35px;
+}
+.dashboard-site-toolbar .brand-filter-tabs button[aria-pressed="true"] {
+  background: var(--ui-surface-alt);
+}
+.dashboard-site-toolbar .brand-filter-tabs button > span {
+  background: transparent;
+  color: var(--ui-muted);
+  font-size: 10px;
+  padding: 0;
+  margin-left: 6px;
+}
+.dashboard-site-toolbar > div:last-child {
+  gap: 8px;
+}
+.dashboard-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  height: 35px;
+  color: var(--ui-muted);
+}
+.dashboard-search-wrap:focus-within {
+  outline: 2px solid var(--ui-accent-border);
+  outline-offset: 1px;
+}
+.dashboard-search {
+  font-size: 11px;
+  width: 122px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+  outline: none !important;
+}
+.dashboard-site-toolbar select {
+  font-size: 11px;
+  height: 35px;
+  padding: 7px;
+  border-color: var(--ui-border);
+  border-radius: 5px;
+  background: #fff;
+}
+.dashboard-refresh {
+  height: 33px;
+  width: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 4px;
+}
+.dashboard-refresh:hover {
+  background: var(--ui-canvas);
+}
+.dashboard-view-toggle {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  height: 35px;
+}
+.dashboard-view-toggle button {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ui-muted);
+}
+.dashboard-view-toggle button[aria-pressed="true"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
+}
+.dashboard-site-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.dashboard-site-card {
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: var(--ui-shadow-card);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.dashboard-site-card:hover {
+  border-color: var(--ui-accent-border);
+  box-shadow: 0 8px 24px #1c39751f;
+}
+.dashboard-site-card > a {
+  position: relative;
+  padding: 20px 20px 0;
+  background: var(--ui-surface-alt);
+  height: 196px;
+  overflow: hidden;
+  border-color: var(--ui-border);
+}
+.dashboard-site-card > a > .template-art {
+  aspect-ratio: 1.25;
+  min-height: 190px;
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 2px 9px var(--ui-dark) 0a;
+}
+.site-card-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  background: #102453cc;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.site-card-preview:is(:hover, :focus-visible) .site-card-preview-overlay {
+  opacity: 1;
+}
+.dashboard-site-card-body {
+  padding: 18px;
+}
+.dashboard-site-card-body h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.dashboard-site-card-body > p {
+  font-size: 11px;
+  margin: 10px 0 18px;
+}
+.dashboard-site-card-body > div:last-of-type {
+  gap: 12px;
+  flex-wrap: wrap;
+  border-color: var(--ui-border);
+  padding-top: 15px;
+}
+.dashboard-site-card-body > div > a {
+  font-size: 12px;
+  gap: 5px;
+}
+.dashboard-site-card-body > div > a:first-child {
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+.dashboard-site-card-body > div > a svg {
+  width: 12px;
+}
+.dashboard-site-status {
+  color: var(--ui-muted);
+  background: var(--ui-surface-alt);
+  border: 0;
+  padding: 4px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.dashboard-site-status.is-live {
+  background: #e0f5e9;
+  color: #087444;
+  border: 0;
+}
+.dashboard-create-card {
+  border: 1px dashed #b6a6f2;
+  border-radius: 7px;
+  background: #eeebfb;
+  min-height: 320px;
+}
+.dashboard-create-card:hover {
+  background: var(--ui-accent-soft);
+  border-color: var(--ui-accent);
+}
+.dashboard-create-card > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: 50%;
+  color: #ffffff;
+  margin-bottom: 17px;
+  border-color: var(--ui-accent);
+}
+.dashboard-create-card > strong {
+  font-size: 14px;
+  color: #4c378f;
+  font-weight: 600;
+}
+.dashboard-create-card > small {
+  font-size: 11px;
+  max-width: 165px;
+  line-height: 1.7;
+  color: #62537e;
+}
+.dashboard-site-grid.is-list {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.dashboard-site-grid.is-list .dashboard-site-card {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+.dashboard-site-grid.is-list .dashboard-site-card > a {
+  height: 100%;
+  min-height: 150px;
+  border-right: 1px solid var(--ui-border);
+  border-bottom: 0;
+  padding: 12px;
+}
+.dashboard-site-grid.is-list .dashboard-site-card > a > .template-art {
+  min-height: 125px;
+  height: 100%;
+}
+.dashboard-site-grid.is-list .dashboard-create-card {
+  min-height: 90px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.dashboard-site-grid.is-list .dashboard-create-card > span {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+.dashboard-site-grid.is-list .dashboard-create-card > small {
+  max-width: none;
+}
+.dashboard-quota {
+  font-size: 11px;
+  margin-top: 20px;
+}
+.dashboard-guide-strip {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-top: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 38px;
+  gap: 22px;
+}
+.dashboard-guide-strip > div > span {
+  display: grid;
+  place-items: center;
+  background: var(--ui-accent-soft);
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  color: var(--ui-text);
+}
+.dashboard-guide-strip h2 {
+  font-size: 14px;
+}
+.dashboard-guide-strip p,
+.dashboard-guide-strip > a {
+  font-size: 11px;
+}
+.dashboard-zero {
+  background: var(--ui-canvas);
+  border-color: var(--ui-border);
+  border-radius: 8px;
+}
+.dashboard-zero h2 {
+  font-size: 28px;
+}
+.dashboard-zero > p {
+  font-size: 14px;
+}
+.dashboard-zero-art .brand-mark {
+  transform: none;
+}
+.dashboard-welcome {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-canvas);
+}
+.dashboard-welcome-art {
+  transform: none;
+  border-radius: 3px;
+}
+.new-site-form h1 {
+  font-size: 40px;
+}
+.new-site-form > p {
+  font-size: 14px;
+}
+.new-site-preview {
+  background: var(--ui-canvas);
+}
+.template-preview-devices > button[aria-pressed="true"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  border-color: var(--ui-accent-border);
+}
+
+@media (min-width: 1600px) {
+  .dashboard-site-card > a {
+    height: 230px;
+  }
+}
+@media (max-width: 1200px) {
+  .brand-header {
+    padding-inline: 32px;
+    gap: 50px;
+  }
+  .brand-nav {
+    gap: 24px;
+  }
+  .saas-hero {
+    padding: 60px 32px;
+    gap: 34px;
+    grid-template-columns: 0.8fr 1.2fr;
+  }
+  .brand-app .saas-hero h1 {
+    font-size: 65px;
+  }
+  .saas-preview-wrap {
+    padding: 18px 14px;
+  }
+  .saas-demo-label {
+    display: none;
+  }
+  .saas-product-body {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+  .saas-demo-sidebar {
+    padding-inline: 5px;
+  }
+  .saas-demo-stage {
+    padding: 13px 10px;
+  }
+  .saas-demo-style {
+    display: none;
+  }
+  .saas-preview-caption > span {
+    display: none;
+  }
+  .saas-preview-caption {
+    justify-content: flex-end;
+  }
+  .saas-capabilities {
+    margin-inline: 32px;
+  }
+  .saas-capabilities article {
+    padding-inline: 22px;
+  }
+  .saas-workflow {
+    margin-inline: 40px;
+    gap: 50px;
+    padding: 42px;
+  }
+  .dashboard-sidebar {
+    width: 202px;
+  }
+  .dashboard-main {
+    padding: 32px 28px;
+  }
+  .dashboard-header {
+    padding-inline: 28px;
+  }
+  .dashboard-site-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-site-toolbar > div:last-child {
+    margin-left: auto;
+  }
+  .dashboard-site-card > a {
+    height: 210px;
+  }
+}
+@media (max-width: 960px) {
+  .saas-hero {
+    grid-template-columns: 1fr;
+    gap: 45px;
+    max-width: 760px;
+    padding-top: 52px;
+  }
+  .brand-app .saas-hero h1 {
+    font-size: 76px;
+  }
+  .saas-hero-copy > p {
+    max-width: 430px;
+  }
+  .saas-product-body {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+  .saas-demo-stage > .template-art {
+    aspect-ratio: 1.25;
+  }
+  .saas-demo-sidebar {
+    padding: 20px 12px;
+  }
+  .saas-demo-style {
+    display: flex;
+  }
+  .saas-capabilities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: 26px;
+  }
+  .saas-capabilities article {
+    padding-top: 26px;
+    padding-bottom: 14px;
+  }
+  .saas-capabilities article:nth-child(3) {
+    border-left: 0;
+  }
+  .saas-capability-label {
+    margin-bottom: 18px;
+  }
+  .dashboard-site-toolbar {
+    gap: 18px;
+  }
+  .dashboard-site-toolbar > div:last-child {
+    margin-left: 0;
+    width: 100%;
+  }
+  .dashboard-search-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .dashboard-search {
+    width: 100%;
+  }
+  .dashboard-guide-strip {
+    flex-wrap: wrap;
+  }
+  .dashboard-guide-strip > div {
+    width: 100%;
+  }
+}
+@media (max-width: 760px) {
+  .brand-header {
+    height: 68px;
+    padding-inline: 22px;
+    gap: 20px;
+  }
+  .brand-header-actions {
+    gap: 15px;
+    margin-left: auto;
+  }
+  .brand-nav {
+    background: var(--ui-surface);
+  }
+  .brand-app .brand-wordmark {
+    font-size: 28px;
+  }
+  .brand-section {
+    padding: 55px 24px;
+  }
+  .brand-section-heading {
+    gap: 22px;
+  }
+  .brand-section-heading h2 {
+    font-size: 32px;
+  }
+  .brand-page-intro {
+    padding: 44px 24px 36px;
+  }
+  .brand-page-intro h1 {
+    font-size: 40px;
+  }
+  .brand-page-intro > p {
+    font-size: 14px;
+  }
+  .brand-template-visual {
+    padding: 18px;
+  }
+  .brand-app .brand-faq {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .brand-faq h2 {
+    font-size: 31px;
+  }
+  .brand-faq summary {
+    font-size: 14px;
+  }
+  .brand-final-cta {
+    padding: 56px 24px;
+  }
+  .brand-footer {
+    padding-inline: 24px;
+  }
+  .brand-footer-top {
+    gap: 32px;
+  }
+  .brand-footer-top > div:not(:first-child) > a {
+    font-size: 12px;
+  }
+  .saas-hero {
+    padding: 45px 24px;
+  }
+  .brand-app .saas-hero h1 {
+    font-size: 68px;
+    margin: 24px 0;
+  }
+  .saas-hero-copy > p {
+    font-size: 14px;
+    max-width: 380px;
+  }
+  .saas-preview-wrap {
+    padding: 18px 14px;
+  }
+  .saas-capabilities {
+    margin-inline: 24px;
+  }
+  .saas-capabilities article {
+    padding-inline: 18px;
+  }
+  .saas-capabilities article:nth-child(odd) {
+    padding-left: 0;
+  }
+  .saas-template-section .brand-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .saas-workflow {
+    margin-inline: 24px;
+    grid-template-columns: 1fr;
+    padding: 30px;
+    gap: 36px;
+  }
+  .brand-app .saas-workflow h2 {
+    font-size: 38px;
+  }
+  .dashboard-sidebar {
+    width: 64px;
+    padding: 22px 10px;
+  }
+  .dashboard-sidebar > a:first-child {
+    padding: 0 6px;
+  }
+  .dashboard-nav-label,
+  .dashboard-nav-count {
+    display: none;
+  }
+  .dashboard-workspace-label {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    margin: 32px 0 22px;
+    justify-content: center;
+  }
+  .dashboard-sidebar > nav > a {
+    font-size: 0;
+    justify-content: center;
+    padding: 11px;
+  }
+  .dashboard-header {
+    height: 68px;
+    padding-inline: 20px;
+  }
+  .dashboard-header > span > svg {
+    display: none;
+  }
+  .dashboard-header > div > button {
+    font-size: 11px;
+  }
+  .dashboard-main {
+    padding: 30px 20px;
+  }
+  .dashboard-heading {
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .dashboard-heading h1 {
+    font-size: 30px;
+  }
+  .dashboard-heading p {
+    line-height: 1.7;
+    font-size: 12px;
+  }
+  .dashboard-site-toolbar .brand-filter-tabs button {
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+  .dashboard-site-toolbar > div:last-child {
+    flex-wrap: wrap;
+  }
+  .dashboard-site-toolbar select {
+    max-width: 128px;
+  }
+  .dashboard-search-wrap {
+    flex-basis: calc(100% - 92px);
+  }
+  .dashboard-site-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-site-card > a {
+    height: 210px;
+  }
+  .dashboard-site-card-body {
+    padding: 18px;
+  }
+  .dashboard-site-card-body h2 {
+    font-size: 16px;
+  }
+  .dashboard-site-card-body > div > a {
+    font-size: 11px;
+  }
+  .dashboard-create-card {
+    min-height: 180px;
+  }
+  .dashboard-site-grid.is-list .dashboard-site-card {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+  .dashboard-site-grid.is-list .dashboard-site-card > a {
+    padding: 8px;
+  }
+  .dashboard-site-grid.is-list .dashboard-site-card-body {
+    padding: 14px 12px;
+  }
+  .dashboard-site-grid.is-list .dashboard-site-card-body h2 {
+    font-size: 13px;
+  }
+  .dashboard-site-grid.is-list .dashboard-site-card-body > div:first-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dashboard-site-grid.is-list .dashboard-create-card > small {
+    display: none;
+  }
+  .dashboard-guide-strip {
+    align-items: flex-start;
+  }
+  .brand-auth {
+    display: block;
+  }
+  .brand-auth-main {
+    padding: 28px 24px;
+  }
+  .auth-form-wrap h2 {
+    font-size: 31px;
+  }
+}
+@media (max-width: 480px) {
+  .brand-app .brand-button {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 12px;
+    gap: 10px;
+  }
+  .brand-app .brand-header .brand-button {
+    min-height: 36px;
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+  .brand-app .saas-hero h1 {
+    font-size: 62px;
+  }
+  .saas-eyebrow {
+    font-size: 9px;
+  }
+  .saas-hero-actions {
+    gap: 18px;
+  }
+  .saas-hero-actions .brand-button {
+    padding-inline: 15px;
+    font-size: 11px;
+  }
+  .saas-hero-actions .brand-text-link {
+    font-size: 11px;
+  }
+  .saas-hero-notes {
+    font-size: 10px;
+    gap: 18px;
+  }
+  .saas-preview-wrap {
+    padding: 14px 10px;
+  }
+  .saas-preview-topline {
+    gap: 6px;
+  }
+  .saas-preview-topline > span {
+    font-size: 7px;
+    letter-spacing: 0.05em;
+  }
+  .saas-preview-topline button {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+  .saas-demo-sidebar {
+    display: none;
+  }
+  .saas-product-body {
+    grid-template-columns: 1fr;
+  }
+  .saas-product-bar {
+    gap: 7px;
+    padding-inline: 9px;
+  }
+  .saas-demo-stage > .template-art {
+    aspect-ratio: 1.2;
+  }
+  .saas-capabilities article {
+    padding-right: 15px;
+  }
+  .brand-app .saas-capabilities h2 {
+    font-size: 15px;
+  }
+  .saas-capabilities p {
+    font-size: 11px;
+  }
+  .dashboard-heading {
+    flex-direction: column;
+  }
+  .dashboard-heading h1 {
+    font-size: 30px;
+  }
+  .dashboard-header > span {
+    gap: 6px;
+    font-size: 10px;
+  }
+  .dashboard-site-card > a {
+    height: 190px;
+  }
+  .dashboard-site-card-body > div:first-child {
+    gap: 8px;
+  }
+  .dashboard-site-card-body h2 {
+    font-size: 15px;
+  }
+  .dashboard-site-toolbar .brand-filter-tabs button {
+    padding-inline: 7px;
+  }
+}
+
+.dashboard-site-grid.is-list .dashboard-site-card-body > div:last-of-type {
+  justify-content: flex-start;
+  gap: 24px;
+}
+.dashboard-search-wrap .dashboard-search {
+  font-size: 12px;
+}
+.dashboard-guide-strip p,
+.dashboard-guide-strip > a {
+  font-size: 12px;
+}
+
+.dashboard-sidebar .brand-lockup {
+  color: #ffffff;
+}
+.dashboard-sidebar .brand-mark-background {
+  fill: #b3a5ff;
+}
+.saas-hero .brand-button {
+  background: #6757e9;
+  border-color: #9a89ff;
+  box-shadow: 0 5px 18px #0003;
+}
+.saas-hero .brand-button:hover {
+  background: #7969f2;
+  border-color: #bfb2ff;
+}
+.dashboard-sidebar .dashboard-workspace-label {
+  color: #ffffff;
+}
+.dashboard-sidebar .dashboard-workspace-label small {
+  color: #c9c3de;
+}
+.brand-app .brand-button-outline {
+  box-shadow: var(--ui-shadow-sm);
+}
+.brand-template-visual {
+  box-shadow: var(--ui-shadow-card);
+}
+.brand-template-card:hover .brand-template-visual {
+  border-color: var(--ui-accent-border);
+}
+.brand-page-intro .brand-kicker {
+  color: var(--ui-accent);
+}
+.domain-page .domain-heading h1 {
+  color: var(--ui-ink);
+}
+@media (max-width: 960px) {
+  .saas-hero {
+    max-width: none;
+  }
+}
+@media (max-width: 760px) {
+  .dashboard-sidebar .dashboard-workspace-label {
+    background: transparent;
+  }
+  .dashboard-guide-strip {
+    padding: 20px;
+  }
+}

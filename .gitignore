@@ -10,6 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.local/
+.build/
+.env
+.env.*
+!.env.example
+coverage/
+test-results/
+dynamodb-local-metadata.json
 *.local
 
 # Editor directories and files

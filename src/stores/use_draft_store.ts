@@ -352,6 +352,21 @@ export const useDraftStore = create<DraftStore>()(
         get()._saveState(newState);
       },
 
+      updateComponentPositionAndSize: (componentId: string, position: Partial<GridPosition>, width: string, height: string) => {
+        const currentState = get().history.present;
+        const newComponents = currentState.components.map(comp =>
+          comp.id === componentId
+            ? {
+                ...comp,
+                position: { ...(comp.position || {} as GridPosition), ...position },
+                styles: { ...(comp.styles || {}), width, height }
+              }
+            : comp
+        );
+        const newState = { ...currentState, components: newComponents };
+        get()._saveState(newState);
+      },
+
       batchUpdatePositions: (updatedComponents: ComponentSchema[]) => {
         const currentState = get().history.present;
         const newState = { ...currentState, components: updatedComponents };

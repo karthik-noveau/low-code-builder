@@ -1,0 +1,177 @@
+/* Editor chrome for custom sections: block tree, block settings, device scope. */
+.block-tree,
+.block-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.block-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+.block-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--ui-radius-small, 4px);
+}
+.block-row:hover {
+  background: var(--ui-surface-alt);
+}
+.block-row.selected {
+  background: var(--ui-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ui-accent-border);
+}
+.block-row .icon-button {
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+}
+.block-row:hover .icon-button,
+.block-row.selected .icon-button,
+.block-row .icon-button:focus-visible {
+  opacity: 1;
+}
+.block-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 4px;
+  border: 0;
+  background: none;
+  color: var(--ui-text);
+  text-align: left;
+}
+.block-row-type {
+  font-weight: 550;
+  white-space: nowrap;
+}
+.block-row-preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-muted);
+}
+.block-add {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--ui-radius-control, 5px);
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+.block-add:hover,
+.block-add:focus-within {
+  color: var(--ui-accent);
+  border-color: var(--ui-accent-border);
+}
+.block-add select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.block-tree .block-add {
+  margin: 2px 0 6px;
+  padding-block: 5px;
+}
+.block-empty,
+.block-hint {
+  display: block;
+  margin: 0 0 12px;
+  color: var(--ui-muted);
+  line-height: 1.5;
+}
+.block-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-muted);
+}
+.block-back svg {
+  transform: rotate(180deg);
+}
+.block-back:hover {
+  color: var(--ui-text);
+}
+.block-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.device-scope {
+  display: inline-flex;
+  gap: 2px;
+}
+.device-scope button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ui-muted);
+}
+.device-scope button.chosen {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+.device-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -6px 0 12px;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-small, 4px);
+  background: var(--ui-accent-soft);
+  color: var(--ui-text);
+  line-height: 1.45;
+}
+.device-note button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent);
+  font-weight: 550;
+}
+.animation-options,
+.theme-choice .segmented {
+  flex-wrap: wrap;
+}
+.animation-options button,
+.theme-choice .segmented button {
+  font-size: 11px;
+}
+.theme-choice {
+  margin-top: 14px;
+}
+.theme-choice .field {
+  margin-bottom: 6px;
+}
+
+/* Canvas affordances, editing mode only. */
+.website-editing .site-block {
+  cursor: pointer;
+  outline-offset: 3px;
+}
+.website-editing .site-section.is-selected .site-block:hover {
+  outline: 1px dashed var(--canvas-highlight, #005bd3);
+}
+.website-editing .site-block.is-block-selected,
+.website-editing .site-section.is-selected .site-block.is-block-selected:hover {
+  outline: 2px solid var(--canvas-highlight, #005bd3);
+}

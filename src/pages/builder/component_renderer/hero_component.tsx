@@ -1,12 +1,17 @@
 import type { ComponentRendererProps } from './types';
 import { ComponentToolbar } from './component_toolbar';
-import { setDraggedComponentId, hideDragPreview } from './index';
+import { setDraggedComponentId, hideDragPreview, startMouseDragTracking } from './index';
 import styles from './style.module.css';
 
 export const HeroComponent = ({ component, index, pageId, isSelected, onSelect, onDuplicate, onDelete}: ComponentRendererProps) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect(component.id);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Start immediate drag detection (1px threshold)
+    startMouseDragTracking(e, component.id, component.type);
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -33,22 +38,41 @@ export const HeroComponent = ({ component, index, pageId, isSelected, onSelect, 
   }
 
   const heading = content.heading || 'Build Your Dream Website';
-  const subheading = content.subheading || 'Create stunning websites';
+  const subheading = content.subheading || 'Create stunning, professional websites without code';
   const ctaText = content.ctaText || 'Get Started';
+  const ctaLink = content.ctaLink || '#';
 
   return (
     <div className={`${styles.componentWrapper} ${isSelected ? styles.selected : ''}`}>
       {isSelected && <ComponentToolbar onDuplicate={() => onDuplicate(component.id)} onDelete={() => onDelete(component.id)} />}
       <div
-        style={{ ...component.styles, ...highlightStyle, textAlign: 'center', padding: '80px 20px' }}
+        style={{ ...component.styles, ...highlightStyle }}
         onClick={handleClick}
+        onMouseDown={handleMouseDown}
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <h1 style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '16px' }}>{heading}</h1>
         <p style={{ fontSize: '20px', marginBottom: '32px', opacity: 0.9 }}>{subheading}</p>
-        <button style={{ padding: '16px 32px', fontSize: '18px', fontWeight: '600' }}>{ctaText}</button>
+        <a
+          href={ctaLink}
+          style={{
+            display: 'inline-block',
+            padding: '16px 32px',
+            fontSize: '18px',
+            fontWeight: '600',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            color: 'inherit',
+            border: '2px solid currentColor',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            transition: 'all 0.3s'
+          }}
+          onClick={(e) => e.preventDefault()}
+        >
+          {ctaText}
+        </a>
       </div>
     </div>
   );

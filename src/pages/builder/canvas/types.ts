@@ -15,6 +15,7 @@ export interface DragState {
     colSpan: number;
     rowSpan: number;
   } | null;
+  pixelPosition: { x: number; y: number } | null; // Exact mouse position for smooth preview
   hasCollision: boolean;
   snapActive: boolean; // NEW: Indicates if magnetic snap is active
   alignmentGuides: AlignmentGuide[]; // NEW: Guides to render during drag

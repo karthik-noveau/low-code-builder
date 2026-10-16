@@ -61,39 +61,52 @@ export const NavbarComponent = ({ component, index, pageId, isSelected, onSelect
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        {displayPages.map((page: any) => (
-          <a
-            key={page.id}
-            href={page.slug}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setActivePageId(page.id);
-            }}
-            style={{
-              color: activePageId === page.id ? '#FCD34D' : '#fff',
-              textDecoration: 'none',
-              fontWeight: activePageId === page.id ? 'bold' : 'normal',
-              cursor: 'pointer',
-            }}
-          >
-            {page.name}
-          </a>
-        ))}
-        {navConfig.customLinks &&
-          navConfig.customLinks.map((link: any, idx: number) => (
+        {navConfig.logo && (
+          <img
+            src={navConfig.logo}
+            alt="Logo"
+            style={{ height: '40px', marginRight: '20px' }}
+          />
+        )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {displayPages.map((page: any) => (
             <a
-              key={`custom-${idx}`}
-              href={link.url}
+              key={page.id}
+              href={page.slug}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActivePageId(page.id);
+              }}
               style={{
-                color: '#fff',
+                color: 'inherit',
                 textDecoration: 'none',
+                padding: '8px 12px',
+                transition: 'opacity 0.2s',
                 cursor: 'pointer',
+                opacity: activePageId === page.id ? 1 : 0.8,
               }}
             >
-              {link.label}
+              {page.name}
             </a>
           ))}
+          {navConfig.customLinks &&
+            navConfig.customLinks.map((link: any, idx: number) => (
+              <a
+                key={`custom-${idx}`}
+                href={link.url}
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  padding: '8px 12px',
+                  transition: 'opacity 0.2s',
+                  cursor: 'pointer',
+                }}
+              >
+                {link.label}
+              </a>
+            ))}
+        </div>
       </nav>
     </div>
   );

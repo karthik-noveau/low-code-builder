@@ -178,6 +178,199 @@ export function resolveCollisions(
 export type ResizeHandle = 'se' | 'e' | 's' | 'sw' | 'ne' | 'nw' | 'w' | 'n';
 
 /**
+ * Find the maximum allowed position for resize without collisions
+ * @param proposedPosition - The desired position after resize
+ * @param startPosition - The original position before resize started
+ * @param componentId - ID of component being resized
+ * @param components - All components on the page
+ * @param handle - Which resize handle is being used
+ * @returns Constrained position that doesn't collide
+ */
+export function constrainResizeToAvoidCollisions(
+  proposedPosition: GridPosition,
+  startPosition: GridPosition,
+  componentId: string,
+  components: ComponentSchema[],
+  handle: ResizeHandle
+): GridPosition {
+  const otherComponents = components.filter(c => c.id !== componentId && c.position);
+
+  let constrainedPosition = { ...proposedPosition };
+
+  // Get the original bounds
+  const startColEnd = startPosition.colStart + startPosition.colSpan;
+  const startRowEnd = startPosition.rowStart + startPosition.rowSpan;
+
+  // Process each component to find constraints
+  for (const other of otherComponents) {
+    if (!other.position) continue;
+
+    const otherColEnd = other.position.colStart + other.position.colSpan;
+    const otherRowEnd = other.position.rowStart + other.position.rowSpan;
+
+    switch (handle) {
+      case 'e': // East - growing right only
+        // Check if component is to the right and overlaps vertically
+        if (other.position.colStart >= startColEnd) { // Component is to the right
+          // Check vertical overlap
+          if (!(otherRowEnd <= proposedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + proposedPosition.rowSpan)) {
+            // Would hit this component, constrain to its left edge
+            const maxColEnd = other.position.colStart;
+            const maxColSpan = maxColEnd - proposedPosition.colStart;
+            if (maxColSpan > 0 && maxColSpan < constrainedPosition.colSpan) {
+              constrainedPosition.colSpan = maxColSpan;
+            }
+          }
+        }
+        break;
+
+      case 's': // South - growing down only
+        // Check if component is below and overlaps horizontally
+        if (other.position.rowStart >= startRowEnd) { // Component is below
+          // Check horizontal overlap
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + proposedPosition.colSpan)) {
+            // Would hit this component, constrain to its top edge
+            const maxRowEnd = other.position.rowStart;
+            const maxRowSpan = maxRowEnd - proposedPosition.rowStart;
+            if (maxRowSpan > 0 && maxRowSpan < constrainedPosition.rowSpan) {
+              constrainedPosition.rowSpan = maxRowSpan;
+            }
+          }
+        }
+        break;
+
+      case 'se': // Southeast - growing right and down
+        // Check right direction
+        if (other.position.colStart >= startColEnd) {
+          if (!(otherRowEnd <= proposedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + constrainedPosition.rowSpan)) {
+            const maxColEnd = other.position.colStart;
+            const maxColSpan = maxColEnd - proposedPosition.colStart;
+            if (maxColSpan > 0 && maxColSpan < constrainedPosition.colSpan) {
+              constrainedPosition.colSpan = maxColSpan;
+            }
+          }
+        }
+        // Check down direction
+        if (other.position.rowStart >= startRowEnd) {
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + constrainedPosition.colSpan)) {
+            const maxRowEnd = other.position.rowStart;
+            const maxRowSpan = maxRowEnd - proposedPosition.rowStart;
+            if (maxRowSpan > 0 && maxRowSpan < constrainedPosition.rowSpan) {
+              constrainedPosition.rowSpan = maxRowSpan;
+            }
+          }
+        }
+        break;
+
+      case 'w': // West - growing left
+        if (otherColEnd <= startPosition.colStart) { // Component is to the left
+          if (!(otherRowEnd <= proposedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + proposedPosition.rowSpan)) {
+            const minColStart = otherColEnd;
+            if (minColStart > constrainedPosition.colStart) {
+              const rightEdge = proposedPosition.colStart + proposedPosition.colSpan;
+              constrainedPosition.colStart = minColStart;
+              constrainedPosition.colSpan = rightEdge - minColStart;
+            }
+          }
+        }
+        break;
+
+      case 'n': // North - growing up
+        if (otherRowEnd <= startPosition.rowStart) { // Component is above
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + proposedPosition.colSpan)) {
+            const minRowStart = otherRowEnd;
+            if (minRowStart > constrainedPosition.rowStart) {
+              const bottomEdge = proposedPosition.rowStart + proposedPosition.rowSpan;
+              constrainedPosition.rowStart = minRowStart;
+              constrainedPosition.rowSpan = bottomEdge - minRowStart;
+            }
+          }
+        }
+        break;
+
+      case 'sw': // Southwest
+        // Left
+        if (otherColEnd <= startPosition.colStart) {
+          if (!(otherRowEnd <= proposedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + constrainedPosition.rowSpan)) {
+            const minColStart = otherColEnd;
+            if (minColStart > constrainedPosition.colStart) {
+              const rightEdge = proposedPosition.colStart + proposedPosition.colSpan;
+              constrainedPosition.colStart = minColStart;
+              constrainedPosition.colSpan = rightEdge - minColStart;
+            }
+          }
+        }
+        // Down
+        if (other.position.rowStart >= startRowEnd) {
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + constrainedPosition.colSpan)) {
+            const maxRowEnd = other.position.rowStart;
+            const maxRowSpan = maxRowEnd - proposedPosition.rowStart;
+            if (maxRowSpan > 0 && maxRowSpan < constrainedPosition.rowSpan) {
+              constrainedPosition.rowSpan = maxRowSpan;
+            }
+          }
+        }
+        break;
+
+      case 'ne': // Northeast
+        // Right
+        if (other.position.colStart >= startColEnd) {
+          if (!(otherRowEnd <= constrainedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + proposedPosition.rowSpan)) {
+            const maxColEnd = other.position.colStart;
+            const maxColSpan = maxColEnd - proposedPosition.colStart;
+            if (maxColSpan > 0 && maxColSpan < constrainedPosition.colSpan) {
+              constrainedPosition.colSpan = maxColSpan;
+            }
+          }
+        }
+        // Up
+        if (otherRowEnd <= startPosition.rowStart) {
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + constrainedPosition.colSpan)) {
+            const minRowStart = otherRowEnd;
+            if (minRowStart > constrainedPosition.rowStart) {
+              const bottomEdge = proposedPosition.rowStart + proposedPosition.rowSpan;
+              constrainedPosition.rowStart = minRowStart;
+              constrainedPosition.rowSpan = bottomEdge - minRowStart;
+            }
+          }
+        }
+        break;
+
+      case 'nw': // Northwest
+        // Left
+        if (otherColEnd <= startPosition.colStart) {
+          if (!(otherRowEnd <= constrainedPosition.rowStart || other.position.rowStart >= proposedPosition.rowStart + proposedPosition.rowSpan)) {
+            const minColStart = otherColEnd;
+            if (minColStart > constrainedPosition.colStart) {
+              const rightEdge = proposedPosition.colStart + proposedPosition.colSpan;
+              constrainedPosition.colStart = minColStart;
+              constrainedPosition.colSpan = rightEdge - minColStart;
+            }
+          }
+        }
+        // Up
+        if (otherRowEnd <= startPosition.rowStart) {
+          if (!(otherColEnd <= proposedPosition.colStart || other.position.colStart >= proposedPosition.colStart + constrainedPosition.colSpan)) {
+            const minRowStart = otherRowEnd;
+            if (minRowStart > constrainedPosition.rowStart) {
+              const bottomEdge = proposedPosition.rowStart + proposedPosition.rowSpan;
+              constrainedPosition.rowStart = minRowStart;
+              constrainedPosition.rowSpan = bottomEdge - minRowStart;
+            }
+          }
+        }
+        break;
+    }
+  }
+
+  // Ensure minimum size
+  constrainedPosition.colSpan = Math.max(1, constrainedPosition.colSpan);
+  constrainedPosition.rowSpan = Math.max(1, constrainedPosition.rowSpan);
+
+  return constrainedPosition;
+}
+
+/**
  * Calculate new position during resize with snap-to-grid
  * @param startPosition - Position before resize started
  * @param deltaPixels - Change in pixels from drag start

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "requirements": [
+    {
+      "id": "commerce",
+      "title": "Local catalog, cart, sandbox payment, order, return and publishing checks",
+      "status": "verified",
+      "evidence": "npm run check: 87 unit tests; npm run test:integration: 27 integration tests; desktop/mobile commerce browser flow: 27 screens with zero errors. Tests cover stock races, duplicate payments, roles, returns, refunds, unsubscribe, catalog publishing and account lifecycle."
+    },
+    {
+      "id": "identity",
+      "title": "Production signup, email verification, recovery and customer identity",
+      "status": "requires-live-provider",
+      "evidence": ""
+    },
+    {
+      "id": "payments",
+      "title": "Live payment provider, signed webhooks, reconciliation and refunds",
+      "status": "requires-provider-selection",
+      "evidence": ""
+    },
+    {
+      "id": "shipping-tax",
+      "title": "Shipping carrier and tax provider integration for supported markets",
+      "status": "local-rules-only",
+      "evidence": ""
+    },
+    {
+      "id": "notifications",
+      "title": "Production email delivery and deliverability management",
+      "status": "local-preview-only",
+      "evidence": "Local order/return notification previews, consented signup, unsubscribe and recipient exclusion are tested; no live email delivery."
+    },
+    {
+      "id": "billing",
+      "title": "Tenant usage billing, payment collection and cost monitoring",
+      "status": "local-record-counts-only",
+      "evidence": ""
+    },
+    {
+      "id": "operations",
+      "title": "Backup restore, alerting, retention and account deletion",
+      "status": "local-verified-production-pending",
+      "evidence": "Verified a 464-file local snapshot, restored it to an isolated DynamoDB instance and compared 28 store records successfully. Local account/site deletion and session revocation pass integration tests. Hosted monitoring, retention and offsite recovery remain outstanding."
+    },
+    {
+      "id": "channels",
+      "title": "External sales channels, POS and extension delivery",
+      "status": "local-event-feed-only",
+      "evidence": ""
+    },
+    {
+      "id": "cloud",
+      "title": "AWS staging, IAM isolation, public domains and HTTPS verification",
+      "status": "not-deployed",
+      "evidence": ""
+    }
+  ]
+}

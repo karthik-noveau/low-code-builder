@@ -5,7 +5,7 @@ import { GhostPreview } from './ghost_preview';
 import { ResizeHandles } from './resize_handles';
 import { AlignmentGuides } from './components/alignment_guides';
 import { getDeviceWidth, getResponsivePosition, calculateDropPosition, throttle } from './utils';
-import { hasCollision, resolveCollisions, calculateResizePosition } from './drag_utils';
+import { hasCollision, checkCollision, resolveCollisions, calculateResizePosition, constrainResizeToAvoidCollisions } from './drag_utils';
 import { calculateSnapCandidates, findSnapTargets } from './services/snap_engine';
 import { GRID_CONFIG, calculateColumnWidth } from './services/grid.config';
 import { COMPONENT_TEMPLATES } from '../../../common/constants/component_templates';
@@ -18,6 +18,7 @@ import styles from './style.module.css';
 let currentDraggedType: string | null = null;
 // @ts-ignore - Stored for future validation logic
 let _currentDraggedId: string | null = null;
+let _setMouseDragState: React.Dispatch<React.SetStateAction<any>> | null = null; // For immediate drag detection
 
 // Export function for left panel to set the dragged type
 export const setDraggedComponentType = (type: string | null) => {
@@ -31,6 +32,19 @@ export const setDraggedComponentId = (id: string | null, type: string | null) =>
   console.log('🔄 Setting dragged component ID:', id, 'Type:', type);
   _currentDraggedId = id;
   currentDraggedType = type; // Also set type for ghost preview
+};
+
+// Export function for components to start immediate drag detection (1px threshold)
+export const startMouseDragTracking = (e: React.MouseEvent, componentId: string, componentType: string) => {
+  if (_setMouseDragState) {
+    _setMouseDragState({
+      isMouseDown: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      componentId,
+      componentType,
+    });
+  }
 };
 
 export const Canvas = () => {
@@ -51,10 +65,28 @@ export const Canvas = () => {
     isDragging: false,
     draggedComponentType: null,
     currentPosition: null,
+    pixelPosition: null,
     hasCollision: false,
     snapActive: false,
     alignmentGuides: [],
   });
+
+  // Mouse-based drag tracking for immediate (1px) drag detection
+  const [mouseDragState, setMouseDragState] = useState<{
+    isMouseDown: false;
+    startX: number;
+    startY: number;
+    componentId: string | null;
+    componentType: string | null;
+  } | null>(null);
+
+  // Assign to module-level variable for external access
+  useEffect(() => {
+    _setMouseDragState = setMouseDragState;
+    return () => {
+      _setMouseDragState = null;
+    };
+  }, []);
 
   // Resize state
   const [resizeState, setResizeState] = useState<ResizeState>({
@@ -101,6 +133,7 @@ export const Canvas = () => {
         isDragging: false,
         draggedComponentType: null,
         currentPosition: null,
+        pixelPosition: null,
         hasCollision: false,
         snapActive: false,
         alignmentGuides: [],
@@ -121,7 +154,7 @@ export const Canvas = () => {
     if (!resizeState.isResizing || !canvasRef.current || !resizeState.handle) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!canvasRef.current) return;
+      if (!canvasRef.current || !currentPage) return;
 
       const rect = canvasRef.current.getBoundingClientRect();
       const colWidth = (rect.width - 40) / 12; // 12 columns minus padding
@@ -140,9 +173,121 @@ export const Canvas = () => {
         resizeState.handle!
       );
 
-      // Update component position in real-time (optimistic update)
+      // Calculate actual pixel dimensions from new grid position
+      const newWidth = newPosition.colSpan * colWidth;
+      const newHeight = newPosition.rowSpan * rowHeight;
+
+      // Update component position and size
       if (resizeState.componentId) {
-        updateComponentPosition(resizeState.componentId, newPosition);
+        // First, update the resizing component in the components array
+        const updatedComponents = safeComponents.map(comp =>
+          comp.id === resizeState.componentId
+            ? {
+                ...comp,
+                position: { ...(comp.position || {} as GridPosition), ...newPosition },
+                styles: { ...(comp.styles || {}), width: `${newWidth}px`, height: `${newHeight}px` }
+              }
+            : comp
+        );
+
+        // Get updated renderable components for collision check
+        const updatedRenderableComponents = currentPage.children
+          .map((componentId) => updatedComponents.find((comp) => comp.id === componentId))
+          .filter((comp): comp is NonNullable<typeof comp> => comp !== undefined);
+
+        // Different behavior based on resize direction
+        const isResizingDown = resizeState.handle?.includes('s'); // s, se, sw handles
+        let finalComponents = [...updatedComponents];
+
+        if (isResizingDown) {
+          // RESIZE DOWN: Push components down infinitely
+          const collidingComponentIds = updatedRenderableComponents
+            .filter(comp =>
+              comp.id !== resizeState.componentId &&
+              comp.position &&
+              hasCollision(newPosition, [comp], resizeState.componentId || undefined)
+            )
+            .map(comp => comp.id);
+
+          if (collidingComponentIds.length > 0) {
+            const resizeEndRow = newPosition.rowStart + newPosition.rowSpan;
+
+            finalComponents = finalComponents.map(comp => {
+              if (collidingComponentIds.includes(comp.id) && comp.position) {
+                // Move this component to start after the resizing component
+                const shiftAmount = resizeEndRow - comp.position.rowStart;
+                return {
+                  ...comp,
+                  position: {
+                    ...comp.position,
+                    rowStart: comp.position.rowStart + shiftAmount
+                  }
+                };
+              }
+              return comp;
+            });
+
+            // Handle cascading collisions
+            let hasMoreCollisions = true;
+            let iterations = 0;
+            const maxIterations = 10;
+
+            while (hasMoreCollisions && iterations < maxIterations) {
+              hasMoreCollisions = false;
+              iterations++;
+
+              finalComponents = finalComponents.map((comp, idx) => {
+                if (!comp.position) return comp;
+
+                for (let i = idx + 1; i < finalComponents.length; i++) {
+                  const other = finalComponents[i];
+                  if (!other.position) continue;
+
+                  if (checkCollision(comp.position, other.position)) {
+                    hasMoreCollisions = true;
+                    const compEndRow = comp.position.rowStart + comp.position.rowSpan;
+                    const shiftAmount = compEndRow - other.position.rowStart;
+
+                    finalComponents[i] = {
+                      ...other,
+                      position: {
+                        ...other.position,
+                        rowStart: other.position.rowStart + shiftAmount
+                      }
+                    };
+                  }
+                }
+                return comp;
+              });
+            }
+          }
+        } else {
+          // RESIZE UP/LEFT/RIGHT: Constrain to available space only
+          const constrainedPosition = constrainResizeToAvoidCollisions(
+            newPosition,
+            resizeState.startPosition,
+            resizeState.componentId!,
+            updatedRenderableComponents,
+            resizeState.handle!
+          );
+
+          // Update the resizing component with constrained position
+          const constrainedWidth = constrainedPosition.colSpan * colWidth;
+          const constrainedHeight = constrainedPosition.rowSpan * rowHeight;
+
+          finalComponents = finalComponents.map(comp =>
+            comp.id === resizeState.componentId
+              ? {
+                  ...comp,
+                  position: { ...(comp.position || {} as GridPosition), ...constrainedPosition },
+                  styles: { ...(comp.styles || {}), width: `${constrainedWidth}px`, height: `${constrainedHeight}px` }
+                }
+              : comp
+          );
+        }
+
+        // Batch update all components
+        batchUpdatePositions(finalComponents);
       }
     };
 
@@ -163,15 +308,19 @@ export const Canvas = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizeState, updateComponentPosition]);
+  }, [resizeState, batchUpdatePositions, currentPage, safeComponents]);
 
-  if (!currentPage) {
-    return <div>No page selected or found.</div>;
-  }
-
-  const renderableComponents = currentPage.children
+  const renderableComponents = (currentPage?.children ?? [])
     .map((componentId) => safeComponents.find((comp) => comp.id === componentId))
     .filter((comp): comp is NonNullable<typeof comp> => comp !== undefined);
+
+  // Calculate minimum canvas height based on component positions
+  const maxRowEnd = renderableComponents.reduce((max, comp) => {
+    const pos = getResponsivePosition(comp, devicePreview);
+    const rowEnd = pos.rowStart + pos.rowSpan;
+    return Math.max(max, rowEnd);
+  }, 1);
+  const minCanvasHeight = maxRowEnd * 60; // 60px per row
 
   // Throttled drag state update (only throttle expensive calculations)
   const throttledUpdateDragState = useCallback(
@@ -191,16 +340,27 @@ export const Canvas = () => {
       console.log('🎨 Updating drag state, position:', basePosition);
 
       if (basePosition) {
-        // Get component template for default size
-        const template = COMPONENT_TEMPLATES[componentType as keyof typeof COMPONENT_TEMPLATES];
-        const defaultPos = template?.defaultProps?.position || { colSpan: 12, rowSpan: 1 };
+        // Determine size: use actual component size if dragging existing, otherwise use template default
+        let componentSize: { colSpan: number; rowSpan: number };
+
+        if (_currentDraggedId) {
+          // Dragging existing component - use its actual size
+          const draggedComponent = renderableComponents.find(c => c.id === _currentDraggedId);
+          componentSize = draggedComponent?.position
+            ? { colSpan: draggedComponent.position.colSpan, rowSpan: draggedComponent.position.rowSpan }
+            : { colSpan: 12, rowSpan: 1 };
+        } else {
+          // Dragging new component - use template default
+          const template = COMPONENT_TEMPLATES[componentType as keyof typeof COMPONENT_TEMPLATES];
+          componentSize = template?.defaultProps?.position || { colSpan: 12, rowSpan: 1 };
+        }
 
         // Calculate pixel bounds of dragged component
         const draggedBounds = {
           left: (basePosition.col - 1) * colWidth,
-          right: (basePosition.col - 1 + defaultPos.colSpan) * colWidth,
+          right: (basePosition.col - 1 + componentSize.colSpan) * colWidth,
           top: (basePosition.row - 1) * GRID_CONFIG.ROW_HEIGHT,
-          bottom: (basePosition.row - 1 + defaultPos.rowSpan) * GRID_CONFIG.ROW_HEIGHT,
+          bottom: (basePosition.row - 1 + componentSize.rowSpan) * GRID_CONFIG.ROW_HEIGHT,
         };
 
         // Calculate snap candidates from existing components
@@ -213,8 +373,8 @@ export const Canvas = () => {
         const finalPosition = {
           col: basePosition.col,  // Always use cursor position, no snap
           row: basePosition.row,  // Always use cursor position, no snap
-          colSpan: defaultPos.colSpan,
-          rowSpan: defaultPos.rowSpan,
+          colSpan: componentSize.colSpan,
+          rowSpan: componentSize.rowSpan,
         };
 
         // Check for collisions with final position
@@ -227,11 +387,16 @@ export const Canvas = () => {
 
         const collision = hasCollision(gridPosition, renderableComponents);
 
-        // Update drag state with snap information
+        // Calculate canvas-relative pixel position for smooth preview
+        const canvasRelativeX = clientX - rect.left;
+        const canvasRelativeY = clientY - rect.top;
+
+        // Update drag state with snap information and pixel position
         setDragState({
           isDragging: true,
           draggedComponentType: componentType,
           currentPosition: finalPosition,
+          pixelPosition: { x: canvasRelativeX, y: canvasRelativeY },
           hasCollision: collision,
           snapActive: snapResult.snapped,
           alignmentGuides: snapResult.alignmentGuides,
@@ -240,6 +405,57 @@ export const Canvas = () => {
     }, GRID_CONFIG.DRAG_THROTTLE_MS),
     [renderableComponents]
   );
+
+  // Mouse drag handlers for immediate (1px) drag detection
+  useEffect(() => {
+    if (!mouseDragState?.isMouseDown) return;
+
+    const handleMouseMoveForDrag = (e: MouseEvent) => {
+      if (!mouseDragState || !canvasRef.current) return;
+
+      const deltaX = Math.abs(e.clientX - mouseDragState.startX);
+      const deltaY = Math.abs(e.clientY - mouseDragState.startY);
+
+      // Start drag on 1px movement
+      if (deltaX >= 1 || deltaY >= 1) {
+        // Set dragging state
+        _currentDraggedId = mouseDragState.componentId;
+        currentDraggedType = mouseDragState.componentType;
+
+        // Trigger immediate drag state update with pixel position
+        const rect = canvasRef.current.getBoundingClientRect();
+        const canvasRelativeX = e.clientX - rect.left;
+        const canvasRelativeY = e.clientY - rect.top;
+
+        setDragState(prev => ({
+          ...prev,
+          isDragging: true,
+          draggedComponentType: mouseDragState.componentType,
+          pixelPosition: { x: canvasRelativeX, y: canvasRelativeY },
+        }));
+
+        // Trigger grid calculations with throttling
+        if (mouseDragState.componentType) {
+          throttledUpdateDragState(e.clientX, e.clientY, mouseDragState.componentType);
+        }
+
+        // Clear mouse drag state (transition to normal drag)
+        setMouseDragState(null);
+      }
+    };
+
+    const handleMouseUpForDrag = () => {
+      setMouseDragState(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMoveForDrag);
+    document.addEventListener('mouseup', handleMouseUpForDrag);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMoveForDrag);
+      document.removeEventListener('mouseup', handleMouseUpForDrag);
+    };
+  }, [mouseDragState, throttledUpdateDragState]);
 
   // Enhanced drag over with collision detection and magnetic snapping
   const handleDragOver = useCallback(
@@ -250,7 +466,18 @@ export const Canvas = () => {
 
       // Use component type from module variable (more reliable than state)
       if (currentDraggedType && canvasRef.current) {
-        // Only throttle the expensive calculations, not the event handling
+        const rect = canvasRef.current.getBoundingClientRect();
+
+        // IMMEDIATE UPDATE: Update pixel position without throttling for fluid dragging
+        const canvasRelativeX = e.clientX - rect.left;
+        const canvasRelativeY = e.clientY - rect.top;
+
+        setDragState(prev => ({
+          ...prev,
+          pixelPosition: { x: canvasRelativeX, y: canvasRelativeY },
+        }));
+
+        // THROTTLED UPDATE: Only throttle the expensive calculations
         throttledUpdateDragState(e.clientX, e.clientY, currentDraggedType);
       }
     },
@@ -272,6 +499,7 @@ export const Canvas = () => {
   // Enhanced drop with collision resolution
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!currentPage) return;
     console.log('💧 Drop event fired');
 
     // Check if this is repositioning an existing component or adding a new one
@@ -328,6 +556,7 @@ export const Canvas = () => {
       isDragging: false,
       draggedComponentType: null,
       currentPosition: null,
+      pixelPosition: null,
       hasCollision: false,
       snapActive: false,
       alignmentGuides: [],
@@ -356,6 +585,10 @@ export const Canvas = () => {
     []
   );
 
+  if (!currentPage) {
+    return <div>No page selected or found.</div>;
+  }
+
   const deviceWidth = getDeviceWidth(devicePreview);
 
   return (
@@ -365,6 +598,9 @@ export const Canvas = () => {
       style={{
         width: deviceWidth,
         maxWidth: deviceWidth,
+        minHeight: `${minCanvasHeight}px`,
+        height: `${minCanvasHeight}px`,
+        gridTemplateRows: `repeat(${maxRowEnd}, 60px)`,
         margin: devicePreview !== 'desktop' ? '0 auto' : '0',
         boxShadow: devicePreview !== 'desktop' ? '0 2px 10px rgba(0,0,0,0.1)' : 'none',
         border: dragState.isDragging ? '2px solid #4F46E5' : '1px dashed #ccc',
@@ -390,6 +626,11 @@ export const Canvas = () => {
           ? safeComponents.find(c => c.id === _currentDraggedId)
           : undefined;
 
+        // Calculate column width for pixel positioning
+        const colWidth = canvasRef.current
+          ? calculateColumnWidth(canvasRef.current.getBoundingClientRect().width)
+          : undefined;
+
         return (
           <GhostPreview
             position={dragState.currentPosition}
@@ -397,6 +638,8 @@ export const Canvas = () => {
             componentType={dragState.draggedComponentType}
             isSnapped={dragState.snapActive}
             component={draggedComponent}
+            pixelPosition={dragState.pixelPosition}
+            colWidth={colWidth}
           />
         );
       })()}
@@ -418,14 +661,18 @@ export const Canvas = () => {
                 position: 'relative',
                 // Disable pointer events during drag to allow dropping near components
                 pointerEvents: dragState.isDragging ? 'none' : 'auto',
-                // Ensure components fill the grid cell when resized
-                width: '100%',
-                height: '100%',
-                minWidth: 0,
-                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                // Ensure selected component is on top of all others
+                zIndex: isSelected ? 1000 : resizeState.isResizing && resizeState.componentId === component.id ? 1000 : 1,
               }}
             >
-              <GenericComponent component={component} index={index} pageId={currentPage.id} />
+              <GenericComponent
+                component={component}
+                index={index}
+                pageId={currentPage.id}
+                selectedComponentId={selectedComponentId}
+              />
 
               {/* Show resize handles for selected component */}
               {isSelected && !dragState.isDragging && (

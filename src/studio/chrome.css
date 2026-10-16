@@ -1,0 +1,307 @@
+/*
+ * Editor chrome: one header row, a quiet navigator, and an uncluttered canvas.
+ * Loaded last; selectors start with `.studio.canvas-first` so they settle the
+ * overrides layered in studio.css, canvas-first.css, product-ui.css and experience.css.
+ */
+
+/* Header: brand + project | page, device, zoom | save, tools, preview, publish */
+.studio.canvas-first .studio-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  min-height: 56px;
+  padding: 0 16px;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+.studio.canvas-first .header-start {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.studio.canvas-first .header-start .project-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--ui-border);
+}
+.studio.canvas-first .header-start .project-breadcrumb button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ui-text);
+}
+.studio.canvas-first .header-start .project-breadcrumb button:hover {
+  background: var(--ui-surface-alt);
+}
+.studio.canvas-first .header-start .project-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio.canvas-first .header-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--ui-surface-alt);
+}
+.studio.canvas-first .header-center .history-actions {
+  display: flex;
+  padding-right: 4px;
+  margin-right: 2px;
+  border-right: 1px solid var(--ui-border);
+}
+.studio.canvas-first .header-center .icon-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ui-muted);
+}
+.studio.canvas-first .header-center .icon-button:hover:not(:disabled) {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.studio.canvas-first .header-center .stage-page-name {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--ui-surface);
+  box-shadow: 0 1px 2px #1018280f;
+  color: var(--ui-text);
+}
+.studio.canvas-first .header-center .stage-page-name select {
+  appearance: none;
+  min-width: 70px;
+  max-width: 180px;
+  padding: 0 14px 0 0;
+  margin-right: -14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-weight: 550;
+  cursor: pointer;
+}
+.studio.canvas-first .header-center .stage-page-name > svg:last-child {
+  pointer-events: none;
+}
+.studio.canvas-first .header-center .device-controls {
+  position: static;
+  transform: none;
+  display: flex;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.studio.canvas-first .header-center .device-option {
+  width: 30px;
+  padding: 0;
+}
+.studio.canvas-first .header-center .device-option.active {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: 0 1px 2px #1018281a;
+}
+.studio.canvas-first .header-center .zoom-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+  border-left: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+}
+.studio.canvas-first .header-center .zoom-select {
+  appearance: none;
+  height: 30px;
+  padding: 0 18px 0 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.studio.canvas-first .header-center .zoom-control svg {
+  position: absolute;
+  right: 4px;
+  pointer-events: none;
+}
+.studio.canvas-first .studio-header .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+.studio.canvas-first .studio-header .header-actions .icon-button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ui-muted);
+}
+.studio.canvas-first .studio-header .header-actions .icon-button:hover {
+  background: var(--ui-surface-alt);
+  color: var(--ui-text);
+}
+.studio.canvas-first .studio-header .save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 4px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.studio.canvas-first .studio-header .save-indicator.error {
+  color: var(--ui-danger);
+}
+.studio.canvas-first .studio-header .header-actions .preview-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: var(--ui-text);
+  font-weight: 500;
+}
+.studio.canvas-first .studio-header .header-actions .preview-button:hover {
+  background: var(--ui-surface-alt);
+}
+.studio.canvas-first .studio-header .header-actions .primary-button {
+  height: 34px;
+  margin-left: 4px;
+  padding: 0 16px;
+  border-radius: 8px;
+}
+
+/* Canvas: no second toolbar, no status bar. */
+.studio.canvas-first .canvas-workspace {
+  position: relative;
+}
+.studio.canvas-first .canvas-scroll {
+  padding-top: 28px;
+}
+.studio.canvas-first .text-edit-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 20;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: auto;
+  height: 44px;
+  margin: 0;
+  padding: 0 6px 0 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  box-shadow: 0 8px 24px #1018281f;
+}
+.studio.canvas-first .canvas-float-tools {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-surface);
+  box-shadow: 0 4px 12px #1018281a;
+}
+
+/* Side panels share the same top edge. */
+.studio.canvas-first .context-drawer {
+  top: 0;
+}
+
+/* Navigator: one quiet selection style. */
+.studio.canvas-first .navigator-page-row.active {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background: var(--ui-surface-alt);
+}
+.studio.canvas-first .navigator-page-row.active,
+.studio.canvas-first .navigator-page-row.active * {
+  color: var(--ui-text);
+}
+.studio.canvas-first .outline-row.selected {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+.studio.canvas-first .outline-row.selected * {
+  color: inherit;
+}
+
+@media (max-width: 1440px) {
+  .studio.canvas-first .header-center .zoom-control,
+  .studio.canvas-first .studio-header .save-indicator span {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .studio.canvas-first .studio-header {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 10px;
+  }
+  .studio.canvas-first .header-start .project-breadcrumb,
+  .studio.canvas-first .header-center .history-actions,
+  .studio.canvas-first .studio-header .header-actions .preview-button span {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .studio.canvas-first .header-center .device-controls,
+  .studio.canvas-first .studio-header .header-actions > .icon-button {
+    display: none;
+  }
+}
+/* On phones the top-left corner is the site's own header; keep tools out of it. */
+@media (max-width: 760px) {
+  .studio.canvas-first .canvas-float-tools {
+    top: auto;
+    bottom: 16px;
+  }
+}
+.help-recovery {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ui-surface-alt);
+}
+.help-recovery p {
+  margin: 0;
+}

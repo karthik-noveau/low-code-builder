@@ -1,0 +1,11 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: -jar DynamoDBLocal.jar -sharedDb -disableTelemetry -dbPath /data
+    user: root
+    ports:
+      - "127.0.0.1:8008:8000"
+    volumes:
+      - dynamodb-data:/data
+volumes:
+  dynamodb-data:

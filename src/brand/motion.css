@@ -1,0 +1,300 @@
+/* Finite motion for orientation and feedback. Never animate the editable canvas. */
+@keyframes forma-enter {
+  from {
+    opacity: 0;
+    translate: 0 22px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes forma-scene {
+  from {
+    opacity: 0.25;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.brand-homepage .saas-eyebrow {
+  animation: forma-enter 650ms var(--ease-out) both;
+}
+.brand-homepage .saas-hero h1 {
+  animation: forma-enter 850ms var(--ease-out) 60ms both;
+}
+.brand-homepage .saas-hero-copy > p {
+  animation: forma-enter 800ms var(--ease-out) 130ms both;
+}
+.brand-homepage .saas-hero-actions {
+  animation: forma-enter 800ms var(--ease-out) 200ms both;
+}
+.brand-homepage .saas-hero-notes {
+  animation: forma-enter 800ms var(--ease-out) 250ms both;
+}
+.brand-homepage .saas-preview-wrap {
+  animation: forma-enter 1000ms var(--ease-out) 220ms both;
+}
+.auth-story-copy,
+.auth-form-wrap {
+  animation: forma-enter 700ms var(--ease-out) both;
+}
+.auth-art {
+  animation: forma-enter 850ms var(--ease-out) 120ms both;
+}
+.saas-preview-scene {
+  animation: forma-scene 500ms var(--ease-out) both;
+}
+[data-motion="ready"] [data-reveal] {
+  transition:
+    opacity 700ms var(--ease-out) var(--reveal-delay, 0ms),
+    translate 700ms var(--ease-out) var(--reveal-delay, 0ms),
+    transform 350ms var(--ease-out),
+    border-color 200ms ease,
+    box-shadow 300ms ease;
+}
+[data-motion="ready"] [data-reveal-state="pending"] {
+  opacity: 0;
+  translate: 0 24px;
+}
+[data-motion="ready"] [data-reveal-state="visible"] {
+  opacity: 1;
+  translate: 0 0;
+}
+.saas-capabilities [data-reveal]:nth-child(2),
+.dashboard-site-grid [data-reveal]:nth-child(2) {
+  --reveal-delay: 65ms;
+}
+.saas-capabilities [data-reveal]:nth-child(3),
+.dashboard-site-grid [data-reveal]:nth-child(3) {
+  --reveal-delay: 130ms;
+}
+.saas-capabilities [data-reveal]:nth-child(4) {
+  --reveal-delay: 195ms;
+}
+[data-tilt] {
+  transform: perspective(1400px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transition: transform 220ms var(--ease-out);
+}
+.brand-app .brand-button,
+.brand-app .brand-text-link {
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 220ms ease,
+    transform 220ms var(--ease-out);
+}
+.brand-app .brand-button svg,
+.brand-app .brand-text-link svg {
+  transition: transform 250ms var(--ease-out);
+}
+.brand-app .brand-button:active {
+  transform: translateY(1px) scale(0.985);
+}
+.brand-template-visual {
+  transition:
+    transform 500ms var(--ease-out),
+    border-color 250ms ease,
+    box-shadow 350ms ease;
+}
+.brand-template-visual > .template-art {
+  transition: transform 700ms var(--ease-out);
+}
+.site-card-preview > .template-art {
+  transition: transform 650ms var(--ease-out);
+}
+.dashboard-site-card {
+  transition:
+    transform 350ms var(--ease-out),
+    border-color 200ms ease,
+    box-shadow 300ms ease;
+}
+.dashboard-create-card {
+  transition:
+    transform 350ms var(--ease-out),
+    border-color 200ms ease,
+    background 200ms ease;
+}
+.dashboard-sidebar > nav > a {
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 200ms ease;
+}
+.brand-homepage .brand-header {
+  transition:
+    box-shadow 300ms ease,
+    border-color 300ms ease;
+}
+
+.motion-tabs {
+  position: relative;
+  isolation: isolate;
+  display: grid !important;
+  grid-template-columns: repeat(var(--tab-count), minmax(0, 1fr));
+  padding: 4px !important;
+  gap: 0 !important;
+  background: var(--ui-surface-alt);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+}
+.motion-tabs > .motion-tab-indicator {
+  position: absolute;
+  z-index: -1;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: calc((100% - 8px) / var(--tab-count));
+  background: #fff;
+  border-radius: var(--ui-radius-pill);
+  box-shadow: 0 1px 4px #30235714;
+  transform: translateX(calc(var(--tab-index) * 100%));
+  transition: transform 420ms var(--ease-spring);
+  pointer-events: none;
+}
+.motion-tabs > button {
+  box-shadow: none !important;
+  position: relative;
+  border: 0;
+  background: transparent !important;
+  border-radius: var(--ui-radius-pill);
+  font-size: 11px;
+  padding: 8px 12px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+  min-width: 0;
+  transition: color 180ms ease;
+}
+.motion-tabs > button[aria-pressed="true"] {
+  color: var(--ui-accent);
+  background: transparent !important;
+  font-weight: 600;
+}
+.motion-tabs > button:focus-visible {
+  outline-offset: -2px;
+}
+.motion-tabs > button > span {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--ui-muted);
+}
+.brand-homepage .saas-preview-topline > .motion-tabs {
+  background: #fff;
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+}
+.brand-homepage .motion-tabs > .motion-tab-indicator {
+  background: var(--ui-accent);
+  box-shadow: inset 0 1px #ffffff20;
+}
+.brand-homepage .motion-tabs > button {
+  color: var(--ui-muted);
+  font-size: 11px;
+  min-height: 34px;
+  padding: 8px 12px;
+}
+.brand-homepage .motion-tabs > button[aria-pressed="true"] {
+  color: #fff;
+}
+.dashboard-site-toolbar .motion-tabs {
+  background: var(--ui-canvas);
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+}
+.dashboard-site-toolbar .motion-tabs > button {
+  min-height: 30px;
+  font-size: 11px;
+  padding: 7px 10px;
+}
+.dashboard-site-toolbar .motion-tabs > button[aria-pressed="true"] {
+  color: var(--ui-accent);
+}
+.dashboard-site-toolbar .motion-tabs > .motion-tab-indicator {
+  background: #fff;
+}
+.dashboard-view-toggle button {
+  transition:
+    color 180ms ease,
+    background 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .brand-app .brand-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 22px #24352526;
+  }
+  .brand-app .brand-button:hover svg,
+  .brand-app .brand-text-link:hover svg {
+    transform: translateX(3px);
+  }
+  .brand-template-visual:hover {
+    transform: translateY(-3px);
+  }
+  .brand-template-visual:hover > .template-art {
+    transform: scale(1.012);
+  }
+  .dashboard-site-card:hover {
+    transform: translateY(-2px);
+  }
+  .dashboard-site-card .site-card-preview:hover > .template-art {
+    transform: scale(1.035);
+  }
+  .dashboard-create-card:hover {
+    transform: translateY(-3px);
+  }
+}
+@media (max-width: 760px) {
+  .brand-homepage .motion-tabs > button {
+    font-size: 11px;
+    min-height: 34px;
+    padding: 8px 12px;
+  }
+  .dashboard-site-toolbar .motion-tabs > button {
+    font-size: 10px;
+    padding: 7px 8px;
+  }
+  [data-tilt] {
+    transform: none;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard-site-toolbar .motion-tabs > button {
+    padding-inline: 4px;
+  }
+  .dashboard-site-toolbar .motion-tabs > button > span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-app,
+  .dashboard-content {
+    scroll-behavior: auto;
+  }
+  .brand-app *,
+  .brand-app *::before,
+  .brand-app *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-motion] [data-reveal] {
+    opacity: 1 !important;
+    translate: none !important;
+  }
+  [data-tilt] {
+    transform: none !important;
+  }
+  .brand-app .brand-button:hover,
+  .brand-app .brand-button:active,
+  .brand-app .brand-button:hover svg,
+  .brand-app .brand-text-link:hover svg,
+  .brand-template-visual:hover,
+  .brand-template-visual:hover > .template-art,
+  .dashboard-site-card .site-card-preview:hover > .template-art,
+  .dashboard-site-card:hover,
+  .dashboard-create-card:hover {
+    transform: none;
+  }
+}

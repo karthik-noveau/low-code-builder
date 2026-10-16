@@ -1,0 +1,349 @@
+/* Editor chrome uses the same tokens as the account and marketing pages. */
+.studio.canvas-first {
+  --workspace: #e9e9f2;
+  --toolbar-height: 48px;
+  --surface: var(--ui-surface);
+  --surface-subtle: var(--ui-canvas);
+  --line: var(--ui-border);
+  --ink: var(--ui-ink);
+  --ui-secondary: var(--ui-text);
+  --muted: var(--ui-muted);
+  --accent: var(--ui-accent);
+  --green: var(--ui-accent);
+  --pale: var(--ui-accent-soft);
+  --accent-line: var(--ui-accent-border);
+  --focus: var(--ui-accent);
+  --dock: var(--ui-ink);
+  --dock-hover: #25334c;
+  --dock-line: #445069;
+  font-family: var(--ui-font);
+}
+.canvas-first .studio-header {
+  height: 60px;
+  min-height: 60px;
+  background: var(--ui-dark);
+  color: #ffffff;
+  border-bottom: 1px solid #363245;
+  box-shadow: var(--ui-shadow-sm);
+}
+.canvas-first .studio-header .brand-lockup {
+  color: #ffffff;
+}
+.canvas-first .studio-header .forma-brand > .brand-lockup {
+  display: inline-flex;
+  gap: 8px;
+}
+.canvas-first .studio-header .brand-mark {
+  width: 27px;
+  height: 27px;
+}
+.canvas-first .studio-header .brand-wordmark {
+  font-size: 27px;
+  letter-spacing: -1.4px;
+}
+.canvas-first .studio-header .brand-mark-cutout {
+  fill: #fff;
+}
+.canvas-first .project-breadcrumb {
+  border-color: var(--ui-dark-border);
+}
+.canvas-first .project-breadcrumb button {
+  color: #ffffff;
+}
+.canvas-first .project-breadcrumb button > svg {
+  color: #d2cbe4;
+}
+.canvas-first .project-local-badge {
+  color: #d2cbe4;
+  border-color: var(--ui-dark-border);
+  background: var(--ui-dark-raised);
+}
+.canvas-first .command-trigger {
+  background: var(--ui-dark-raised);
+  border-color: var(--ui-dark-border);
+  color: #d6d0e9;
+  height: 36px;
+}
+.canvas-first .command-trigger:hover {
+  background: #343048;
+  border-color: #8b7cac;
+}
+.canvas-first .command-trigger kbd {
+  color: #e6def7;
+  background: #36304c;
+  border-color: #655782;
+}
+.canvas-first .save-indicator {
+  color: #ddd5ef;
+  font-size: 11px;
+}
+.canvas-first .save-indicator > svg {
+  color: #5bdfa3;
+}
+.canvas-first .save-indicator.error,
+.canvas-first .save-indicator.error > svg {
+  color: var(--ui-danger);
+}
+.canvas-first .header-actions .preview-button {
+  background: var(--ui-dark-raised);
+  color: #ffffff;
+  border-color: #5b5074;
+  height: 36px;
+  font-size: 12px;
+}
+.canvas-first .header-actions .preview-button:hover {
+  background: #403654;
+  border-color: #b3a0d6;
+}
+.canvas-first .primary-button,
+.canvas-first .header-actions .primary-button,
+.cloud-workspace .primary-button {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
+  box-shadow: var(--ui-shadow-sm);
+}
+.canvas-first .header-actions .primary-button {
+  height: 36px;
+  font-weight: 600;
+}
+.canvas-first .primary-button:hover:not(:disabled),
+.canvas-first .header-actions .primary-button:hover:not(:disabled),
+.cloud-workspace .primary-button:hover {
+  background: var(--ui-accent-hover);
+  border-color: var(--ui-accent-hover);
+  color: #fff;
+}
+.canvas-first .site-navigator {
+  background: var(--ui-surface);
+}
+.canvas-first .navigator-title {
+  border-bottom: 1px solid var(--ui-border);
+}
+.canvas-first .navigator-page-row.active {
+  background: var(--ui-accent-soft);
+  box-shadow: inset 2px 0 var(--ui-accent);
+}
+.canvas-first .navigator-page-row.active strong,
+.canvas-first .navigator-page-row.active .navigator-page-select > svg {
+  color: var(--ui-accent);
+}
+.canvas-first .canvas-toolbar {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+.canvas-first .canvas-device {
+  box-shadow:
+    0 2px 6px #1018280a,
+    0 12px 30px #1018280c;
+}
+.canvas-first .device-option.active,
+.canvas-first .device-controls .icon-button.active {
+  color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+}
+.canvas-first .field input:focus,
+.canvas-first .field textarea:focus,
+.canvas-first .field select:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px #6254e81a;
+}
+.canvas-first input[type="range"] {
+  accent-color: var(--ui-accent);
+}
+.canvas-first .modal-backdrop {
+  background: #20221f66;
+  backdrop-filter: blur(4px);
+}
+.canvas-first .studio-modal {
+  border-radius: 12px;
+  border-color: var(--ui-border);
+  box-shadow: 0 24px 64px #10182826;
+}
+.canvas-first .website-editing {
+  --canvas-highlight: var(--ui-accent);
+}
+.studio-action-menu {
+  font-family: var(--ui-font);
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+  box-shadow: 0 8px 30px #10182814;
+}
+.cloud-workspace {
+  color: var(--ui-text);
+}
+.cloud-current {
+  background: var(--ui-canvas);
+  border-color: var(--ui-border);
+}
+.cloud-avatar {
+  color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+}
+.cloud-status.is-live {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+}
+.cloud-live-link {
+  color: var(--ui-accent);
+}
+.cloud-error {
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
+  border-color: #fecdc8;
+}
+@media (max-width: 760px) {
+  .canvas-first .studio-header {
+    height: 60px;
+    min-height: 60px;
+  }
+}
+
+.canvas-first .studio-header {
+  padding-inline: 20px;
+  box-shadow: none;
+  gap: 18px;
+}
+.canvas-first .studio-header .brand-mark {
+  width: 25px;
+  height: 25px;
+}
+.canvas-first .studio-header .brand-wordmark {
+  font-size: 26px;
+  font-weight: 650;
+}
+.canvas-first .studio-header .forma-brand {
+  min-width: 100px;
+}
+.canvas-first .project-breadcrumb {
+  padding-left: 18px;
+}
+.canvas-first .project-breadcrumb button {
+  font-size: 12px;
+}
+.canvas-first .project-local-badge {
+  border: 0;
+  background: var(--ui-canvas);
+  font-size: 10px;
+}
+.canvas-first .command-trigger {
+  max-width: 246px;
+  border-color: var(--ui-border);
+  font-size: 11px;
+  border-radius: 5px;
+}
+.canvas-first .header-actions {
+  gap: 9px;
+}
+.canvas-first .header-actions .preview-button {
+  border-color: var(--ui-border);
+  border-radius: 5px;
+  font-size: 12px;
+  height: 33px;
+}
+.canvas-first .header-actions .primary-button {
+  border-radius: 5px;
+  height: 33px;
+  font-size: 12px;
+  padding-inline: 16px;
+}
+.canvas-first .site-navigator {
+  width: 260px;
+  min-width: 260px;
+  flex-basis: 260px;
+}
+.canvas-first .navigator-title {
+  padding-inline: 18px;
+  min-height: 52px;
+  font-size: 12px;
+}
+.canvas-first .navigator-page-row.active {
+  background: var(--ui-accent-soft);
+  box-shadow: none;
+  border: 1px solid var(--ui-accent-border);
+}
+.canvas-first .navigator-page-row.active strong,
+.canvas-first .navigator-page-row.active .navigator-page-select > svg {
+  color: var(--ui-accent);
+}
+.canvas-first .canvas-toolbar {
+  height: 48px;
+  min-height: 48px;
+  box-shadow: none;
+}
+.canvas-first .canvas-device {
+  border-color: #c3bfd5;
+  box-shadow: 0 2px 10px #292d2008;
+}
+.canvas-first .device-option.active,
+.canvas-first .device-controls .icon-button.active {
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+.canvas-first .navigator-search input {
+  font-size: 11px;
+}
+.canvas-first .navigator-footer {
+  background: var(--ui-canvas);
+}
+.canvas-first .status-bar {
+  background: var(--ui-canvas);
+  border-color: var(--ui-border);
+}
+.canvas-first .studio-modal {
+  border-radius: 8px;
+}
+@media (max-width: 1100px) {
+  .canvas-first .command-trigger {
+    max-width: 180px;
+  }
+  .canvas-first .studio-header {
+    gap: 12px;
+  }
+}
+@media (max-width: 760px) {
+  .canvas-first .studio-header {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+  .canvas-first .studio-header .forma-brand {
+    min-width: 25px;
+  }
+  .canvas-first .site-navigator {
+    width: 260px;
+  }
+  .canvas-first .command-trigger {
+    width: 34px;
+  }
+}
+
+.canvas-first .studio-header .brand-mark-background {
+  fill: #b3a5ff;
+}
+.canvas-first .studio-header .project-local-badge {
+  background: #302a43;
+  color: #ded5f0;
+}
+.canvas-first .studio-header .command-trigger {
+  border-color: #524763;
+}
+.canvas-first .studio-header .header-actions .preview-button {
+  border-color: #5b5074;
+}
+.canvas-first .studio-header .header-actions .primary-button {
+  background: #6757e9;
+  border-color: #a898ff;
+  color: #fff;
+}
+.canvas-first .studio-header .header-actions .primary-button:hover {
+  background: #7969f2;
+}
+.canvas-first .navigator-page-row.active {
+  border-color: #b7a6f1;
+  box-shadow: inset 3px 0 var(--ui-accent);
+}
+.canvas-first .device-option.active,
+.canvas-first .device-controls .icon-button.active {
+  background: #e6ddff;
+  color: #5840b5;
+}

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import type { ComponentSchema } from '../../../types/component.types';
 import { useDraftStore } from '../../../stores/use_draft_store';
-import { setDraggedComponentId } from '../canvas';
+import { setDraggedComponentId, startMouseDragTracking } from '../canvas';
 import { TextComponent } from './text_component';
 import { HeadingComponent } from './heading_component';
 import { ButtonComponent } from './button_component';
@@ -17,8 +17,8 @@ import { CardComponent } from './card_component';
 import { FormComponent } from './form_component';
 import { FooterComponent } from './footer_component';
 
-// Export helper for drag handlers
-export { setDraggedComponentId };
+// Export helpers for drag handlers
+export { setDraggedComponentId, startMouseDragTracking };
 
 // Helper to hide the browser's default drag preview
 export const hideDragPreview = (e: React.DragEvent) => {
@@ -31,11 +31,11 @@ interface GenericComponentProps {
   component: ComponentSchema;
   index: number;
   pageId: string;
+  selectedComponentId: string | null;
 }
 
-const GenericComponentInner = ({ component, index, pageId }: GenericComponentProps) => {
+const GenericComponentInner = ({ component, index, pageId, selectedComponentId }: GenericComponentProps) => {
   const {
-    selectedComponentId,
     setSelectedComponentId,
     updateComponentContent,
     deleteComponent,
@@ -131,7 +131,8 @@ export const GenericComponent = memo(
       JSON.stringify(prevProps.component.styles) === JSON.stringify(nextProps.component.styles) &&
       prevProps.component.content === nextProps.component.content &&
       prevProps.index === nextProps.index &&
-      prevProps.pageId === nextProps.pageId
+      prevProps.pageId === nextProps.pageId &&
+      prevProps.selectedComponentId === nextProps.selectedComponentId
     );
   }
 );
