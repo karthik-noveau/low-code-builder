@@ -334,13 +334,13 @@ export function Dashboard() {
           </a>
           <a href="/commerce">
             <span>
-              <Icon name="grid" size={18} />
+              <Icon name="store" size={18} />
             </span>
             Store management
           </a>
           <a href="/account">
             <span>
-              <Icon name="edit" size={18} />
+              <Icon name="settings" size={18} />
             </span>
             Account settings
           </a>

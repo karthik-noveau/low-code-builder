@@ -39,6 +39,7 @@ const paths: Record<string, string> = {
   globe:
     "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM2 12h20M12 2c5 5 5 15 0 20-5-5-5-15 0-20Z",
   lock: "M6 10h12v11H6V10Zm2 0V6a4 4 0 0 1 8 0v4",
+  store: "M5 8h14l-1.2 12H6.2L5 8Zm4 0V7a3 3 0 0 1 6 0v1",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   grip: "M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01",
   copy: "M8 8h13v13H8V8ZM16 8V3H3v13h5",
