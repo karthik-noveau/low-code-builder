@@ -1,0 +1,159 @@
+/*
+ * The editor's chrome on the same system as the workspace admin (brand/admin.css):
+ * a grey canvas, white panels raised as cards, a 13px type scale and 32–34px
+ * controls. Only editor chrome is styled here, never the website preview.
+ */
+.studio.canvas-first {
+  --e-canvas: #f1f2ef;
+  --e-surface: #ffffff;
+  --e-subdued: #f7f7f5;
+  --e-ink: #1d2623;
+  --e-text: #303b36;
+  --e-muted: #66716b;
+  --e-divider: #e6e8e4;
+  --e-input: #c4cac5;
+  --e-hover: rgba(29, 38, 35, 0.06);
+  --e-card:
+    0 0 0 1px rgba(29, 38, 35, 0.07), 0 1px 0 rgba(29, 38, 35, 0.07),
+    0 1px 3px rgba(29, 38, 35, 0.06);
+  --e-pop:
+    0 0 0 1px rgba(29, 38, 35, 0.08), 0 16px 40px -10px rgba(29, 38, 35, 0.3);
+}
+
+/* Frame: grey canvas, white header. */
+html body .studio.canvas-first .studio-header {
+  background: var(--e-surface);
+  border-bottom: 1px solid #e1e3df;
+  box-shadow: none;
+}
+html body .studio.canvas-first .studio-workspace,
+html body .studio.canvas-first .canvas-scroll {
+  background-color: var(--e-canvas);
+}
+
+/* Panels: white cards on the canvas. */
+html body .studio.canvas-first :is(.site-navigator, .context-drawer) {
+  background: var(--e-surface);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: var(--e-card);
+}
+
+/* Fields in panels and dialogs. */
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--e-ink);
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field
+  :is(
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="range"],
+      [type="color"],
+      [type="file"]
+    ),
+    select,
+    textarea
+  ) {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--e-input);
+  border-radius: 8px;
+  background-color: var(--e-surface);
+  color: var(--e-ink);
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: none;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field
+  select {
+  padding-right: 30px;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field
+  :is(input, select, textarea):hover:not(:disabled, :focus) {
+  border-color: #9aa39d;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field
+  :is(input, select, textarea):focus {
+  border-color: var(--ui-accent);
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  .field
+  small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--e-muted);
+}
+
+/* Dialogs: neutral elevation instead of a coloured outline. */
+html body .studio.canvas-first .modal-backdrop {
+  background: rgba(15, 20, 18, 0.45);
+  backdrop-filter: blur(2px);
+}
+html body .studio.canvas-first .studio-modal {
+  border: 0;
+  border-radius: 14px;
+  outline: 0;
+  box-shadow: var(--e-pop);
+  background: var(--e-surface);
+}
+html body .studio.canvas-first .studio-modal h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--e-ink);
+}
+
+/* Buttons: the admin's primary and secondary. */
+html body .studio.canvas-first .primary-button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ui-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 1px 1px rgba(29, 38, 35, 0.14);
+}
+html body .studio.canvas-first .primary-button:hover:not(:disabled) {
+  background: var(--ui-accent-hover);
+}
+html body .studio.canvas-first .header-actions .preview-button {
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 550;
+}
+html body .studio.canvas-first .studio-header .icon-button {
+  border-radius: 8px;
+}

@@ -37,6 +37,7 @@ import "./experience.css";
 import "./blocks.css";
 import "./chrome.css";
 import "./data.css";
+import "./editor-admin.css";
 import { CloudWorkspace } from "../cloud/CloudWorkspace";
 import type { TextEditTarget, TextField } from "./InlineText";
 

@@ -173,6 +173,7 @@ describe("portable websites", () => {
       "blocks.css",
       "chrome.css",
       "data.css",
+      "editor-admin.css",
     ]
       .map(css)
       .join("\n")

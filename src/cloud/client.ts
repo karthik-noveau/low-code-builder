@@ -45,6 +45,7 @@ export class ApiError extends Error {
   }
 }
 let config: CloudConfig = { enabled: false };
+let configured = false;
 let manager: UserManager | undefined;
 const sessionKey = "forma-local-session";
 let localToken = "";
@@ -62,6 +63,7 @@ async function initialize(): Promise<{
   if (!response.ok)
     throw new Error("The workspace configuration could not be loaded.");
   config = (await response.json()) as CloudConfig;
+  configured = true;
   if (!config.enabled) return { config };
   if (!config.apiUrl || !config.mode)
     throw new Error("The workspace configuration is incomplete.");
@@ -164,6 +166,9 @@ async function accessToken() {
   return user?.access_token || "";
 }
 async function fetchApi(path: string, options: RequestInit = {}) {
+  // A page can ask while the workspace is still loading (e.g. a deep link
+  // that opens the inbox straight away); wait for it instead of failing.
+  if (!configured && initialization) await initialization.catch(() => {});
   if (!config.enabled || !config.apiUrl)
     throw new Error("Workspace is not connected.");
   const token = await accessToken();
