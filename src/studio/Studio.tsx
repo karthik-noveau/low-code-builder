@@ -464,6 +464,14 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       },
     },
     {
+      id: "get-paid",
+      title: "Get paid",
+      description:
+        "Add your UPI ID, a payment link or bank details for orders and bookings",
+      icon: "settings",
+      run: () => openUtility("settings"),
+    },
+    {
       id: "settings",
       title: "Project settings",
       description: "Import a backup, rename or download your project",

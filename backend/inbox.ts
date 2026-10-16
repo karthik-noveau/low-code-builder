@@ -10,9 +10,20 @@ import { itemTitle, publishedItems } from "../src/studio/collections";
 import type { Project } from "../src/studio/model";
 import {
   parseRequest,
+  REQUEST_KINDS,
   type InboxRequest,
   type RequestKind,
 } from "../src/studio/requests";
+import {
+  canCollect,
+  formatAmount,
+  parseAmount,
+  paymentReference,
+  requestAmount,
+  upiLink,
+  usablePayments,
+  type PaymentSettings,
+} from "../src/studio/payments";
 
 /**
  * What one release's forms accept, written at publish so visitors can't post
@@ -24,15 +35,22 @@ export interface InboxConfig {
     id: string;
     name: string;
     kind: RequestKind;
-    /** Item slug → title. Slugs are [a-z0-9-], so no prototype keys. */
-    items: Record<string, string>;
+    /** Ask visitors to pay after sending (only with usable payment options). */
+    collect?: boolean;
+    currency?: string;
+    /** Item slug → title and unit price in minor units. Slugs are [a-z0-9-], so no prototype keys. */
+    items: Record<string, { title: string; price: number | null } | string>;
   }[];
+  /** How visitors pay; only methods that are correctly filled in. */
+  payments?: PaymentSettings | null;
+  site?: { name: string; accent: string };
 }
 /** Requests a site accepts per UTC day; bounds storage and inbox size under spam. */
 export const DAILY_REQUESTS = 200;
 const LIST_LIMIT = 500;
 export function inboxConfig(project: Project): InboxConfig {
   const collections: InboxConfig["collections"] = [];
+  const payments = usablePayments(project.payments);
   for (const { collection, item } of publishedItems(project.collections)) {
     if (!collection.request) continue;
     let entry = collections.find((c) => c.id === collection.id);
@@ -41,13 +59,27 @@ export function inboxConfig(project: Project): InboxConfig {
         id: collection.id,
         name: collection.name.slice(0, 120),
         kind: collection.request.kind,
+        collect:
+          !!payments &&
+          !!collection.request.collect &&
+          canCollect(collection.request.kind),
+        currency: collection.currency,
         items: {},
       };
       collections.push(entry);
     }
-    entry.items[item.slug] = itemTitle(collection, item).slice(0, 120);
+    entry.items[item.slug] = {
+      title: itemTitle(collection, item).slice(0, 120),
+      price: collection.display.price
+        ? parseAmount(item.values[collection.display.price])
+        : null,
+    };
   }
-  return { collections };
+  return {
+    collections,
+    payments,
+    site: { name: project.name.slice(0, 120), accent: project.theme.accent },
+  };
 }
 const objectKey = (siteId: string, releaseId: string) =>
   `inbox/${siteId}/${releaseId}.json`;
@@ -150,18 +182,22 @@ export async function receiveRequest(
   const collection = live.value.collections.find(
     (c) => c.id === input.collection,
   );
-  const title =
+  const entry =
     collection &&
     typeof input.item === "string" &&
     Object.hasOwn(collection.items, input.item)
       ? collection.items[input.item]
       : undefined;
-  insist(collection && title, 404, "This item no longer accepts requests.");
+  insist(collection && entry, 404, "This item no longer accepts requests.");
+  // Configs written before payments stored just the title.
+  const { title, price } =
+    typeof entry === "string" ? { title: entry, price: null } : entry;
   const parsed = parseRequest(collection.kind, input);
   insist(parsed.ok, 422, parsed.ok ? "" : parsed.error);
   const createdAt = now();
+  const id = `${Date.now()}-${randomUUID()}`;
   const item: InboxRequest = {
-    id: `${Date.now()}-${randomUUID()}`,
+    id,
     kind: collection.kind,
     collection: collection.id,
     collectionName: collection.name,
@@ -173,6 +209,13 @@ export async function receiveRequest(
     status: "new",
     createdAt,
   };
+  if (collection.collect && live.value.payments)
+    item.payment = {
+      amount: requestAmount(collection.kind, price, parsed.fields),
+      currency: (collection.currency ?? "").slice(0, 8),
+      reference: paymentReference(id),
+      status: "unpaid",
+    };
   try {
     await transact([
       put(siteId, "REQUEST", item.id, { ...item, revision: 1 }),
@@ -198,10 +241,103 @@ export async function receiveRequest(
   }
   return { item, siteUrl: await siteUrl(live.owner, siteId) };
 }
+/** Where a visitor is sent to pay. The request id is the capability; the page shows no personal details. */
+export const paymentPageUrl = (siteId: string, requestId: string) =>
+  `${settings.apiOrigin}/inbox/${siteId}/requests/${requestId}`;
+const requestIdPattern = /^\d{13}-[a-f0-9-]{36}$/;
+const safeAccent = (value?: string) =>
+  value && /^#[\da-f]{6}$/i.test(value) ? value : "#1c1c1c";
+async function paymentPage(siteId: string, requestId: string) {
+  insist(
+    idPattern.test(siteId) && requestIdPattern.test(requestId),
+    404,
+    "This payment page doesn’t exist.",
+  );
+  const request = await read<InboxRequest>(siteId, "REQUEST", requestId);
+  insist(request?.payment, 404, "This payment page doesn’t exist.");
+  const live = await liveConfig(siteId);
+  const payments = live?.value.payments;
+  const name = live?.value.site?.name || "the website";
+  const accent = safeAccent(live?.value.site?.accent);
+  const back = await siteUrl(live?.owner ?? "", siteId).catch(() => "");
+  const { amount, currency, reference, status } = request.payment;
+  const total = amount === null ? "" : formatAmount(amount, currency);
+  const noun = REQUEST_KINDS[request.kind].noun.toLowerCase();
+  const blocks: string[] = [];
+  if (status === "paid")
+    blocks.push(
+      `<p class="done">${escape(name)} has marked this ${escape(noun)} as paid. Thank you.</p>`,
+    );
+  else if (!payments)
+    blocks.push(`<p>${escape(name)} will contact you about payment.</p>`);
+  else {
+    if (payments.upi)
+      blocks.push(
+        `<section><h2>UPI</h2><a class="button" href="${escape(upiLink(payments, amount, currency, reference))}">Pay with a UPI app</a><p>Or pay to UPI ID <strong>${escape(payments.upi)}</strong>${payments.payee ? ` (${escape(payments.payee)})` : ""}.</p></section>`,
+      );
+    if (payments.link)
+      blocks.push(
+        `<section><h2>Pay online</h2><a class="button" href="${escape(payments.link)}" rel="noopener noreferrer">Open the payment page</a><p>Enter ${total ? `${escape(total)} and ` : ""}the reference if asked.</p></section>`,
+      );
+    if (payments.bank)
+      blocks.push(
+        `<section><h2>Bank transfer</h2><p class="pre">${escape(payments.bank)}</p></section>`,
+      );
+    if (payments.inPerson)
+      blocks.push(
+        `<section><h2>In person</h2><p>${escape(payments.inPerson)}</p></section>`,
+      );
+    if (payments.note)
+      blocks.push(`<p class="muted">${escape(payments.note)}</p>`);
+  }
+  const heading =
+    status === "paid"
+      ? "Payment received"
+      : "Your request was sent — now pay to confirm";
+  const html = `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escape(`Pay ${name}`)}</title><style>
+:root{--accent:${accent}}
+body{font:16px/1.55 system-ui,-apple-system,sans-serif;max-width:34rem;margin:8vh auto;padding:0 1.25rem 3rem;color:#1c1c1c;background:#fafaf9}
+h1{font-size:1.6rem;line-height:1.25;margin:0 0 .5rem}
+h2{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin:0 0 .5rem;color:#555}
+.summary{display:grid;grid-template-columns:1fr auto;gap:.25rem 1rem;background:#fff;border:1px solid #e7e5e4;border-radius:12px;padding:1rem 1.25rem;margin:1.5rem 0}
+.summary dt{color:#666}.summary dd{margin:0;font-weight:600;text-align:right}
+.total{font-size:1.4rem}
+section{background:#fff;border:1px solid #e7e5e4;border-radius:12px;padding:1rem 1.25rem;margin:0 0 .75rem}
+section p{margin:.5rem 0 0}
+.button{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;padding:.65rem 1.1rem;border-radius:8px}
+.pre{white-space:pre-wrap}
+.muted{color:#666;font-size:.9rem}
+.done{background:#ecfdf3;border-radius:12px;padding:1rem 1.25rem}
+.back{display:inline-block;margin-top:1.5rem;color:inherit}
+</style></head><body><h1>${escape(heading)}</h1><p class="muted">Your ${escape(noun)} for ${escape(request.itemTitle)} was sent to ${escape(name)}.</p><dl class="summary">${total ? `<dt>Amount</dt><dd class="total">${escape(total)}</dd>` : ""}<dt>Reference</dt><dd>${escape(reference)}</dd></dl>${status === "paid" || !payments ? "" : `<p>Pay ${total ? escape(total) : "the amount"} using one of these options and add the reference <strong>${escape(reference)}</strong> so ${escape(name)} can match your payment.</p>`}${blocks.join("")}${back ? `<a class="back" href="${escape(back)}">← Back to ${escape(name)}</a>` : ""}</body></html>`;
+  return {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      // The URL is the visitor's capability; never pass it to payment sites.
+      "referrer-policy": "no-referrer",
+      "content-security-policy":
+        "default-src 'none'; style-src 'unsafe-inline'; form-action 'none'; frame-ancestors 'none'",
+    },
+    body: Buffer.from(html),
+  } satisfies ApiResponse;
+}
 /** Public endpoint for visitor action forms. Plain HTML forms get a redirect or a readable page, never JSON. */
 export async function inboxPublic(
   request: ApiRequest,
 ): Promise<ApiResponse | undefined> {
+  const pay = /^\/inbox\/([^/]+)\/requests\/([^/]+)$/.exec(request.path);
+  if (pay) {
+    try {
+      insist(request.method === "GET", 405, "Use GET.");
+      return await paymentPage(pay[1], pay[2]);
+    } catch (error) {
+      if (!(error instanceof HttpError)) throw error;
+      return page(error.status, "Payment page unavailable", error.message);
+    }
+  }
   const match = /^\/inbox\/([^/]+)$/.exec(request.path);
   if (!match) return undefined;
   const form = (request.headers["content-type"] || "").startsWith(
@@ -209,12 +345,15 @@ export async function inboxPublic(
   );
   try {
     insist(request.method === "POST", 405, "Use POST.");
-    const { siteUrl } = await receiveRequest(match[1], fields(request));
+    const { item, siteUrl } = await receiveRequest(match[1], fields(request));
+    const next = item.payment
+      ? paymentPageUrl(match[1], item.id)
+      : new URL("thanks.html", siteUrl).toString();
     if (form)
       return {
         status: 303,
         headers: {
-          location: new URL("thanks.html", siteUrl).toString(),
+          location: next,
           "cache-control": "no-store",
         },
         body: Buffer.alloc(0),
@@ -225,7 +364,11 @@ export async function inboxPublic(
         "content-type": "application/json",
         "cache-control": "no-store",
       },
-      body: Buffer.from(JSON.stringify({ ok: true })),
+      body: Buffer.from(
+        JSON.stringify(
+          item.payment ? { ok: true, payment: next } : { ok: true },
+        ),
+      ),
     };
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500;
@@ -279,23 +422,30 @@ export async function updateRequest(
   id: string,
   input: Record<string, unknown>,
 ) {
-  insist(/^\d{13}-[a-f0-9-]{36}$/.test(id), 404, "Request not found.");
-  insist(
-    input.status === "new" || input.status === "done",
-    422,
-    "Choose new or done.",
-  );
+  insist(requestIdPattern.test(id), 404, "Request not found.");
   const current = await read<InboxRequest & { revision: number }>(
     siteId,
     "REQUEST",
     id,
   );
   insist(current, 404, "Request not found.");
-  const next = {
-    ...current,
-    status: input.status,
-    revision: current.revision + 1,
-  };
+  const next = { ...current, revision: current.revision + 1 };
+  if (input.payment !== undefined) {
+    insist(
+      input.payment === "paid" || input.payment === "unpaid",
+      422,
+      "Choose paid or unpaid.",
+    );
+    insist(current.payment, 422, "This request didn’t ask for payment.");
+    next.payment = { ...current.payment, status: input.payment };
+  } else {
+    insist(
+      input.status === "new" || input.status === "done",
+      422,
+      "Choose new or done.",
+    );
+    next.status = input.status;
+  }
   await transact([put(siteId, "REQUEST", id, next, current.revision)]);
   return next;
 }

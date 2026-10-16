@@ -1,4 +1,5 @@
 import { validateCollections, type Collection } from "./collections";
+import { validatePayments, type PaymentSettings } from "./payments";
 export type SectionType =
   | "announcement"
   | "header"
@@ -120,6 +121,8 @@ export interface Project {
   assets: Asset[];
   savedSections?: Section[];
   collections?: Collection[];
+  /** How visitors pay for orders, bookings and RSVPs. */
+  payments?: PaymentSettings;
 }
 export const uid = () => crypto.randomUUID();
 export const pageHref = (slug: string) =>
@@ -508,6 +511,7 @@ export function validateProject(value: unknown): value is Project {
       (Array.isArray(p.savedSections) &&
         p.savedSections.every(sectionValid))) &&
     (p.collections === undefined || validateCollections(p.collections)) &&
+    (p.payments === undefined || validatePayments(p.payments)) &&
     Array.isArray(p.assets) &&
     p.assets.every(
       (a) =>

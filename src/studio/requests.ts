@@ -91,6 +91,8 @@ export interface CollectionRequest {
   kind: RequestKind;
   /** Button text; empty uses the kind's default. */
   label: string;
+  /** Show payment options after an order, booking or RSVP (see payments.ts). */
+  collect?: boolean;
 }
 export const requestButton = (r: CollectionRequest) =>
   r.label || REQUEST_KINDS[r.kind].button;
@@ -103,7 +105,8 @@ export function validateRequestConfig(
     typeof r === "object" &&
     Object.hasOwn(REQUEST_KINDS, r.kind) &&
     typeof r.label === "string" &&
-    r.label.length <= 40
+    r.label.length <= 40 &&
+    (r.collect === undefined || typeof r.collect === "boolean")
   );
 }
 
@@ -120,6 +123,13 @@ export interface InboxRequest {
   fields: Partial<Record<RequestFieldId, string>>;
   status: "new" | "done";
   createdAt: string;
+  /** Present when the visitor was asked to pay. Amount is in minor units. */
+  payment?: {
+    amount: number | null;
+    currency: string;
+    reference: string;
+    status: "unpaid" | "paid";
+  };
 }
 const emailPattern = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 const urlPattern = /^https?:\/\/[^\s]{3,500}$/;

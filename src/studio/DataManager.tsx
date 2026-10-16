@@ -4,6 +4,8 @@ import { Field, IconButton, Modal } from "./ui";
 import { MAX_COLLECTIONS, useStudio } from "./store";
 import { safeImage } from "./model";
 import { REQUEST_KINDS, type RequestKind } from "./requests";
+import { canCollect, usablePayments } from "./payments";
+import { PaymentsPanel } from "./PaymentsPanel";
 import {
   blueprints,
   createField,
@@ -598,6 +600,52 @@ function SettingsTab({
                 }))
               }
             />
+            {canCollect(c.request.kind) && (
+              <>
+                <label className="switch-row">
+                  Ask visitors to pay
+                  <button
+                    className={`switch ${c.request.collect ? "on" : ""}`}
+                    role="switch"
+                    aria-checked={!!c.request.collect}
+                    aria-label="Ask visitors to pay"
+                    onClick={() =>
+                      update((c) => ({
+                        ...c,
+                        request: c.request && {
+                          ...c.request,
+                          collect: !c.request.collect,
+                        },
+                      }))
+                    }
+                  >
+                    <span />
+                  </button>
+                </label>
+                {c.request.collect && (
+                  <>
+                    <small>
+                      Visitors see the total (
+                      {c.request.kind === "book"
+                        ? "the price"
+                        : `price × ${c.request.kind === "order" ? "quantity" : "guests"}`}
+                      ) and your payment options after sending. You mark it paid
+                      in the Inbox.
+                    </small>
+                    <details
+                      className="data-payments"
+                      open={!usablePayments(store.project.payments)}
+                    >
+                      <summary>
+                        Payment options
+                        <small>Shared by every collection</small>
+                      </summary>
+                      <PaymentsPanel inData />
+                    </details>
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
       </div>

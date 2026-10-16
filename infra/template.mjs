@@ -706,6 +706,13 @@ export function template() {
     Target: sub("integrations/${Integration}"),
     AuthorizationType: "NONE",
   });
+  // After an order, booking or RSVP, visitors are sent here to see how to pay.
+  R.InboxPaymentRoute = resource("AWS::ApiGatewayV2::Route", {
+    ApiId: ref("Api"),
+    RouteKey: "GET /inbox/{id}/requests/{requestId}",
+    Target: sub("integrations/${Integration}"),
+    AuthorizationType: "NONE",
+  });
   R.Stage = resource("AWS::ApiGatewayV2::Stage", {
     ApiId: ref("Api"),
     StageName: "$default",
@@ -714,6 +721,10 @@ export function template() {
     // The public form route gets its own budget so visitors can't starve the editor API.
     RouteSettings: {
       "POST /inbox/{id}": { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 },
+      "GET /inbox/{id}/requests/{requestId}": {
+        ThrottlingBurstLimit: 5,
+        ThrottlingRateLimit: 2,
+      },
     },
   });
   R.Invoke = resource("AWS::Lambda::Permission", {

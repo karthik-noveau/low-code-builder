@@ -62,6 +62,7 @@ describe("backend validation and static compilation", () => {
     expect(files.some((f) => f.name === "thanks.html")).toBe(true);
     const config = inboxConfig(project);
     expect(config.collections.map((c) => c.id)).toEqual([services.id]);
+    expect(config.collections[0].collect).toBe(false);
     expect(Object.keys(config.collections[0].items)).toEqual([
       services.items[0].slug,
       ...services.items.slice(2).map((i) => i.slug),

@@ -1,4 +1,10 @@
 import { flattenBlocks, type Project } from "./model";
+import {
+  canCollect,
+  isRupee,
+  paymentProblems,
+  usablePayments,
+} from "./payments";
 
 export interface ReviewItem {
   id: string;
@@ -122,5 +128,43 @@ export function reviewProject(project: Project): ReviewItem[] {
         page: project.pages[0].id,
         kind: "forms",
       });
+  const paying = (project.collections ?? []).filter(
+    (c) => c.request?.collect && canCollect(c.request.kind),
+  );
+  if (paying.length && !usablePayments(project.payments))
+    issues.push({
+      id: "payments-missing",
+      title: "Add a way to get paid",
+      detail: `${paying.map((c) => c.name).join(", ")} ask visitors to pay, but Settings → Get paid has no usable UPI ID, payment link, bank details or in-person option.`,
+      page: project.pages[0].id,
+      kind: "forms",
+    });
+  else if (
+    usablePayments(project.payments)?.upi &&
+    paying.some((c) => !isRupee(c.currency))
+  )
+    issues.push({
+      id: "payments-currency",
+      title: "UPI payments are in rupees",
+      detail: `Set the currency to ₹ for ${paying
+        .filter((c) => !isRupee(c.currency))
+        .map((c) => c.name)
+        .join(
+          ", ",
+        )} so UPI apps fill in the amount, or use a payment link for other currencies.`,
+      page: project.pages[0].id,
+      kind: "forms",
+    });
+  if (project.payments && paying.length) {
+    const problems = Object.values(paymentProblems(project.payments));
+    if (problems.length)
+      issues.push({
+        id: "payments-invalid",
+        title: "Fix your payment details",
+        detail: `${problems.join(" ")} Visitors won’t see that option until it’s fixed.`,
+        page: project.pages[0].id,
+        kind: "forms",
+      });
+  }
   return issues;
 }

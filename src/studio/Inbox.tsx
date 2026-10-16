@@ -9,6 +9,7 @@ import {
   type InboxRequest,
   type RequestFieldId,
 } from "./requests";
+import { formatAmount } from "./payments";
 
 /** The cloud site open in the editor, if any (CloudWorkspace keeps it in the URL). */
 const activeSiteId = () =>
@@ -27,7 +28,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   const siteId = activeSiteId();
   const [requests, setRequests] = useState<InboxRequest[] | null>(null);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<"new" | "all">("new");
+  const [filter, setFilter] = useState<"new" | "unpaid" | "all">("new");
   const [open, setOpen] = useState<string | null>(null);
   const fetchRequests = useCallback(
     () =>
@@ -61,11 +62,14 @@ export function Inbox({ onClose }: { onClose: () => void }) {
       active = false;
     };
   }, [siteId, fetchRequests]);
-  const mark = async (r: InboxRequest, status: InboxRequest["status"]) => {
+  const mark = async (
+    r: InboxRequest,
+    change: { status: InboxRequest["status"] } | { payment: "paid" | "unpaid" },
+  ) => {
     try {
       const { request } = await cloud.request<{ request: InboxRequest }>(
         `/sites/${siteId}/inbox/${r.id}`,
-        { method: "POST", body: JSON.stringify({ status }) },
+        { method: "POST", body: JSON.stringify(change) },
       );
       setRequests(
         (list) => list?.map((x) => (x.id === r.id ? request : x)) ?? null,
@@ -77,10 +81,21 @@ export function Inbox({ onClose }: { onClose: () => void }) {
     }
   };
   const actions = (project.collections ?? []).filter((c) => c.request);
-  const shown = (requests ?? []).filter(
-    (r) => filter === "all" || r.status === "new",
+  const shown = (requests ?? []).filter((r) =>
+    filter === "all"
+      ? true
+      : filter === "unpaid"
+        ? r.payment?.status === "unpaid"
+        : r.status === "new",
   );
   const unread = (requests ?? []).filter((r) => r.status === "new").length;
+  const unpaid = (requests ?? []).filter(
+    (r) => r.payment?.status === "unpaid",
+  ).length;
+  const price = (r: InboxRequest) =>
+    r.payment?.amount == null
+      ? ""
+      : formatAmount(r.payment.amount, r.payment.currency);
   return (
     <Modal
       title="Inbox"
@@ -108,7 +123,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
           <>
             <div className="inbox-bar">
               <div className="segmented" role="tablist" aria-label="Show">
-                {(["new", "all"] as const).map((f) => (
+                {(["new", "unpaid", "all"] as const).map((f) => (
                   <button
                     key={f}
                     role="tab"
@@ -116,7 +131,11 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                     className={filter === f ? "chosen" : ""}
                     onClick={() => setFilter(f)}
                   >
-                    {f === "new" ? `New${unread ? ` · ${unread}` : ""}` : "All"}
+                    {f === "new"
+                      ? `New${unread ? ` · ${unread}` : ""}`
+                      : f === "unpaid"
+                        ? `Unpaid${unpaid ? ` · ${unpaid}` : ""}`
+                        : "All"}
                   </button>
                 ))}
               </div>
@@ -138,7 +157,9 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                 <strong>
                   {filter === "new"
                     ? "You’re all caught up"
-                    : "No requests yet"}
+                    : filter === "unpaid"
+                      ? "Nothing waiting for payment"
+                      : "No requests yet"}
                 </strong>
                 <p>
                   {actions.length
@@ -164,6 +185,12 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                         {r.itemTitle} · {r.collectionName}
                       </small>
                     </span>
+                    {r.payment && (
+                      <span className={`inbox-pay is-${r.payment.status}`}>
+                        {r.payment.status === "paid" ? "Paid" : "Unpaid"}
+                        {price(r) && ` · ${price(r)}`}
+                      </span>
+                    )}
                     <time dateTime={r.createdAt}>{when(r.createdAt)}</time>
                   </button>
                   {open === r.id && (
@@ -175,6 +202,15 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                             <a href={`mailto:${r.email}`}>{r.email}</a>
                           </dd>
                         </div>
+                        {r.payment && (
+                          <div>
+                            <dt>Payment</dt>
+                            <dd>
+                              {price(r) || "Amount not set"} · reference{" "}
+                              <strong>{r.payment.reference}</strong>
+                            </dd>
+                          </div>
+                        )}
                         {REQUEST_KINDS[r.kind].fields
                           .filter((f): f is RequestFieldId => !!r.fields[f])
                           .map((f) => (
@@ -192,10 +228,29 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                           <Icon name="send" size={14} />
                           Reply
                         </a>
+                        {r.payment && (
+                          <button
+                            className="subtle-button"
+                            onClick={() =>
+                              void mark(r, {
+                                payment:
+                                  r.payment?.status === "paid"
+                                    ? "unpaid"
+                                    : "paid",
+                              })
+                            }
+                          >
+                            {r.payment.status === "paid"
+                              ? "Mark as unpaid"
+                              : "Mark as paid"}
+                          </button>
+                        )}
                         <button
                           className="primary-button"
                           onClick={() =>
-                            void mark(r, r.status === "new" ? "done" : "new")
+                            void mark(r, {
+                              status: r.status === "new" ? "done" : "new",
+                            })
                           }
                         >
                           {r.status === "new"

@@ -64,6 +64,15 @@ Collections can ask visitors to book, order, apply, RSVP or enquire (`src/studio
 - Requests are validated per kind and include a hidden honeypot field. They are rate limited with the store endpoints locally; in AWS the `POST /inbox/{id}` route has its own throttle (burst 5, 2/s) so visitors can't use up the editor's. Each site accepts at most 200 requests per UTC day (429 after that).
 - Editors, managers and owners read the newest 500 with `GET /sites/{id}/inbox` and set `new`/`done` with `POST /sites/{id}/inbox/{requestId}`. Viewers can't open the inbox because it holds visitors' contact details. The editor shows it under **Inbox**.
 - No email is sent to visitors, so the form can't be used to relay mail.
+
+### Getting paid
+
+Owners list how visitors can pay in **Settings → Get paid** (also under Data → a collection → Settings): a UPI ID, an `https` payment link from any provider (Stripe, Razorpay, PayPal…), bank transfer details, and/or an in-person option (`src/studio/payments.ts`). Collections whose action is an order, booking or RSVP can turn on **Ask visitors to pay**. Forma never touches the money and charges no fee.
+
+- Publishing records each item's unit price and the usable payment options in the release's inbox config. Badly formatted UPI IDs or links are left out, and the publish review warns about them, about missing options and about UPI with a non-rupee currency.
+- A request then stores `payment {amount, currency, reference, status}`. The amount is price × quantity for orders, × guests for RSVPs, and the price for bookings. Form posts get a `303` to `GET /inbox/{siteId}/requests/{requestId}`, a page on the API origin showing the total, the reference and the options (a `upi://pay` link fills in the amount in rupees). The unguessable request ID is the capability; the page shows no visitor details and sends `Referrer-Policy: no-referrer`.
+- Editors mark requests paid or unpaid with `POST /sites/{id}/inbox/{requestId}` `{payment: "paid" | "unpaid"}`; the Inbox has an **Unpaid** view. Once marked paid, the visitor's page shows "Payment received".
+- Connecting a provider account for automatic confirmation (Stripe Connect, Razorpay Route) is not built yet.
 - Published pages allow `form-action 'self' https:` (plus the local API origin in local mode).
 
 ## Consistency and limits

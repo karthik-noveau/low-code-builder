@@ -387,7 +387,7 @@ button.data-row:hover,
 }
 .inbox-row {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
+  grid-template-columns: 96px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -411,6 +411,20 @@ button.data-row:hover,
 .inbox-list li.is-new .inbox-kind {
   background: var(--ui-accent-soft, #e8efff);
   color: var(--ui-accent, #2f5bea);
+}
+.inbox-pay {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.inbox-pay.is-unpaid {
+  background: var(--ui-surface-alt);
+  color: var(--ui-danger, #b42318);
+}
+.inbox-pay.is-paid {
+  background: var(--ui-success-soft, var(--ui-accent-soft));
+  color: var(--ui-success, var(--ui-accent));
 }
 .inbox-who {
   display: flex;
@@ -454,7 +468,7 @@ button.data-row:hover,
 }
 @media (max-width: 640px) {
   .inbox-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
   .inbox-kind {
     display: none;
@@ -468,4 +482,26 @@ button.data-row:hover,
 }
 .inbox-actions a {
   text-decoration: none;
+}
+
+.data-payments {
+  margin-top: 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.data-payments summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.data-payments summary small {
+  font-weight: 400;
+  color: var(--ui-muted);
+}
+.data-payments[open] summary {
+  margin-bottom: 10px;
 }

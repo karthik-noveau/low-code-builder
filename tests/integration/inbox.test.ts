@@ -184,7 +184,14 @@ describe("visitor actions reach the inbox", { concurrent: false }, () => {
       body: gzipSync(JSON.stringify(next)),
     });
     site = (await saved.json()).site;
-    await call(`/sites/${id}/publish`, "POST", { version: site.version });
+    // Local builds are limited to one a second; retry until this one is accepted.
+    for (let i = 0; i < 20; i++) {
+      const { response } = await call(`/sites/${id}/publish`, "POST", {
+        version: site.version,
+      });
+      if (response.status !== 429) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     site = await settle();
     expect((await submit(booking())).status).toBe(404);
     await call(`/sites/${id}/rollback`, "POST", {

@@ -26,6 +26,7 @@ import {
   requestButton,
   type CollectionRequest,
 } from "./requests";
+import { canCollect, usablePayments, type PaymentSettings } from "./payments";
 import "./website.css";
 
 function resolveHref(url: string, project: Project, exporting: boolean) {
@@ -132,14 +133,28 @@ function RequestForm({
   item,
   request,
   inbox,
+  payments,
 }: {
   collection: Collection;
   item: CollectionItem;
   request: CollectionRequest;
   inbox?: string;
+  payments?: PaymentSettings;
 }) {
   const [tried, setTried] = useState(false);
   const spec = REQUEST_KINDS[request.kind];
+  const usable =
+    request.collect && canCollect(request.kind)
+      ? usablePayments(payments)
+      : null;
+  const methods = usable
+    ? [
+        usable.upi && "UPI",
+        usable.bank && "bank transfer",
+        usable.link && "online",
+        usable.inPerson && "in person",
+      ].filter(Boolean)
+    : [];
   const id = (name: string) => `request-${item.id}-${name}`;
   return (
     <form
@@ -227,6 +242,13 @@ function RequestForm({
         {requestButton(request)}
         <Icon name="arrow" size={16} />
       </button>
+      {usable && (
+        <small className="site-request-pay">
+          <Icon name="lock" size={13} />
+          Next you’ll see the total and how to pay:{" "}
+          {methods.join(", ").replace(/, ([^,]*)$/, " or $1")}.
+        </small>
+      )}
       {tried && (
         <small className="site-request-note" role="status">
           This is a preview. Once published with Forma, requests arrive in your
@@ -337,6 +359,7 @@ export function ItemDetail({
             item={item}
             request={request}
             inbox={inbox}
+            payments={project.payments}
           />
         )}
       </div>

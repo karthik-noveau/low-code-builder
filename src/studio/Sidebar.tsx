@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 import { IconButton, Field, ColorField, Range } from "./ui";
 import { sectionMeta, safeImage, type Section } from "./model";
 import { templateOptions } from "./templates";
+import { PaymentsPanel } from "./PaymentsPanel";
 
 type ThemeKey = "scale" | "spacing" | "buttons";
 /** Site-wide design tokens. The middle option is each token's default. */
@@ -512,6 +513,9 @@ export function Sidebar({
               value={project.name}
               onChange={(name) => store.commit((p) => ({ ...p, name }))}
             />
+            <div className="panel-divider" />
+            <h4 className="eyebrow-label">GET PAID</h4>
+            <PaymentsPanel />
             <div className="panel-divider" />
             <h4 className="eyebrow-label">YOUR PROJECT</h4>
             <p className="muted-note">
