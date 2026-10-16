@@ -666,30 +666,43 @@ export function NewWebsite() {
             />
             <small>Shown in the browser tab and your site’s footer.</small>
           </label>
-          <div className="ns-choice">
-            <span className="ns-choice-label">Starting point</span>
-            <div className="ns-choice-head">
-              <strong>{chosen.name}</strong>
-              <span className="ns-tag">{chosen.category}</span>
-            </div>
-            <p>{chosen.subtitle}</p>
-            <div className="ns-palette" aria-hidden="true">
-              {chosen.palette.map((color) => (
-                <span key={color} style={{ background: color }} />
-              ))}
-            </div>
-          </div>
-          <ul className="ns-includes">
-            <li>
-              <Icon name="check" size={14} /> Every page and section editable
-            </li>
-            <li>
-              <Icon name="check" size={14} /> Looks right on phones and tablets
-            </li>
-            <li>
-              <Icon name="check" size={14} /> Publish on your own domain
-            </li>
-          </ul>
+          <fieldset className="ns-list">
+            <legend>Starting point</legend>
+            {options.map((item) => (
+              <label
+                key={item.id}
+                className={template === item.id ? "is-selected" : ""}
+              >
+                <input
+                  type="radio"
+                  name="template"
+                  value={item.id}
+                  checked={template === item.id}
+                  onChange={() => setTemplate(item.id)}
+                />
+                <span className="ns-list-thumb">
+                  <TemplateArt template={item.id} eager />
+                </span>
+                <span className="ns-list-text">
+                  <strong>{item.name}</strong>
+                  <small>{item.category}</small>
+                  {template === item.id && (
+                    <span className="ns-list-detail">
+                      {item.subtitle}
+                      <span className="ns-palette" aria-hidden="true">
+                        {item.palette.map((color) => (
+                          <span key={color} style={{ background: color }} />
+                        ))}
+                      </span>
+                    </span>
+                  )}
+                </span>
+                <span className="ns-list-check" aria-hidden="true">
+                  <Icon name="check" size={12} />
+                </span>
+              </label>
+            ))}
+          </fieldset>
           <div className="ns-actions">
             <button
               className="brand-button ns-create"
@@ -726,30 +739,6 @@ export function NewWebsite() {
             </div>
             <LivePreview template={template} />
           </div>
-          <fieldset className="ns-picker">
-            <legend>Choose a starting point</legend>
-            <div className="ns-picker-row">
-              {options.map((item) => (
-                <label
-                  key={item.id}
-                  className={template === item.id ? "is-selected" : ""}
-                >
-                  <input
-                    type="radio"
-                    name="template"
-                    value={item.id}
-                    checked={template === item.id}
-                    onChange={() => setTemplate(item.id)}
-                  />
-                  <span className="ns-thumb">
-                    <TemplateArt template={item.id} eager />
-                  </span>
-                  <span className="ns-thumb-name">{item.name}</span>
-                  <span className="ns-thumb-cat">{item.category}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
         </section>
       </div>
     </AppShell>

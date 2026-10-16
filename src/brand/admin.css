@@ -2460,48 +2460,6 @@ html body .admin-ui .ns-name > small {
   font-size: 12px;
   color: var(--fx-muted);
 }
-html body .admin-ui .ns-choice {
-  display: grid;
-  gap: 6px;
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--fx-surface-2);
-  box-shadow: inset 0 0 0 1px var(--fx-border);
-}
-html body .admin-ui .ns-choice-label {
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fx-muted);
-}
-html body .admin-ui .ns-choice-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-html body .admin-ui .ns-choice-head strong {
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-html body .admin-ui .ns-tag {
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--fx-surface);
-  box-shadow: inset 0 0 0 1px var(--fx-border);
-  color: var(--fx-text-2);
-  font-size: 12px;
-  font-weight: 550;
-  line-height: 22px;
-}
-html body .admin-ui .ns-choice p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--fx-text-2);
-}
 html body .admin-ui .ns-palette {
   display: flex;
   gap: 6px;
@@ -2512,23 +2470,6 @@ html body .admin-ui .ns-palette span {
   height: 20px;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgba(17, 17, 20, 0.12);
-}
-html body .admin-ui .ns-includes {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-html body .admin-ui .ns-includes li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--fx-text-2);
-}
-html body .admin-ui .ns-includes svg {
-  color: var(--fx-success);
 }
 html body .admin-ui .ns-actions {
   display: grid;
@@ -2658,84 +2599,6 @@ html body .admin-ui .ns-viewport > .template-art {
   }
 }
 
-/* Template strip. */
-html body .admin-ui .ns-picker {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-html body .admin-ui .ns-picker > legend {
-  margin-bottom: 12px;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--fx-text);
-}
-html body .admin-ui .ns-picker-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-}
-html body .admin-ui .ns-picker-row > label {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  padding: 6px 6px 10px;
-  border-radius: 14px;
-  cursor: pointer;
-  transition:
-    background-color 140ms ease,
-    box-shadow 140ms ease;
-}
-html body .admin-ui .ns-picker-row > label:hover {
-  background: var(--fx-hover);
-}
-html body .admin-ui .ns-picker-row > label.is-selected {
-  background: var(--fx-surface);
-  box-shadow:
-    0 0 0 2px var(--fx-accent),
-    0 10px 24px -14px rgba(59, 104, 240, 0.55);
-}
-html body .admin-ui .ns-picker-row > label:has(input:focus-visible) {
-  box-shadow:
-    0 0 0 2px var(--fx-accent),
-    var(--fx-ring);
-}
-html body .admin-ui .ns-picker-row input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-html body .admin-ui .ns-thumb {
-  display: block;
-  aspect-ratio: 4 / 3;
-  margin-bottom: 8px;
-  overflow: hidden;
-  border-radius: 9px;
-  box-shadow: inset 0 0 0 1px var(--fx-border);
-}
-html body .admin-ui .ns-thumb > * {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  pointer-events: none;
-}
-html body .admin-ui .ns-thumb-name {
-  padding: 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--fx-text);
-}
-html body .admin-ui .ns-thumb-cat {
-  padding: 0 4px;
-  font-size: 12px;
-  color: var(--fx-muted);
-}
-
 @media (max-width: 1100px) {
   html body .admin-ui .ns {
     grid-template-columns: minmax(0, 1fr);
@@ -2753,17 +2616,6 @@ html body .admin-ui .ns-thumb-cat {
   html body .admin-ui .ns-panel {
     padding: 20px;
   }
-  html body .admin-ui .ns-picker-row {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 42%;
-    overflow-x: auto;
-    padding: 4px 2px 8px;
-    scroll-snap-type: x mandatory;
-  }
-  html body .admin-ui .ns-picker-row > label {
-    scroll-snap-align: start;
-  }
   html body .admin-ui .ns-tab-title {
     display: none;
   }
@@ -2780,4 +2632,186 @@ html body .admin-ui .ns-thumb-cat {
   html body .admin-ui .ns-stage {
     order: 2;
   }
+}
+
+/* New website fills the window: no gutters, no empty band below. */
+@media (min-width: 1101px) {
+  html body .admin-ui .dashboard-main:has(> .ns) {
+    max-width: none;
+    height: 100%;
+    padding: 20px 24px;
+  }
+  html body .admin-ui .ns {
+    grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+    gap: 20px;
+    height: 100%;
+    min-height: 620px;
+  }
+  html body .admin-ui .ns-panel {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  html body .admin-ui .ns-panel > .ns-actions {
+    margin-top: auto;
+  }
+  html body .admin-ui .ns-stage {
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+  }
+  html body .admin-ui .ns-browser {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  html body .admin-ui .ns-viewport {
+    flex: 1;
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+  html body .admin-ui .ns-picker > legend {
+    margin-bottom: 8px;
+  }
+  html body .admin-ui .ns-picker-row {
+    gap: 10px;
+  }
+  html body .admin-ui .ns-thumb {
+    aspect-ratio: 16 / 9;
+    margin-bottom: 6px;
+  }
+}
+
+/* Starting points as a list inside the form. */
+html body .admin-ui .ns-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+html body .admin-ui .ns-list > legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fx-text);
+}
+html body .admin-ui .ns-list > label {
+  position: relative;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+html body .admin-ui .ns-list > label:hover {
+  background: var(--fx-hover);
+}
+html body .admin-ui .ns-list > label.is-selected {
+  align-items: start;
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--fx-accent);
+}
+html body .admin-ui .ns-list > label:has(input:focus-visible) {
+  box-shadow:
+    inset 0 0 0 1.5px var(--fx-accent),
+    var(--fx-ring);
+}
+html body .admin-ui .ns-list input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+html body .admin-ui .ns-list-thumb {
+  display: block;
+  width: 76px;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+}
+html body .admin-ui .ns-list-thumb > * {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+html body .admin-ui .ns-list-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+html body .admin-ui .ns-list-text > strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fx-text);
+}
+html body .admin-ui .ns-list-text > small {
+  font-size: 12px;
+  color: var(--fx-muted);
+}
+html body .admin-ui .ns-list-detail {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fx-text-2);
+  animation: ns-fade 220ms var(--fx-ease);
+}
+html body .admin-ui .ns-list-detail .ns-palette {
+  margin: 0;
+}
+html body .admin-ui .ns-list-check {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--fx-border-strong);
+  color: transparent;
+}
+html body .admin-ui .is-selected > .ns-list-check {
+  background: var(--fx-accent);
+  box-shadow: none;
+  color: #fff;
+}
+@media (max-width: 1100px) {
+  html body .admin-ui .ns-panel {
+    order: 1;
+  }
+  html body .admin-ui .ns-stage {
+    order: 2;
+  }
+}
+@media (min-width: 1101px) {
+  /* The create button stays in view when the card scrolls on short windows. */
+  html body .admin-ui .ns-panel > .ns-actions {
+    position: sticky;
+    bottom: -28px;
+    z-index: 1;
+    margin-inline: -28px;
+    margin-bottom: -28px;
+    padding: 16px 28px 24px;
+    background: linear-gradient(to top, var(--fx-surface) 80%, transparent);
+  }
+}
+html body .admin-ui .ns-list-thumb {
+  position: relative;
+  isolation: isolate;
+  z-index: 0;
 }
