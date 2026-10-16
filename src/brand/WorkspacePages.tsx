@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Icon } from "../studio/Icon";
 import { useMotionSurface } from "./useMotionSurface";
 import { MotionTabs } from "./MotionTabs";
@@ -9,7 +9,8 @@ import { collections } from "./content";
 import { useSession } from "./useSession";
 import * as cloud from "../cloud/client";
 import { createProject } from "../studio/templates";
-import { type TemplateId, type Project } from "../studio/model";
+import { Website } from "../studio/Website";
+import { slugify, type TemplateId, type Project } from "../studio/model";
 import "./brand.css";
 import "./public.css";
 
@@ -611,6 +612,18 @@ export function NewWebsite() {
       setBusy(false);
     }
   };
+  const options = [
+    ...collections,
+    {
+      id: "blank" as const,
+      name: "Blank",
+      category: "Start fresh",
+      subtitle: "An empty page and your own ideas.",
+      palette: ["#f4f4f5", "#d4d4d8", "#71717a"],
+    },
+  ];
+  const chosen = options.find((item) => item.id === template) ?? options[0];
+  const address = name.trim() ? slugify(name.trim()) : "your-website";
   return (
     <AppShell
       area="websites"
@@ -619,22 +632,25 @@ export function NewWebsite() {
         { label: "New website" },
       ]}
     >
-      <PageHeading
-        title="Create a website"
-        description="Name it and pick a starting point. You can change both later."
-      />
-      {(error || session.error) && (
-        <div role="alert" className="brand-form-error new-site-error">
-          {error || session.error}
-          {browserReady && (
-            <a href="/editor">Continue with your browser draft →</a>
+      <div className="ns">
+        <form className="ns-panel" onSubmit={(event) => void create(event)}>
+          <span className="ns-eyebrow">
+            <Icon name="sparkles" size={13} /> New website
+          </span>
+          <h1>Create a website</h1>
+          <p className="ns-lede">
+            Name it and pick a starting point. You can change both later.
+          </p>
+          {(error || session.error) && (
+            <div role="alert" className="brand-form-error ns-error">
+              {error || session.error}
+              {browserReady && (
+                <a href="/editor">Continue with your browser draft →</a>
+              )}
+            </div>
           )}
-        </div>
-      )}
-      <form className="new-site" onSubmit={(event) => void create(event)}>
-        <section className="commerce-panel new-site-name">
-          <label className="brand-field">
-            Website name
+          <label className="ns-name">
+            <span>Website name</span>
             <input
               autoFocus
               name="site-name"
@@ -643,57 +659,134 @@ export function NewWebsite() {
               placeholder="e.g. Acme Studio"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter")
+                  event.currentTarget.form?.requestSubmit();
+              }}
             />
+            <small>Shown in the browser tab and your site’s footer.</small>
           </label>
-        </section>
-        <fieldset className="new-site-templates">
-          <legend>Starting point</legend>
-          <div className="new-site-grid">
-            {[
-              ...collections,
-              {
-                id: "blank" as const,
-                name: "Blank",
-                category: "Start from an empty page",
-              },
-            ].map((item) => (
-              <label
-                key={item.id}
-                className={template === item.id ? "is-selected" : ""}
-              >
-                <input
-                  type="radio"
-                  name="template"
-                  value={item.id}
-                  checked={template === item.id}
-                  onChange={() => setTemplate(item.id)}
-                />
-                <span className="new-site-thumb">
-                  <TemplateArt template={item.id} eager />
-                </span>
-                <span className="new-site-caption">
-                  <strong>{item.name}</strong>
-                  <small>{item.category}</small>
-                </span>
-                <span className="new-site-check" aria-hidden="true">
-                  <Icon name="check" size={13} />
-                </span>
-              </label>
-            ))}
+          <div className="ns-choice">
+            <span className="ns-choice-label">Starting point</span>
+            <div className="ns-choice-head">
+              <strong>{chosen.name}</strong>
+              <span className="ns-tag">{chosen.category}</span>
+            </div>
+            <p>{chosen.subtitle}</p>
+            <div className="ns-palette" aria-hidden="true">
+              {chosen.palette.map((color) => (
+                <span key={color} style={{ background: color }} />
+              ))}
+            </div>
           </div>
-        </fieldset>
-        <footer className="new-site-footer">
-          <p>
-            {session.account
-              ? "Saved to your workspace."
-              : "Starts in your browser. You can connect a workspace later."}{" "}
-            Your current browser draft is kept as a recovery copy.
-          </p>
-          <button className="brand-button" disabled={busy || session.loading}>
-            {busy ? "Creating…" : "Create your website"}
-          </button>
-        </footer>
-      </form>
+          <ul className="ns-includes">
+            <li>
+              <Icon name="check" size={14} /> Every page and section editable
+            </li>
+            <li>
+              <Icon name="check" size={14} /> Looks right on phones and tablets
+            </li>
+            <li>
+              <Icon name="check" size={14} /> Publish on your own domain
+            </li>
+          </ul>
+          <div className="ns-actions">
+            <button
+              className="brand-button ns-create"
+              disabled={busy || session.loading}
+            >
+              {busy ? "Creating…" : "Create your website"}
+              {!busy && (
+                <kbd aria-hidden="true">
+                  {navigator.platform?.includes("Mac") ? "⌘" : "Ctrl"} ↵
+                </kbd>
+              )}
+            </button>
+            <p className="ns-note">
+              {session.account
+                ? "Saved to your workspace."
+                : "Starts in your browser. You can connect a workspace later."}{" "}
+              Your current browser draft is kept as a recovery copy.
+            </p>
+          </div>
+        </form>
+        <section className="ns-stage" aria-label="Preview">
+          <div className="ns-browser">
+            <div className="ns-browser-bar">
+              <span className="ns-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="ns-url">
+                <Icon name="lock" size={11} />
+                {address}.com
+              </span>
+              <span className="ns-tab-title">{name.trim() || chosen.name}</span>
+            </div>
+            <LivePreview template={template} />
+          </div>
+          <fieldset className="ns-picker">
+            <legend>Choose a starting point</legend>
+            <div className="ns-picker-row">
+              {options.map((item) => (
+                <label
+                  key={item.id}
+                  className={template === item.id ? "is-selected" : ""}
+                >
+                  <input
+                    type="radio"
+                    name="template"
+                    value={item.id}
+                    checked={template === item.id}
+                    onChange={() => setTemplate(item.id)}
+                  />
+                  <span className="ns-thumb">
+                    <TemplateArt template={item.id} eager />
+                  </span>
+                  <span className="ns-thumb-name">{item.name}</span>
+                  <span className="ns-thumb-cat">{item.category}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </section>
+      </div>
     </AppShell>
+  );
+}
+
+/**
+ * The chosen template rendered for real, scaled to fit, as a still picture:
+ * it can't be focused or clicked, and screen readers skip it.
+ */
+function LivePreview({ template }: { template: TemplateId }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+  const project = useMemo(() => createProject(template), [template]);
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const fit = () => setScale(el.clientWidth / 1280);
+    fit();
+    const observer =
+      typeof ResizeObserver === "function" ? new ResizeObserver(fit) : null;
+    observer?.observe(el);
+    return () => observer?.disconnect();
+  }, []);
+  return (
+    <div className="ns-viewport" ref={frame} aria-hidden="true" inert>
+      {template === "blank" ? (
+        <TemplateArt template="blank" eager />
+      ) : (
+        <div
+          key={template}
+          className="ns-canvas"
+          style={{ transform: `scale(${scale})` }}
+        >
+          <Website project={project} page={project.pages[0]} preview />
+        </div>
+      )}
+    </div>
   );
 }
