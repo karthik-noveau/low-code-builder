@@ -1,0 +1,1377 @@
+/*
+ * Admin surface for every signed-in workspace page (AppShell). One compact
+ * system: a dark top bar, a quiet grey sidebar, white cards raised on a grey
+ * canvas, a 13px type scale and 32px controls. Everything is scoped to
+ * `.admin-ui` and prefixed with `html body` so it wins over the older
+ * standalone page styles it replaces, whatever order the sheets load in.
+ */
+.admin-ui {
+  --a-canvas: #f1f2ef;
+  --a-side: #ebece8;
+  --a-surface: #ffffff;
+  --a-subdued: #f7f7f5;
+  --a-top: #17201c;
+  --a-top-raised: #26312c;
+  --a-top-text: #e9eeea;
+  --a-top-muted: #9aa8a0;
+  --a-ink: #1d2623;
+  --a-text: #303b36;
+  --a-muted: #66716b;
+  --a-divider: #e6e8e4;
+  --a-input: #c4cac5;
+  --a-hover: rgba(29, 38, 35, 0.06);
+  --a-pressed: rgba(29, 38, 35, 0.1);
+  --a-accent: var(--ui-accent);
+  --a-card:
+    0 0 0 1px rgba(29, 38, 35, 0.07), 0 1px 0 rgba(29, 38, 35, 0.07),
+    0 1px 3px rgba(29, 38, 35, 0.06);
+  --a-card-hover:
+    0 0 0 1px rgba(29, 38, 35, 0.09), 0 4px 14px -4px rgba(29, 38, 35, 0.16);
+  --a-pop:
+    0 0 0 1px rgba(29, 38, 35, 0.08), 0 12px 32px -8px rgba(29, 38, 35, 0.28);
+  --a-radius: 12px;
+  --a-radius-control: 8px;
+}
+
+/* ---------- Frame ---------- */
+html body .admin-ui {
+  display: grid;
+  grid-template-areas: "top top" "side main";
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: 56px minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--a-canvas);
+  color: var(--a-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Top bar: logo, trail, page controls, account. */
+html body .admin-ui .admin-topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 0 14px 0 18px;
+  background: var(--a-top);
+  color: var(--a-top-text);
+  position: relative;
+  z-index: 30;
+}
+html body .admin-ui .admin-logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 206px;
+}
+html body .admin-ui .admin-logo .brand-mark {
+  width: 26px;
+  height: 26px;
+}
+html body .admin-ui .admin-logo .brand-wordmark {
+  font-size: 22px;
+  color: #fff;
+}
+html body .admin-ui .admin-logo .brand-mark-background {
+  fill: #2f9d76;
+}
+html body .admin-ui .dashboard-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--a-top-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+html body .admin-ui .dashboard-crumbs .crumb {
+  color: var(--a-top-muted);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .dashboard-crumbs a.crumb:hover {
+  color: #fff;
+}
+html body .admin-ui .dashboard-crumbs .crumb-sep {
+  color: #4d5b54;
+  margin: 0;
+}
+html body .admin-ui .dashboard-crumbs strong {
+  color: #fff;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .admin-topbar-extra {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+html body .admin-ui .admin-topbar .admin-topbar-extra select {
+  height: 32px;
+  min-height: 32px;
+  max-width: 220px;
+  padding: 0 30px 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--a-radius-control);
+  background-color: var(--a-top-raised);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c8d2cc' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+  cursor: pointer;
+}
+html body .admin-ui .admin-topbar .admin-topbar-extra select:hover {
+  background-color: #33403a;
+}
+html body .admin-ui .admin-topbar .admin-topbar-extra select:focus-visible {
+  outline: 2px solid #6fd3ad;
+  outline-offset: 1px;
+}
+html body .admin-ui .admin-topbar .admin-topbar-extra select option {
+  background: #fff;
+  color: var(--a-ink);
+}
+html body .admin-ui .admin-menu-button {
+  display: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--a-radius-control);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+html body .admin-ui .admin-menu-button:hover {
+  background: var(--a-top-raised);
+}
+
+/* Account menu. */
+html body .admin-ui .admin-account {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+html body .admin-ui .admin-account > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 4px;
+  border-radius: 10px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--a-top-text);
+}
+html body .admin-ui .admin-account > summary::-webkit-details-marker {
+  display: none;
+}
+html body .admin-ui .admin-account > summary:hover,
+html body .admin-ui .admin-account[open] > summary {
+  background: var(--a-top-raised);
+}
+html body .admin-ui .admin-account > summary:focus-visible {
+  outline: 2px solid #6fd3ad;
+  outline-offset: 1px;
+}
+html body .admin-ui .admin-account .dashboard-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #2f9d76;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+html body .admin-ui .admin-account .dashboard-account-email {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--a-top-text);
+}
+html body .admin-ui .admin-account > summary > svg {
+  color: var(--a-top-muted);
+}
+html body .admin-ui .admin-account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 260px;
+  padding: 6px;
+  background: var(--a-surface);
+  border-radius: var(--a-radius);
+  box-shadow: var(--a-pop);
+  color: var(--a-text);
+}
+html body .admin-ui .admin-account-menu > p {
+  margin: 0 0 6px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--a-divider);
+  font-size: 12px;
+  color: var(--a-muted);
+}
+html body .admin-ui .admin-account-menu > p > strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .admin-account-menu > a,
+html body .admin-ui .admin-account-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--a-radius-control);
+  background: none;
+  color: var(--a-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+html body .admin-ui .admin-account-menu > a:hover,
+html body .admin-ui .admin-account-menu > button:hover {
+  background: var(--a-hover);
+}
+html body .admin-ui .admin-account-menu svg {
+  color: var(--a-muted);
+}
+html body .admin-ui .admin-login {
+  margin-left: auto;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+html body .admin-ui .admin-scrim {
+  display: none;
+}
+
+/* Sidebar. */
+html body .admin-ui .dashboard-sidebar {
+  grid-area: side;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 12px 10px 14px;
+  background: var(--a-side);
+  border: 0;
+  border-right: 1px solid #e1e3df;
+  color: var(--a-text);
+  overflow-y: auto;
+}
+html body .admin-ui .dashboard-sidebar > nav,
+html body .admin-ui .dashboard-sidebar-bottom {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+}
+html body .admin-ui .dashboard-sidebar-bottom {
+  margin-top: auto;
+  padding-top: 16px;
+}
+html body .admin-ui .dashboard-sidebar > nav > a,
+html body .admin-ui .dashboard-sidebar-bottom > a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--a-radius-control);
+  background: transparent;
+  box-shadow: none;
+  color: var(--a-text);
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+  justify-content: flex-start;
+  transform: none;
+}
+html body .admin-ui .dashboard-sidebar > nav > a:not([aria-current]):hover,
+html body .admin-ui .dashboard-sidebar-bottom > a:not([aria-current]):hover {
+  background: var(--a-hover);
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-sidebar > nav > a[aria-current],
+html body .admin-ui .dashboard-sidebar-bottom > a[aria-current] {
+  background: var(--a-surface);
+  color: var(--a-ink);
+  font-weight: 650;
+  box-shadow:
+    0 0 0 1px rgba(29, 38, 35, 0.05),
+    0 1px 2px rgba(29, 38, 35, 0.08);
+}
+html body .admin-ui .dashboard-sidebar > nav > a > span,
+html body .admin-ui .dashboard-sidebar-bottom > a > span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--a-muted);
+  font-size: inherit;
+}
+html body .admin-ui .dashboard-sidebar a[aria-current] > span {
+  color: var(--a-accent);
+}
+html body .admin-ui .dashboard-nav-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(29, 38, 35, 0.07);
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+html body .admin-ui .dashboard-subnav {
+  display: block;
+}
+html body .admin-ui .dashboard-subnav nav {
+  display: grid;
+  gap: 1px;
+  margin: 2px 0 8px 17px;
+  padding-left: 10px;
+  border-left: 1px solid #d6d9d4;
+}
+html body .admin-ui .dashboard-subnav button {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--a-radius-control);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--a-muted);
+  background: none;
+}
+html body .admin-ui .dashboard-subnav button:hover {
+  background: var(--a-hover);
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-subnav button[aria-current] {
+  background: none;
+  color: var(--a-ink);
+  font-weight: 650;
+  position: relative;
+}
+html body .admin-ui .dashboard-subnav button[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--a-accent);
+}
+
+/* Content. */
+html body .admin-ui .dashboard-content {
+  grid-area: main;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--a-canvas);
+  overflow-y: auto;
+  min-width: 0;
+}
+html body .admin-ui .dashboard-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px 72px;
+}
+html body .admin-ui .dashboard-shell-error {
+  margin: 16px 32px 0;
+}
+html body .admin-ui .dashboard-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 0 0 20px;
+  padding: 0;
+}
+html body .admin-ui .dashboard-heading .brand-kicker {
+  display: block;
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-heading h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-heading p {
+  max-width: 640px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-heading-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html body .admin-ui .dashboard-heading-actions > .commerce-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* ---------- Controls ---------- */
+html body .admin-ui :is(.brand-button, .commerce-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--a-radius-control);
+  background: var(--a-accent);
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 1px 1px rgba(29, 38, 35, 0.14);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+html body .admin-ui :is(.brand-button, .commerce-button):hover {
+  background: var(--ui-accent-hover);
+  filter: none;
+  transform: none;
+}
+html body .admin-ui :is(.brand-button, .commerce-button):active {
+  box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+html
+  body
+  .admin-ui
+  :is(
+    .brand-button-outline,
+    .commerce-button.secondary,
+    .commerce-button.neutral
+  ) {
+  background: var(--a-surface);
+  color: var(--a-ink) !important;
+  box-shadow:
+    inset 0 0 0 1px #d3d7d2,
+    inset 0 -1px 0 #c3c8c2,
+    0 1px 0 rgba(29, 38, 35, 0.05);
+}
+html
+  body
+  .admin-ui
+  :is(
+    .brand-button-outline,
+    .commerce-button.secondary,
+    .commerce-button.neutral
+  ):hover {
+  background: var(--a-subdued);
+}
+html body .admin-ui .commerce-button.danger {
+  background: var(--ui-danger);
+  color: #fff !important;
+}
+html body .admin-ui :is(.brand-button, .commerce-button):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+html body .admin-ui :is(.brand-button, .commerce-button) svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+html body .admin-ui .commerce-link {
+  color: var(--a-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+html body .admin-ui .commerce-link:hover {
+  text-decoration: underline;
+}
+
+html
+  body
+  .admin-ui
+  :is(
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="file"],
+      [type="range"],
+      [type="color"]
+    ),
+    select,
+    textarea
+  ) {
+  min-height: 34px;
+  border: 1px solid var(--a-input);
+  border-radius: var(--a-radius-control);
+  background-color: var(--a-surface);
+  color: var(--a-ink);
+  font-size: 13px;
+  box-shadow: none;
+}
+html body .admin-ui :is(input, select, textarea):hover:not(:disabled) {
+  border-color: #9aa39d;
+}
+html body .admin-ui :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--a-accent);
+  outline-offset: 1px;
+  border-color: var(--a-accent);
+}
+html body .admin-ui .commerce-field {
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--a-ink);
+}
+html body .admin-ui .commerce-field small,
+html body .admin-ui .commerce-muted {
+  color: var(--a-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* Filter tabs: compact pills sized to their labels. */
+html body .admin-ui .motion-tabs {
+  display: inline-flex !important;
+  gap: 2px !important;
+  padding: 0 !important;
+  border: 0;
+  background: none;
+  border-radius: 0;
+}
+html body .admin-ui .motion-tabs > .motion-tab-indicator {
+  display: none;
+}
+html body .admin-ui .motion-tabs > button {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--a-radius-control);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--a-muted);
+}
+html body .admin-ui .motion-tabs > button:hover {
+  background: var(--a-hover) !important;
+  color: var(--a-ink);
+}
+html body .admin-ui .motion-tabs > button[aria-pressed="true"] {
+  background: var(--a-pressed) !important;
+  color: var(--a-ink);
+  font-weight: 650;
+}
+html body .admin-ui .motion-tabs > button > span {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--a-muted);
+}
+
+/* ---------- Cards ---------- */
+html
+  body
+  .admin-ui
+  :is(.commerce-panel, .domain-panel, .dashboard-site-card, .commerce-empty) {
+  background: var(--a-surface);
+  border: 0;
+  border-radius: var(--a-radius);
+  box-shadow: var(--a-card);
+}
+html body .admin-ui .commerce-panel {
+  padding: 16px 20px 18px;
+}
+html body .admin-ui :is(.commerce-panel, .domain-panel) h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--a-ink);
+}
+html body .admin-ui :is(.commerce-panel, .domain-panel) h3 {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--a-ink);
+}
+
+/* Metrics: one card split into cells, like an analytics bar. */
+html body .admin-ui .commerce-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  background: var(--a-divider);
+  border-radius: var(--a-radius);
+  box-shadow: var(--a-card);
+}
+html body .admin-ui .commerce-stat {
+  display: grid;
+  gap: 2px;
+  min-height: 0;
+  padding: 14px 18px 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--a-surface);
+}
+html body .admin-ui .commerce-stat > span {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--a-muted);
+}
+html body .admin-ui .commerce-stat > strong {
+  margin: 2px 0 0;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--a-ink);
+}
+html body .admin-ui .commerce-stat > small {
+  font-size: 12px;
+  color: var(--a-muted);
+}
+html body .admin-ui .commerce-columns {
+  gap: 16px;
+}
+
+/* Rows inside cards. */
+html body .admin-ui .commerce-step {
+  padding: 10px 0;
+  border-color: var(--a-divider);
+  font-size: 13px;
+}
+html body .admin-ui .commerce-step strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-ink);
+}
+html body .admin-ui .commerce-footer-note {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--a-muted);
+}
+
+/* Setup guide on the store overview. */
+html body .admin-ui .admin-setup {
+  padding: 0;
+  overflow: hidden;
+}
+html body .admin-ui .admin-setup > header {
+  padding: 16px 20px 14px;
+}
+html body .admin-ui .admin-setup > header p {
+  margin: 0;
+}
+html body .admin-ui .admin-setup-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--a-muted);
+}
+html body .admin-ui .admin-setup-progress > span {
+  flex: 1;
+  max-width: 160px;
+  height: 6px;
+  border-radius: 6px;
+  background: #e3e6e2;
+  overflow: hidden;
+}
+html body .admin-ui .admin-setup-progress > span > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--a-accent);
+  transition: width 400ms ease;
+}
+html body .admin-ui .admin-setup ol {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-top: 1px solid var(--a-divider);
+}
+html body .admin-ui .admin-setup li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+html body .admin-ui .admin-setup li.is-next {
+  background: var(--a-subdued);
+}
+html body .admin-ui .admin-setup-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 1.5px dashed #9ba49e;
+  color: #fff;
+}
+html body .admin-ui .admin-setup li.is-done .admin-setup-check {
+  border: 0;
+  background: var(--a-ink);
+}
+html body .admin-ui .admin-setup li strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--a-ink);
+}
+html body .admin-ui .admin-setup li.is-done strong {
+  color: var(--a-muted);
+  font-weight: 500;
+}
+html body .admin-ui .admin-setup li p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--a-muted);
+}
+html body .admin-ui .admin-setup li:not(.is-next) p {
+  display: none;
+}
+html body .admin-ui .admin-setup li .commerce-button {
+  margin-top: 10px;
+}
+html body .admin-ui .admin-setup li > .commerce-link {
+  align-self: center;
+}
+
+/* Journey list: label and count on one line. */
+html body .admin-ui .admin-metric-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+html body .admin-ui .admin-metric-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-top: 1px solid var(--a-divider);
+  font-size: 13px;
+}
+html body .admin-ui .admin-metric-list li strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--a-ink);
+}
+
+/* Tables. */
+html body .admin-ui .commerce-scroll {
+  margin-inline: -20px;
+}
+html body .admin-ui .commerce-table {
+  font-size: 13px;
+}
+html body .admin-ui .commerce-table th {
+  padding: 8px 12px;
+  background: var(--a-subdued);
+  border-bottom: 1px solid var(--a-divider);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--a-muted);
+}
+html body .admin-ui .commerce-table :is(th, td):first-child {
+  padding-left: 20px;
+}
+html body .admin-ui .commerce-table :is(th, td):last-child {
+  padding-right: 20px;
+}
+html body .admin-ui .commerce-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--a-divider);
+}
+html body .admin-ui .commerce-table tbody tr:hover td {
+  background: #fafaf9;
+}
+
+/* Badges. */
+html body .admin-ui :is(.commerce-badge, .dashboard-site-status) {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: #e4e6e2;
+  color: #47514c;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+html body .admin-ui .dashboard-site-status.is-live,
+html body .admin-ui .commerce-badge:not(.neutral) {
+  background: #d3f2df;
+  color: #0b5a3c;
+}
+html body .admin-ui .dashboard-site-status.is-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #1a9a63;
+}
+
+/* Banners. */
+html body .admin-ui .commerce-notice {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--a-radius);
+  background: #e6f3ec;
+  box-shadow: inset 0 0 0 1px #c3e1cf;
+  color: #12452f;
+  font-size: 13px;
+}
+html body .admin-ui .commerce-notice.error,
+html body .admin-ui .brand-form-error {
+  background: #fdeceb;
+  box-shadow: inset 0 0 0 1px #f5c7c2;
+  border: 0;
+  border-radius: var(--a-radius);
+  color: #8e1f0b;
+  font-size: 13px;
+}
+
+/* ---------- Websites page ---------- */
+html body .admin-ui .dashboard-site-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+html body .admin-ui .dashboard-site-toolbar > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+html body .admin-ui .dashboard-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 220px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+html body .admin-ui .dashboard-search-wrap > svg {
+  position: absolute;
+  left: 10px;
+  color: var(--a-muted);
+  pointer-events: none;
+}
+html body .admin-ui .dashboard-search-wrap > input.dashboard-search {
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px 0 32px;
+}
+html body .admin-ui .dashboard-site-toolbar select {
+  height: 32px;
+  min-height: 32px;
+  width: auto;
+  padding: 0 30px 0 10px;
+}
+html body .admin-ui .dashboard-refresh,
+html body .admin-ui .dashboard-view-toggle {
+  height: 32px;
+  border: 0;
+  border-radius: var(--a-radius-control);
+  background: var(--a-surface);
+  box-shadow: inset 0 0 0 1px #d3d7d2;
+}
+html body .admin-ui .dashboard-refresh {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-refresh:hover {
+  color: var(--a-ink);
+  background: var(--a-subdued);
+}
+html body .admin-ui .dashboard-view-toggle {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+}
+html body .admin-ui .dashboard-view-toggle > button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-view-toggle > button[aria-pressed="true"] {
+  background: var(--a-pressed);
+  color: var(--a-ink);
+}
+
+html body .admin-ui .dashboard-site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+html body .admin-ui .dashboard-site-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+html body .admin-ui .dashboard-site-card:hover {
+  box-shadow: var(--a-card-hover);
+}
+html body .admin-ui .dashboard-site-card > .site-card-preview {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--a-divider);
+  border-radius: 0;
+  background: var(--a-subdued);
+}
+html body .admin-ui .dashboard-site-card > .site-card-preview > :first-child {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+html body .admin-ui .site-card-monogram {
+  aspect-ratio: auto;
+  font-size: 40px;
+}
+html body .admin-ui .site-card-preview-overlay {
+  position: absolute;
+  inset: auto 10px 10px auto;
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+  background: rgba(23, 32, 28, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+html body .admin-ui .dashboard-site-card-body {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px 12px;
+}
+html body .admin-ui .dashboard-site-card-body > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+html body .admin-ui .dashboard-site-card-body h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 650;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html body .admin-ui .dashboard-site-card-body h2 a {
+  color: var(--a-ink);
+  text-decoration: none;
+}
+html body .admin-ui .dashboard-site-card-body > p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-site-card-body > .dashboard-site-actions {
+  gap: 4px;
+  margin: 10px -6px -4px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--a-divider);
+}
+html body .admin-ui .dashboard-site-actions > a {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--a-text);
+  font-size: 13px;
+  font-weight: 550;
+}
+html body .admin-ui .dashboard-site-actions > a:hover {
+  background: var(--a-hover);
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary {
+  margin-right: auto;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--a-surface);
+  color: var(--a-ink);
+  font-weight: 600;
+  box-shadow:
+    inset 0 0 0 1px #d3d7d2,
+    inset 0 -1px 0 #c3c8c2;
+}
+html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary:hover {
+  background: var(--a-subdued);
+  color: var(--a-ink);
+  filter: none;
+}
+html body .admin-ui .dashboard-site-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ui-danger);
+}
+/* List view: one row per website. */
+html body .admin-ui .dashboard-site-grid.is-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border-radius: var(--a-radius);
+  box-shadow: var(--a-card);
+  background: var(--a-surface);
+}
+html body .admin-ui .dashboard-site-grid.is-list > .dashboard-site-card {
+  flex-direction: row;
+  align-items: center;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--a-divider);
+}
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  > .dashboard-site-card:last-child {
+  border-bottom: 0;
+}
+html body .admin-ui .dashboard-site-grid.is-list > .dashboard-site-card:hover {
+  background: #fafaf9;
+}
+html body .admin-ui .dashboard-site-grid.is-list .site-card-preview {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 46px;
+  aspect-ratio: auto;
+  margin: 10px 0 10px 16px;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(29, 38, 35, 0.08);
+}
+html body .admin-ui .dashboard-site-grid.is-list .site-card-monogram {
+  font-size: 18px;
+}
+html body .admin-ui .dashboard-site-grid.is-list .site-card-preview-overlay {
+  display: none;
+}
+html body .admin-ui .dashboard-site-grid.is-list .dashboard-site-card-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 16px;
+  padding: 10px 16px;
+}
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  .dashboard-site-card-body
+  > div:first-child {
+  justify-content: flex-start;
+}
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  .dashboard-site-card-body
+  > .dashboard-site-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  .dashboard-site-actions
+  > a.dashboard-site-primary {
+  order: 9;
+  margin: 0 0 0 4px;
+}
+html body .admin-ui .dashboard-quota {
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: var(--a-muted);
+}
+html body .admin-ui .brand-muted {
+  font-size: 13px;
+  color: var(--a-muted);
+}
+html body .admin-ui .dashboard-zero {
+  padding: 48px 24px;
+  border: 0;
+  border-radius: var(--a-radius);
+  background: var(--a-surface);
+  box-shadow: var(--a-card);
+  text-align: center;
+}
+html body .admin-ui .dashboard-zero h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-zero p {
+  font-size: 13px;
+  color: var(--a-muted);
+}
+
+/* ---------- Phones and narrow windows: the sidebar becomes a drawer. ---------- */
+@media (max-width: 900px) {
+  html body .admin-ui {
+    grid-template-areas: "top" "main";
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html body .admin-ui .admin-topbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  html body .admin-ui .admin-menu-button {
+    display: grid;
+  }
+  html body .admin-ui .admin-logo {
+    width: auto;
+  }
+  html body .admin-ui .dashboard-sidebar {
+    position: fixed;
+    z-index: 25;
+    top: 56px;
+    bottom: 0;
+    left: 0;
+    width: min(290px, 84vw);
+    padding-top: 14px;
+    transform: translateX(-102%);
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: none;
+  }
+  html body .admin-ui.is-nav-open .dashboard-sidebar {
+    transform: none;
+    box-shadow: 12px 0 32px -12px rgba(0, 0, 0, 0.3);
+  }
+  html body .admin-ui .admin-scrim {
+    position: fixed;
+    z-index: 24;
+    inset: 56px 0 0;
+    display: block;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 20, 18, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  html body .admin-ui.is-nav-open .admin-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  html body .admin-ui .dashboard-subnav {
+    display: block;
+  }
+  html body .admin-ui .dashboard-crumbs {
+    display: none;
+  }
+  html body .admin-ui .admin-account .dashboard-account-email,
+  html body .admin-ui .admin-account > summary > svg {
+    display: none;
+  }
+  html body .admin-ui .admin-account > summary {
+    padding: 0 4px;
+  }
+  html body .admin-ui .admin-topbar-extra {
+    margin-left: auto;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  html body .admin-ui .admin-topbar-extra + .admin-account {
+    margin-left: 0;
+  }
+  html body .admin-ui .admin-topbar .admin-topbar-extra select {
+    max-width: 46vw;
+  }
+  html body .admin-ui .dashboard-main {
+    padding: 20px 16px 56px;
+  }
+  html body .admin-ui .commerce-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  html body .admin-ui .admin-logo .brand-wordmark {
+    display: none;
+  }
+  html body .admin-ui .dashboard-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  html body .admin-ui .dashboard-heading h1 {
+    font-size: 20px;
+  }
+  html body .admin-ui .dashboard-site-toolbar > div:last-child {
+    width: 100%;
+  }
+  html body .admin-ui .dashboard-search-wrap {
+    flex: 1;
+    width: auto;
+  }
+  html body .admin-ui .dashboard-site-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html body .admin-ui .dashboard-site-grid.is-list .dashboard-site-card-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html
+    body
+    .admin-ui
+    .dashboard-site-grid.is-list
+    .dashboard-site-card-body
+    > .dashboard-site-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 6px;
+  }
+  html body .admin-ui .commerce-stat {
+    padding: 12px 14px;
+  }
+  html body .admin-ui .commerce-stat > strong {
+    font-size: 18px;
+  }
+}
+html body .admin-ui .dashboard-heading-actions .commerce-badge {
+  text-transform: capitalize;
+}
+
+/* Store sections as a scrolling pill row on phones. */
+@media (max-width: 800px) {
+  html body .admin-ui .commerce-tabs {
+    gap: 4px;
+    margin: 0 -16px 16px;
+    padding: 0 16px 2px;
+  }
+  html body .admin-ui .commerce-tabs button {
+    height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--a-radius-control);
+    background: var(--a-surface);
+    box-shadow: inset 0 0 0 1px #d8dcd7;
+    color: var(--a-text);
+    font-size: 13px;
+    font-weight: 550;
+  }
+  html body .admin-ui .commerce-tabs button[aria-current] {
+    background: var(--a-ink);
+    box-shadow: none;
+    color: #fff;
+  }
+}
+@media (max-width: 560px) {
+  html body .admin-ui .dashboard-site-toolbar > div:last-child {
+    flex-wrap: wrap;
+  }
+  html body .admin-ui .dashboard-search-wrap {
+    flex: 1 0 100%;
+  }
+  html body .admin-ui .dashboard-site-toolbar select {
+    flex: 1;
+  }
+}

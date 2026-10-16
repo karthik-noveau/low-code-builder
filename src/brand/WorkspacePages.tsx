@@ -299,7 +299,6 @@ export function Dashboard() {
       contentRef={motionRef}
     >
       <PageHeading
-        kicker="YOUR WORKSPACE"
         title="Websites"
         description={
           session.account && !loading
@@ -308,7 +307,7 @@ export function Dashboard() {
         }
         action={
           <a className="brand-button" href="/new">
-            <Icon name="plus" size={17} /> Create website
+            <Icon name="plus" size={15} /> Create website
           </a>
         }
       />
@@ -627,8 +626,7 @@ export function NewWebsite() {
             <span>3 · Publish</span>
           </div>
           <PageHeading
-            kicker="NEW WEBSITE"
-            title="Create your next website."
+            title="Create a website"
             description="Choose a name and a starting point. You can change both later."
           />
           {(error || session.error) && (

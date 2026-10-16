@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { AppShell, PageHeading } from "../brand/AppShell";
+import { Icon } from "../studio/Icon";
 import { useSession } from "../brand/useSession";
 import { listSites, request, type Site } from "../cloud/client";
 import { commerceRequest, download, loadCommerce } from "./client";
@@ -403,67 +404,58 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             </div>
           </div>
           <div className="commerce-columns">
-            <section className="commerce-panel">
-              <h2>Get your store ready</h2>
-              <p className="commerce-muted">
-                Complete the buying journey locally before connecting live
-                services.
-              </p>
-              {[
+            <SetupGuide
+              steps={[
                 {
                   title: "Add your first product",
                   note: "Set prices, variants, and available stock.",
                   done: !!data.products.length,
                   to: "Products" as Section,
+                  action: "Add product",
                 },
                 {
                   title: "Set up your market",
                   note: "Review currency, delivery countries, shipping, and tax.",
                   done: data.settings.revision > 1,
                   to: "Markets" as Section,
+                  action: "Review market",
                 },
                 {
                   title: "Open your storefront",
                   note: "Enable the store in Markets and test a purchase.",
                   done: data.settings.enabled,
                   to: "Markets" as Section,
+                  action: "Open storefront",
                 },
                 {
                   title: "Complete a sandbox order",
                   note: "Test payment, fulfillment, and refund behavior.",
                   done: !!data.orders.length,
                   to: "Orders" as Section,
+                  action: "View orders",
                 },
-              ].map((s, i) => (
-                <div className="commerce-step" key={s.title}>
-                  <span>{s.done ? "✓" : i + 1}</span>
-                  <div>
-                    <strong>{s.title}</strong>
-                    <span className="commerce-muted">{s.note}</span>
-                  </div>
-                  <button className="commerce-link" onClick={() => go(s.to)}>
-                    Open
-                  </button>
-                </div>
-              ))}
-            </section>
+              ]}
+              go={go}
+            />
             <section className="commerce-panel">
               <h2>Buying journey</h2>
               <p className="commerce-muted">
                 Recorded server events from this local store.
               </p>
-              {[
-                ["Carts created", "cart.created"],
-                ["Checkouts started", "checkout.started"],
-                ["Payments completed", "order.paid"],
-                ["Orders fulfilled", "order.fulfilled"],
-                ["Orders refunded", "order.refunded"],
-              ].map(([label, key]) => (
-                <div className="commerce-step" key={key}>
-                  <div>{label}</div>
-                  <strong>{data.analytics.events[key] || 0}</strong>
-                </div>
-              ))}
+              <ul className="admin-metric-list">
+                {[
+                  ["Carts created", "cart.created"],
+                  ["Checkouts started", "checkout.started"],
+                  ["Payments completed", "order.paid"],
+                  ["Orders fulfilled", "order.fulfilled"],
+                  ["Orders refunded", "order.refunded"],
+                ].map(([label, key]) => (
+                  <li key={key}>
+                    {label}
+                    <strong>{data.analytics.events[key] || 0}</strong>
+                  </li>
+                ))}
+              </ul>
               <p className="commerce-footer-note">
                 Payments and notification emails use the local sandbox. No money
                 is collected and no emails leave this computer.
@@ -1405,7 +1397,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           {sectionButtons(true)}
         </nav>
         <PageHeading
-          kicker={(data?.settings.name || "Your store").toUpperCase()}
+          kicker={data?.settings.name || "Your store"}
           title={section}
           description={descriptions[section]}
           action={
@@ -1691,5 +1683,77 @@ function CampaignForm({
         Preview recipients & message
       </button>
     </form>
+  );
+}
+
+/** Shopify-style setup guide: progress, done steps checked, the next one open. */
+function SetupGuide({
+  steps,
+  go,
+}: {
+  steps: {
+    title: string;
+    note: string;
+    done: boolean;
+    to: Section;
+    action: string;
+  }[];
+  go: (section: Section) => void;
+}) {
+  const done = steps.filter((s) => s.done).length;
+  const next = steps.findIndex((s) => !s.done);
+  return (
+    <section className="commerce-panel admin-setup">
+      <header>
+        <h2>Get your store ready</h2>
+        <p className="commerce-muted">
+          {done === steps.length
+            ? "Your store is set up. Everything below can be revisited any time."
+            : "Complete the buying journey locally before connecting live services."}
+        </p>
+        <div className="admin-setup-progress">
+          <span
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin={0}
+            aria-valuemax={steps.length}
+            aria-valuenow={done}
+          >
+            <i style={{ width: `${(done / steps.length) * 100}%` }} />
+          </span>
+          {done} of {steps.length} tasks complete
+        </div>
+      </header>
+      <ol>
+        {steps.map((s, i) => (
+          <li
+            key={s.title}
+            className={`${s.done ? "is-done" : ""} ${i === next ? "is-next" : ""}`}
+          >
+            <span
+              className="admin-setup-check"
+              role="img"
+              aria-label={s.done ? "Done" : "To do"}
+            >
+              {s.done && <Icon name="check" size={13} />}
+            </span>
+            <div>
+              <strong>{s.title}</strong>
+              <p>{s.note}</p>
+              {i === next && (
+                <button className="commerce-button" onClick={() => go(s.to)}>
+                  {s.action}
+                </button>
+              )}
+            </div>
+            {i !== next && (
+              <button className="commerce-link" onClick={() => go(s.to)}>
+                Open
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

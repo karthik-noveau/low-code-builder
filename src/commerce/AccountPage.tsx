@@ -243,7 +243,6 @@ export function AccountPage() {
         ]}
       >
         <PageHeading
-          kicker="YOUR ACCOUNT"
           title="Account settings"
           description={session.account?.email}
         />

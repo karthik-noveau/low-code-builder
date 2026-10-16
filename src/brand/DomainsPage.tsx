@@ -194,7 +194,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
     >
       <div className="domain-page">
         <PageHeading
-          kicker="WEBSITE SETTINGS"
+          kicker={site?.name}
           title="Domains & publishing"
           description="Manage your domain, publish updates, and keep track of releases."
           action={
