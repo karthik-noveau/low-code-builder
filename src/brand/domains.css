@@ -86,8 +86,16 @@
   margin-bottom: 12px;
 }
 .domain-panel-heading > span {
-  font-size: 11px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ui-surface-alt);
+  color: var(--ui-muted);
+  font-size: 12px;
   white-space: nowrap;
+}
+.domain-panel-heading .brand-kicker {
+  text-transform: uppercase;
 }
 .domain-add {
   display: flex;

@@ -270,7 +270,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                       <span className="brand-kicker">{site.name}</span>
                       <h2>Connect your domain</h2>
                     </div>
-                    <span>{domains.length} / 2</span>
+                    <span>{domains.length} of 2 domains</span>
                   </div>
                   <p>
                     Use your root domain or a subdomain such as www. Add each

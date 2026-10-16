@@ -337,9 +337,8 @@ button.data-row:hover,
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 320px;
   max-height: min(70vh, 680px);
-  padding-top: 12px;
+  padding: 16px 24px 24px;
   overflow: auto;
 }
 .inbox-bar {
@@ -523,4 +522,11 @@ button.data-row:hover,
 }
 .online-payments .online-payments-error {
   color: var(--ui-danger, #b42318);
+}
+.inbox-list:empty {
+  display: none;
+}
+.online-payments small {
+  font-size: 12px;
+  line-height: 1.5;
 }
