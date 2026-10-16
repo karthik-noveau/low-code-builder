@@ -4723,3 +4723,57 @@ html body .dashboard-main .domain-page {
     max-width: none;
   }
 }
+
+/* Workspace site cards: a calm initial when there is no template art, and
+   one row of actions led by the editor. */
+.site-card-monogram {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1.6;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: hsl(var(--monogram-hue) 35% 32%);
+  background:
+    radial-gradient(
+      circle at 30% 20%,
+      hsl(var(--monogram-hue) 45% 94%),
+      transparent 60%
+    ),
+    hsl(var(--monogram-hue) 30% 88%);
+}
+html body .dashboard-site-card-body > .dashboard-site-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding-top: 14px;
+}
+html body .dashboard-site-actions > a {
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+html body .dashboard-site-actions > a:hover {
+  color: var(--ui-ink);
+}
+html body .dashboard-site-actions > a.dashboard-site-primary {
+  margin-right: auto;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--ui-accent);
+  color: white;
+  font-weight: 600;
+}
+html body .dashboard-site-actions > a.dashboard-site-primary:hover {
+  color: white;
+  filter: brightness(1.08);
+}
+/* Without the workspace box, the nav label sits right under the logo. */
+html body .dashboard-sidebar > .dashboard-nav-label {
+  margin-top: 32px;
+}

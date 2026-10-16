@@ -290,6 +290,7 @@ export function Dashboard() {
         ? a.name.localeCompare(b.name)
         : b.updatedAt.localeCompare(a.updatedAt),
     );
+  const published = sites.filter((site) => !!site.publishedRelease).length;
   return (
     <AppShell
       area="websites"
@@ -297,53 +298,20 @@ export function Dashboard() {
       siteCount={sites.length}
       contentRef={motionRef}
     >
-      <div className="dashboard-heading" data-reveal>
-        <div>
-          <span className="brand-kicker">YOUR CREATIVE SPACE</span>
-          <h1>
-            Websites{" "}
-            <span className="dashboard-heading-count">{sites.length}</span>
-          </h1>
-          <p>A home for everything you’re building.</p>
-        </div>
-        <a className="brand-button" href="/new">
-          <Icon name="plus" size={17} /> Create website
-        </a>
-      </div>
-      {session.account && !loading && !error && (
-        <section className="dashboard-overview" aria-label="Workspace overview">
-          <div>
-            <span>Your websites</span>
-            <strong>
-              {sites.length}
-              <small>of 10 spaces</small>
-            </strong>
-          </div>
-          <div>
-            <span>Published</span>
-            <strong>
-              {sites.filter((site) => !!site.publishedRelease).length}
-              <small>websites live</small>
-            </strong>
-          </div>
-          <div>
-            <span>In progress</span>
-            <strong>
-              {sites.filter((site) => !site.publishedRelease).length}
-              <small>draft websites</small>
-            </strong>
-          </div>
-          <a href="/templates">
-            <Icon name="panel" size={24} />
-            <span>
-              Something new?
-              <strong>
-                Find your next starting point <Arrow />
-              </strong>
-            </span>
+      <PageHeading
+        kicker="YOUR WORKSPACE"
+        title="Websites"
+        description={
+          session.account && !loading
+            ? `${sites.length} ${sites.length === 1 ? "website" : "websites"} · ${published} published · ${Math.max(0, 10 - sites.length)} spaces left`
+            : "A home for everything you’re building."
+        }
+        action={
+          <a className="brand-button" href="/new">
+            <Icon name="plus" size={17} /> Create website
           </a>
-        </section>
-      )}
+        }
+      />
       <div className={`dashboard-body ${session.account ? "" : "is-guest"}`}>
         <div className="dashboard-library">
           {(error || session.error) && (
@@ -497,7 +465,20 @@ export function Dashboard() {
                           href={`/editor?site=${site.id}`}
                           aria-label={`Edit ${site.name}`}
                         >
-                          <TemplateArt template={site.template || "blank"} />
+                          {site.template && site.template !== "blank" ? (
+                            <TemplateArt template={site.template} />
+                          ) : (
+                            // No template to show: a calm initial instead of
+                            // blank-page art that reads as an "add" button.
+                            <span
+                              className="site-card-monogram"
+                              style={{
+                                ["--monogram-hue" as string]: `${[...site.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360}`,
+                              }}
+                            >
+                              {site.name.trim()[0]?.toUpperCase() || "W"}
+                            </span>
+                          )}
                           <span className="site-card-preview-overlay">
                             Open editor <Arrow diagonal />
                           </span>
@@ -527,23 +508,22 @@ export function Dashboard() {
                             )}{" "}
                             <span>·</span> Version {site.version}
                           </p>
-                          <div>
-                            <a href={`/editor?site=${site.id}`}>
-                              Open editor <Arrow />
+                          <div className="dashboard-site-actions">
+                            <a
+                              className="dashboard-site-primary"
+                              href={`/editor?site=${site.id}`}
+                            >
+                              Open editor
                             </a>
-                            <a href={`/domains?site=${site.id}`}>
-                              Domains & publish <Arrow />
-                            </a>
-                            <a href={`/commerce?site=${site.id}`}>
-                              Manage store <Arrow />
-                            </a>
+                            <a href={`/domains?site=${site.id}`}>Domains</a>
+                            <a href={`/commerce?site=${site.id}`}>Store</a>
                             {site.url && (
                               <a
                                 href={site.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                Visit website <Arrow diagonal />
+                                Visit <Arrow diagonal />
                               </a>
                             )}
                           </div>
@@ -556,20 +536,6 @@ export function Dashboard() {
                         </div>
                       </article>
                     ))}
-                    {view === "grid" &&
-                      filter === "All websites" &&
-                      !search &&
-                      sites.length < 10 && (
-                        <a className="dashboard-create-card" href="/new">
-                          <span>
-                            <Icon name="plus" size={24} />
-                          </span>
-                          <strong>Make room for your next idea.</strong>
-                          <small>
-                            Create a website <Arrow />
-                          </small>
-                        </a>
-                      )}
                   </div>
                   {!visible.length && (
                     <p className="brand-muted">
@@ -585,23 +551,6 @@ export function Dashboard() {
             </>
           )}
         </div>
-        <section className="dashboard-guide-strip">
-          <div>
-            <span>
-              <Icon name="help" size={23} />
-            </span>
-            <div>
-              <h2>A little guidance</h2>
-              <p>Take your next step with confidence.</p>
-            </div>
-          </div>
-          <a href="/help/start">
-            Build your first website <Arrow />
-          </a>
-          <a href="/help/publish">
-            Publish on your domain <Arrow />
-          </a>
-        </section>
       </div>
     </AppShell>
   );

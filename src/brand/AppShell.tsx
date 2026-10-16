@@ -72,19 +72,6 @@ export function AppShell({
         <a href="/" aria-label="Forma home">
           <Brand />
         </a>
-        <div className="dashboard-workspace-label">
-          <span>
-            <Icon name="layers" size={16} />
-          </span>
-          <div>
-            Your workspace
-            <small>
-              {session.config.mode === "aws"
-                ? "Cloud workspace"
-                : "Local workspace"}
-            </small>
-          </div>
-        </div>
         <span className="dashboard-nav-label">WORKSPACE</span>
         <nav aria-label="Workspace navigation">
           {link(
@@ -112,15 +99,6 @@ export function AppShell({
           </a>
         </nav>
         <div className="dashboard-sidebar-bottom">
-          <div className="dashboard-sidebar-tip">
-            <span>
-              <Icon name="plus" size={16} /> A FRESH START
-            </span>
-            <p>An idea is all you need.</p>
-            <a href="/new?template=blank">
-              Start from scratch <Arrow />
-            </a>
-          </div>
           <a href="/help">
             Guides & help <Arrow diagonal />
           </a>
