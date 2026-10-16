@@ -59,11 +59,46 @@ const date = (value: string) =>
     day: "numeric",
     year: "numeric",
   });
-function Empty({ title, children }: { title: string; children: ReactNode }) {
+function Empty({
+  title,
+  icon = "sparkles",
+  children,
+}: {
+  title: string;
+  icon?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="commerce-panel commerce-empty">
+      <span className="commerce-empty-icon" aria-hidden="true">
+        <Icon name={icon} size={22} />
+      </span>
       <h2>{title}</h2>
       {children}
+    </div>
+  );
+}
+/** The search field at the top of a table card. */
+function SearchRow({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="commerce-index-search">
+      <Icon name="search" size={15} />
+      <input
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -677,13 +712,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         />
       ) : (
         <>
-          <div className="commerce-toolbar">
-            <input
-              aria-label="Search products"
-              placeholder="Search products, collections, or SKUs"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="commerce-toolbar is-actions">
             <div className="commerce-actions">
               <button
                 className="commerce-button secondary"
@@ -716,19 +745,34 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               )}
             </div>
           </div>
-          {!filteredProducts.length ? (
-            <Empty
-              title={
-                search ? "No matching products" : "Your catalog starts here"
-              }
-            >
+          {!data.products.length ? (
+            <Empty icon="store" title="Your catalog starts here">
               <p>
                 Add the things you sell, then set up their options, prices, and
                 stock.
               </p>
+              {canEdit && (
+                <button
+                  className="commerce-button"
+                  onClick={() => setEditingProduct("new")}
+                >
+                  Add product
+                </button>
+              )}
             </Empty>
           ) : (
-            <div className="commerce-panel">
+            <div className="commerce-panel commerce-index">
+              <SearchRow
+                label="Search products"
+                placeholder="Search products, collections, or SKUs"
+                value={search}
+                onChange={setSearch}
+              />
+              {!filteredProducts.length && (
+                <p className="commerce-index-empty">
+                  No products match “{search}”.
+                </p>
+              )}
               <Table
                 headings={["Product", "Status", "Inventory", "Price", ""]}
                 selection={productSelection}
@@ -989,29 +1033,44 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         </>
       ) : (
         <>
-          <div className="commerce-toolbar">
-            <input
-              placeholder="Search order or customer"
-              aria-label="Search orders"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button
-              className="commerce-button secondary"
-              onClick={() => exportOrders(data.orders)}
-            >
-              Export orders
-            </button>
-          </div>
+          {!!data.orders.length && (
+            <div className="commerce-toolbar is-actions">
+              <button
+                className="commerce-button secondary"
+                onClick={() => exportOrders(data.orders)}
+              >
+                Export orders
+              </button>
+            </div>
+          )}
           {!data.orders.length ? (
-            <Empty title="Ready for your first order">
+            <Empty icon="checklist" title="Ready for your first order">
               <p>
                 Orders appear here when a shopper starts checkout. Open the
                 storefront to try the complete flow.
               </p>
+              <a
+                className="commerce-button secondary"
+                href={`/store?site=${siteId}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open storefront ↗
+              </a>
             </Empty>
           ) : (
-            <div className="commerce-panel">
+            <div className="commerce-panel commerce-index">
+              <SearchRow
+                label="Search orders"
+                placeholder="Search order or customer"
+                value={search}
+                onChange={setSearch}
+              />
+              {!filteredOrders.length && (
+                <p className="commerce-index-empty">
+                  No orders match “{search}”.
+                </p>
+              )}
               <Table
                 headings={["Order", "Customer", "Status", "Total", ""]}
                 selection={orderSelection}
@@ -1075,7 +1134,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         </>
       );
     if (section === "Customers")
-      return (
+      return !data.customers.length ? (
+        <Empty icon="heart" title="No customers yet">
+          <p>Customer records are created after a successful payment.</p>
+        </Empty>
+      ) : (
         <div className="commerce-panel">
           <Table
             headings={["Customer", "Orders", "Net spend", "Last purchase"]}
@@ -1106,11 +1169,6 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </tr>
             ))}
           </Table>
-          {!data.customers.length && (
-            <p className="commerce-empty commerce-muted">
-              Customer records are created after a successful payment.
-            </p>
-          )}
         </div>
       );
     if (section === "Discounts")

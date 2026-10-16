@@ -757,3 +757,26 @@ details.commerce-panel[open] > summary {
     padding: 8px 12px;
   }
 }
+
+/* A closed store: one calm message, and a way in for the owner. */
+.store-closed {
+  max-width: 440px;
+  margin: 96px auto;
+  text-align: center;
+}
+.store-closed h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+.store-closed-owner {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-border);
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+.store-closed-owner a {
+  color: var(--ui-accent);
+  font-weight: 600;
+}

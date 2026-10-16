@@ -2552,129 +2552,6 @@
   margin-top: 20px;
   color: var(--ui-muted);
 }
-.brand-new-site {
-  display: grid;
-  grid-template-columns: 44% 56%;
-  max-width: 1300px;
-  margin: auto;
-  min-height: calc(100dvh - 90px);
-}
-.new-site-form {
-  padding: 50px 60px 50px 55px;
-}
-.new-site-form > .brand-text-link {
-  font-size: 10px;
-  color: var(--ui-muted);
-  margin-bottom: 43px;
-}
-.new-site-form > .brand-kicker {
-  font-size: 11px;
-  color: var(--ui-muted);
-}
-.new-site-form h1 {
-  font-size: 58px;
-  margin: 20px 0 18px;
-}
-.new-site-form > p {
-  font-size: 12px;
-  color: var(--ui-muted);
-  line-height: 1.8;
-  margin-bottom: 30px;
-}
-.new-site-options {
-  margin: 25px 0;
-  border: 0;
-  padding: 0;
-}
-.new-site-options legend {
-  font-size: 11px;
-  color: var(--ui-muted);
-  margin-bottom: 12px;
-}
-.new-site-options > label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid var(--ui-border);
-  margin-top: 8px;
-  border-radius: 4px;
-  padding: 11px 14px;
-  cursor: pointer;
-  position: relative;
-}
-.new-site-options input {
-  position: absolute;
-  opacity: 0;
-  width: 20px;
-  height: 20px;
-  right: 12px;
-}
-.new-site-options > label:has(input:checked) {
-  background: var(--ui-surface-alt);
-  border-color: var(--ui-subtle);
-}
-.new-site-options > label:has(input:focus-visible) {
-  outline: 2px solid #2760cf;
-  outline-offset: 2px;
-}
-.new-site-options > label > span:first-of-type {
-  font-size: 11px;
-  color: var(--ui-text);
-}
-.new-site-options small {
-  font-size: 11px;
-  display: inline;
-  color: var(--ui-muted);
-  margin-left: 10px;
-}
-.new-site-radio {
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 50%;
-}
-.new-site-options input:checked ~ .new-site-radio {
-  border: 4px solid var(--ui-muted);
-  background: white;
-}
-.new-site-form form > .brand-button {
-  width: 100%;
-  justify-content: space-between;
-  font-size: 12px;
-}
-.new-site-note {
-  font-size: 11px;
-  line-height: 1.9;
-  color: var(--ui-muted);
-  margin-top: 18px !important;
-}
-.new-site-preview {
-  background: var(--ui-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 65px 55px;
-  gap: 30px;
-}
-.new-site-preview > .brand-kicker {
-  font-size: 11px;
-  color: var(--ui-muted);
-}
-.new-site-preview > .template-art {
-  width: 100%;
-  max-width: 560px;
-  box-shadow: 0 25px 40px #35502215;
-  transform: rotate(-3deg);
-  border: 5px solid var(--ui-surface);
-}
-.new-site-preview > span:last-child {
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  color: var(--ui-muted);
-  margin-top: 10px;
-}
 .template-preview-page {
   background: var(--ui-border);
 }
@@ -3027,23 +2904,6 @@
   }
   .dashboard-welcome h2 {
     font-size: 31px;
-  }
-  .new-site-form {
-    padding: 40px;
-  }
-  .new-site-preview {
-    padding: 40px;
-  }
-  .new-site-form h1 {
-    font-size: 50px;
-  }
-  .new-site-options small {
-    display: block;
-    margin-left: 0;
-    margin-top: 3px;
-  }
-  .brand-new-site {
-    grid-template-columns: 46% 54%;
   }
   .brand-editor-dashboard {
     display: none;
@@ -3649,26 +3509,6 @@
   }
   .dashboard-guide-strip p {
     line-height: 1.7;
-  }
-  .brand-new-site {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
-  .new-site-form {
-    padding: 40px 30px;
-    max-width: 500px;
-    width: 100%;
-    margin: auto;
-  }
-  .new-site-preview {
-    padding: 45px 35px;
-  }
-  .new-site-preview > .template-art {
-    max-width: 490px;
-  }
-  .new-site-options small {
-    display: inline;
-    margin-left: 10px;
   }
   .template-preview-header {
     height: 70px;
@@ -4494,18 +4334,6 @@
     font-size: 11px;
     gap: 8px;
   }
-  .new-site-form {
-    padding: 34px 24px;
-  }
-  .new-site-form > .brand-text-link {
-    margin-bottom: 35px;
-  }
-  .new-site-form h1 {
-    font-size: 50px;
-  }
-  .new-site-preview {
-    padding: 40px 25px;
-  }
   .template-preview-header {
     padding-inline: 14px;
     gap: 12px;
@@ -4683,22 +4511,6 @@ html body .brand-app select {
     display: none;
   }
 }
-
-/* Pages inside the shell use its spacing, not their old standalone frames. */
-html body .dashboard-main .brand-new-site {
-  width: auto;
-  max-width: none;
-  min-height: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  gap: 40px;
-}
-html body .dashboard-main .new-site-form {
-  padding: 0;
-}
 html body .dashboard-main .domain-page {
   max-width: none;
   margin: 0;
@@ -4715,12 +4527,6 @@ html body .dashboard-main .domain-page {
   }
   .dashboard-header > div > button {
     white-space: nowrap;
-  }
-  html body .dashboard-main .brand-new-site {
-    gap: 28px;
-  }
-  html body .dashboard-main .new-site-form {
-    max-width: none;
   }
 }
 
@@ -4776,4 +4582,17 @@ html body .dashboard-site-actions > a.dashboard-site-primary:hover {
 /* Without the workspace box, the nav label sits right under the logo. */
 html body .dashboard-sidebar > .dashboard-nav-label {
   margin-top: 32px;
+}
+
+/* Sign-in: "Forgot password?" sits on the password label's line. */
+.brand-field-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand-field-row > .brand-text-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-accent);
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession } from "../brand/useSession";
 import { request } from "../cloud/client";
 import { Brand } from "../brand/Brand";
@@ -119,100 +119,70 @@ export function AccountPage() {
           {!inShell && (
             <p className="commerce-muted">{session.account.email}</p>
           )}
-          <form
-            className="commerce-panel commerce-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fields = new FormData(e.currentTarget);
-              void submit(
-                "/account/password",
-                {
-                  currentPassword: fields.get("current"),
-                  password: fields.get("password"),
-                },
-                true,
-              );
-            }}
+          <SettingsSection
+            title="Password"
+            description="Use at least 10 characters. Changing your password signs out all existing sessions."
           >
-            <h2>Change password</h2>
-            <label className="commerce-field">
-              Current password
-              <input
-                type="password"
-                name="current"
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <label className="commerce-field">
-              New password
-              <input
-                type="password"
-                name="password"
-                autoComplete="new-password"
-                minLength={10}
-                maxLength={128}
-                required
-              />
-            </label>
-            <p className="commerce-muted">
-              Changing your password signs out all existing sessions.
-            </p>
-            <button className="commerce-button" disabled={busy}>
-              Update password
-            </button>
-          </form>
-          <form
-            className="commerce-panel commerce-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fields = new FormData(e.currentTarget);
-              void submit(
-                "/account/logout-all",
-                { currentPassword: fields.get("current") },
-                true,
-              );
-            }}
-          >
-            <h2>Sign out every session</h2>
-            <label className="commerce-field">
-              Confirm your password
-              <input
-                name="current"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <button className="commerce-button secondary" disabled={busy}>
-              Sign out all sessions
-            </button>
-          </form>
-          <details className="commerce-panel">
-            <summary>Delete local account</summary>
             <form
-              className="commerce-form"
-              style={{ marginTop: 20 }}
+              className="commerce-panel commerce-form"
               onSubmit={(e) => {
                 e.preventDefault();
                 const fields = new FormData(e.currentTarget);
                 void submit(
-                  "/account/delete",
+                  "/account/password",
                   {
                     currentPassword: fields.get("current"),
-                    confirmation: fields.get("confirmation"),
+                    password: fields.get("password"),
                   },
                   true,
                 );
               }}
             >
-              <p className="commerce-muted">
-                Delete your owned websites first from Store management → Usage &
-                activity. Export any records you want to keep. Account deletion
-                revokes sessions and collaborator access.
-              </p>
               <label className="commerce-field">
                 Current password
+                <input
+                  type="password"
+                  name="current"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <label className="commerce-field">
+                New password
+                <input
+                  type="password"
+                  name="password"
+                  autoComplete="new-password"
+                  minLength={10}
+                  maxLength={128}
+                  required
+                />
+              </label>
+              <div className="commerce-form-actions">
+                <button className="commerce-button" disabled={busy}>
+                  Update password
+                </button>
+              </div>
+            </form>
+          </SettingsSection>
+          <SettingsSection
+            title="Sessions"
+            description="Signed in somewhere you don’t recognise? Sign out on every device, including this one."
+          >
+            <form
+              className="commerce-panel commerce-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fields = new FormData(e.currentTarget);
+                void submit(
+                  "/account/logout-all",
+                  { currentPassword: fields.get("current") },
+                  true,
+                );
+              }}
+            >
+              <label className="commerce-field">
+                Confirm your password
                 <input
                   name="current"
                   type="password"
@@ -220,15 +190,60 @@ export function AccountPage() {
                   required
                 />
               </label>
-              <label className="commerce-field">
-                Type DELETE {session.account.email}
-                <input name="confirmation" required autoComplete="off" />
-              </label>
-              <button className="commerce-button danger" disabled={busy}>
-                Permanently delete local account
-              </button>
+              <div className="commerce-form-actions">
+                <button className="commerce-button secondary" disabled={busy}>
+                  Sign out all sessions
+                </button>
+              </div>
             </form>
-          </details>
+          </SettingsSection>
+          <SettingsSection
+            title="Delete account"
+            description="Delete your owned websites first from Store management → Usage & activity, and export any records you want to keep."
+            danger
+          >
+            <details className="commerce-panel settings-danger">
+              <summary>Delete local account</summary>
+              <form
+                className="commerce-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fields = new FormData(e.currentTarget);
+                  void submit(
+                    "/account/delete",
+                    {
+                      currentPassword: fields.get("current"),
+                      confirmation: fields.get("confirmation"),
+                    },
+                    true,
+                  );
+                }}
+              >
+                <p className="commerce-muted">
+                  Account deletion revokes sessions and collaborator access.
+                  This can’t be undone.
+                </p>
+                <label className="commerce-field">
+                  Current password
+                  <input
+                    name="current"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                  />
+                </label>
+                <label className="commerce-field">
+                  Type DELETE {session.account.email}
+                  <input name="confirmation" required autoComplete="off" />
+                </label>
+                <div className="commerce-form-actions">
+                  <button className="commerce-button danger" disabled={busy}>
+                    Permanently delete local account
+                  </button>
+                </div>
+              </form>
+            </details>
+          </SettingsSection>
         </>
       )}
     </>
@@ -272,5 +287,28 @@ export function AccountPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+/** A settings row: what it is on the left, the card that changes it on the right. */
+function SettingsSection({
+  title,
+  description,
+  danger,
+  children,
+}: {
+  title: string;
+  description: string;
+  danger?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`settings-section ${danger ? "is-danger" : ""}`}>
+      <div className="settings-section-intro">
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      <div className="settings-section-body">{children}</div>
+    </section>
   );
 }

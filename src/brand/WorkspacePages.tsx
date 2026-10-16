@@ -99,11 +99,6 @@ export function AuthPage({
               ? "Create a workspace for your ideas, drafts, and websites."
               : "Manage your websites and pick up where you left off."}
           </p>
-          {!signup && !callback && (
-            <a className="brand-text-link" href="/account?forgot">
-              Forgot password?
-            </a>
-          )}
           {(error || session.error) && (
             <div className="brand-form-error" role="alert">
               {error || session.error}
@@ -152,7 +147,14 @@ export function AuthPage({
                     />
                   </label>
                   <div className="brand-field">
-                    <label htmlFor="workspace-password">Password</label>
+                    <span className="brand-field-row">
+                      <label htmlFor="workspace-password">Password</label>
+                      {!signup && !callback && (
+                        <a className="brand-text-link" href="/account?forgot">
+                          Forgot password?
+                        </a>
+                      )}
+                    </span>
                     <span className="brand-password-field">
                       <input
                         id="workspace-password"
@@ -615,86 +617,81 @@ export function NewWebsite() {
         { label: "New website" },
       ]}
     >
-      <section className="brand-new-site">
-        <div className="new-site-form">
-          <div
-            className="new-site-progress"
-            aria-label="Website creation steps"
-          >
-            <span aria-current="step">1 · Set up</span>
-            <span>2 · Make it yours</span>
-            <span>3 · Publish</span>
-          </div>
-          <PageHeading
-            title="Create a website"
-            description="Choose a name and a starting point. You can change both later."
-          />
-          {(error || session.error) && (
-            <div role="alert" className="brand-form-error">
-              {error || session.error}
-              {browserReady && (
-                <a href="/editor">Continue with your browser draft →</a>
-              )}
-            </div>
+      <PageHeading
+        title="Create a website"
+        description="Name it and pick a starting point. You can change both later."
+      />
+      {(error || session.error) && (
+        <div role="alert" className="brand-form-error new-site-error">
+          {error || session.error}
+          {browserReady && (
+            <a href="/editor">Continue with your browser draft →</a>
           )}
-          <form onSubmit={(event) => void create(event)}>
-            <label className="brand-field">
-              Website name
-              <input
-                autoFocus
-                name="site-name"
-                required
-                maxLength={120}
-                placeholder="e.g. Acme Studio"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </label>
-            <fieldset className="new-site-options">
-              <legend>Pick a starting point</legend>
-              {[
-                ...collections,
-                {
-                  id: "blank" as const,
-                  name: "A blank canvas",
-                  category: "Start fresh",
-                },
-              ].map((item) => (
-                <label key={item.id}>
-                  <input
-                    type="radio"
-                    name="template"
-                    value={item.id}
-                    checked={template === item.id}
-                    onChange={() => setTemplate(item.id)}
-                  />
-                  <span>
-                    {item.name}
-                    <small>{item.category}</small>
-                  </span>
-                  <span className="new-site-radio" />
-                </label>
-              ))}
-            </fieldset>
-            <button className="brand-button" disabled={busy || session.loading}>
-              {busy ? "Making room for your idea…" : "Create your website"}
-              <Arrow />
-            </button>
-            <p className="new-site-note">
-              {session.account
-                ? "Saved to your workspace. Ready to make your own."
-                : "Start in your browser. You can connect a workspace later."}
-              <br />
-              Your existing browser draft is kept as a recovery copy.
-            </p>
-          </form>
         </div>
-        <div className="new-site-preview">
-          <span className="brand-kicker">A GOOD PLACE TO BEGIN</span>
-          <TemplateArt template={template} eager />
-          <span>YOU BRING THE POINT OF VIEW.</span>
-        </div>
-      </section>
+      )}
+      <form className="new-site" onSubmit={(event) => void create(event)}>
+        <section className="commerce-panel new-site-name">
+          <label className="brand-field">
+            Website name
+            <input
+              autoFocus
+              name="site-name"
+              required
+              maxLength={120}
+              placeholder="e.g. Acme Studio"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+        </section>
+        <fieldset className="new-site-templates">
+          <legend>Starting point</legend>
+          <div className="new-site-grid">
+            {[
+              ...collections,
+              {
+                id: "blank" as const,
+                name: "Blank",
+                category: "Start from an empty page",
+              },
+            ].map((item) => (
+              <label
+                key={item.id}
+                className={template === item.id ? "is-selected" : ""}
+              >
+                <input
+                  type="radio"
+                  name="template"
+                  value={item.id}
+                  checked={template === item.id}
+                  onChange={() => setTemplate(item.id)}
+                />
+                <span className="new-site-thumb">
+                  <TemplateArt template={item.id} eager />
+                </span>
+                <span className="new-site-caption">
+                  <strong>{item.name}</strong>
+                  <small>{item.category}</small>
+                </span>
+                <span className="new-site-check" aria-hidden="true">
+                  <Icon name="check" size={13} />
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <footer className="new-site-footer">
+          <p>
+            {session.account
+              ? "Saved to your workspace."
+              : "Starts in your browser. You can connect a workspace later."}{" "}
+            Your current browser draft is kept as a recovery copy.
+          </p>
+          <button className="brand-button" disabled={busy || session.loading}>
+            {busy ? "Creating…" : "Create your website"}
+          </button>
+        </footer>
+      </form>
     </AppShell>
   );
 }

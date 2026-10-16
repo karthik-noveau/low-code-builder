@@ -269,7 +269,6 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                 <section className="domain-panel">
                   <div className="domain-panel-heading">
                     <div>
-                      <span className="brand-kicker">{site.name}</span>
                       <h2>Connect your domain</h2>
                     </div>
                     <span>{domains.length} of 2 domains</span>
@@ -536,14 +535,18 @@ export function DomainsPage({ siteId }: { siteId: string }) {
               </div>
               <aside className="domain-publishing">
                 <section className="domain-panel">
-                  <span className="brand-kicker">PUBLISHING</span>
-                  <h2>
-                    {publishing
-                      ? "Publishing your website…"
-                      : site.publishedRelease
-                        ? "Your website is published."
-                        : "Ready to publish."}
-                  </h2>
+                  <div className="domain-panel-heading">
+                    <h2>Publishing</h2>
+                    <span
+                      className={`dashboard-site-status ${site.publishedRelease && !publishing ? "is-live" : ""}`}
+                    >
+                      {publishing
+                        ? "Publishing…"
+                        : site.publishedRelease
+                          ? "Published"
+                          : "Not published"}
+                    </span>
+                  </div>
                   <p>
                     Publishing uses saved draft version {site.version}. Save
                     recent editor changes before publishing here.
@@ -681,7 +684,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     )}
                   </section>
                 )}
-                <section className="domain-help">
+                <section className="domain-panel domain-help">
                   <h3>A little help with DNS</h3>
                   <p>
                     Some providers add the zone name automatically. Enter only

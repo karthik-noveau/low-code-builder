@@ -1254,15 +1254,6 @@
   transform: none;
   border-radius: 3px;
 }
-.new-site-form h1 {
-  font-size: 40px;
-}
-.new-site-form > p {
-  font-size: 14px;
-}
-.new-site-preview {
-  background: var(--ui-canvas);
-}
 .template-preview-devices > button[aria-pressed="true"] {
   background: var(--ui-accent-soft);
   color: var(--ui-accent);

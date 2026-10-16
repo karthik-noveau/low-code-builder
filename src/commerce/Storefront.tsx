@@ -933,7 +933,7 @@ export function Storefront({ siteId }: { siteId: string }) {
             </button>
           </nav>
         </header>
-        {error && (
+        {error && (data || unsubscribeToken) && (
           <div
             className="commerce-notice error"
             role="alert"
@@ -986,10 +986,19 @@ export function Storefront({ siteId }: { siteId: string }) {
             Opening the store…
           </p>
         ) : !data ? (
-          <div className="commerce-empty">
-            <h1>This store is not open.</h1>
-            <p className="commerce-muted">Please try again later.</p>
-            <a href="/workspace">Back to workspace</a>
+          <div className="commerce-empty store-closed">
+            <h1>This store isn’t open yet</h1>
+            <p className="commerce-muted">
+              {error && !/not open/i.test(error)
+                ? error
+                : "Please check back soon."}
+            </p>
+            <p className="store-closed-owner">
+              Own this store?{" "}
+              <a href={`/commerce?site=${encodeURIComponent(siteId)}`}>
+                Open it from Store management → Markets
+              </a>
+            </p>
           </div>
         ) : (
           <main>{content()}</main>
