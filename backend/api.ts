@@ -21,6 +21,7 @@ import {
 import { publicSite } from "./types";
 import { commerceApi } from "./commerce-api";
 import { inboxPublic, listRequests, updateRequest } from "./inbox";
+import { connect, disconnect, getConnection } from "./payments";
 import { allow, sharedSites, siteAccess } from "./access";
 import { deleteLocalSite } from "./lifecycle";
 
@@ -73,7 +74,10 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
             ? "read"
             : path.endsWith("/draft")
               ? "edit"
-              : path.includes("/domains") || path.endsWith("/delete")
+              : path.includes("/domains") ||
+                  path.endsWith("/delete") ||
+                  // Where a site's money goes is the owner's decision.
+                  /^\/sites\/[^/]+\/payments(\/|$)/.test(path)
                 ? "owner"
                 : "manage",
       );
@@ -95,6 +99,22 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     };
     const show = (site: Parameters<typeof publicSite>[0]) =>
       publicSite(site, config.siteOrigin);
+    const paymentsMatch = /^\/sites\/([^/]+)\/payments(\/disconnect)?$/.exec(
+      path,
+    );
+    if (paymentsMatch) {
+      const [, siteId, off] = paymentsMatch;
+      insist(idPattern.test(siteId), 404, "Not found.");
+      if (!off && method === "GET")
+        return jsonResponse({ connection: await getConnection(siteId) });
+      if (!off && method === "POST")
+        return jsonResponse({ connection: await connect(siteId, data()) });
+      if (off && method === "POST") {
+        await disconnect(siteId);
+        return jsonResponse({ connection: null });
+      }
+      throw new HttpError(405, "Method not allowed.");
+    }
     const inboxMatch = /^\/sites\/([^/]+)\/inbox(?:\/([^/]+))?$/.exec(path);
     if (inboxMatch) {
       const [, siteId, requestId] = inboxMatch;

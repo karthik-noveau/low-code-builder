@@ -129,6 +129,16 @@ export interface InboxRequest {
     currency: string;
     reference: string;
     status: "unpaid" | "paid";
+    /** A checkout in the owner's Stripe or Razorpay account. */
+    checkout?: {
+      provider: "stripe" | "razorpay";
+      id: string;
+      url: string;
+      createdAt: string;
+    };
+    /** Who marked it paid: the provider confirmed it, or the owner did. */
+    confirmedBy?: "provider" | "owner";
+    paidAt?: string;
   };
 }
 const emailPattern = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;

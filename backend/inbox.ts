@@ -4,6 +4,12 @@ import { config as settings, HttpError, idPattern, insist } from "./config";
 import { event, key, now, put, read, transact } from "./commerce-data";
 import { db, getItem, putItem } from "./database";
 import { readObject, writeObject } from "./objects";
+import {
+  checkoutPaid,
+  createCheckout,
+  currencyCode,
+  getConnection,
+} from "./payments";
 import type { ApiRequest, ApiResponse } from "./api";
 import type { Site } from "./types";
 import { itemTitle, publishedItems } from "../src/studio/collections";
@@ -59,10 +65,10 @@ export function inboxConfig(project: Project): InboxConfig {
         id: collection.id,
         name: collection.name.slice(0, 120),
         kind: collection.request.kind,
+        // Whether there's a way to pay is decided per request: online payments
+        // are connected outside the project.
         collect:
-          !!payments &&
-          !!collection.request.collect &&
-          canCollect(collection.request.kind),
+          !!collection.request.collect && canCollect(collection.request.kind),
         currency: collection.currency,
         items: {},
       };
@@ -209,7 +215,10 @@ export async function receiveRequest(
     status: "new",
     createdAt,
   };
-  if (collection.collect && live.value.payments)
+  if (
+    collection.collect &&
+    (live.value.payments || (await getConnection(siteId)))
+  )
     item.payment = {
       amount: requestAmount(collection.kind, price, parsed.fields),
       currency: (collection.currency ?? "").slice(0, 8),
@@ -247,35 +256,153 @@ export const paymentPageUrl = (siteId: string, requestId: string) =>
 const requestIdPattern = /^\d{13}-[a-f0-9-]{36}$/;
 const safeAccent = (value?: string) =>
   value && /^#[\da-f]{6}$/i.test(value) ? value : "#1c1c1c";
+type StoredRequest = InboxRequest & { revision: number };
+/** Marks a request paid when its provider checkout was paid in full. */
+async function confirmWithProvider(
+  siteId: string,
+  request: StoredRequest,
+): Promise<StoredRequest> {
+  const payment = request.payment;
+  if (
+    !payment?.checkout ||
+    payment.status === "paid" ||
+    payment.amount === null ||
+    !(await checkoutPaid(siteId, payment.checkout, payment.amount))
+  )
+    return request;
+  const next: StoredRequest = {
+    ...request,
+    payment: {
+      ...payment,
+      status: "paid",
+      confirmedBy: "provider",
+      paidAt: now(),
+    },
+    revision: request.revision + 1,
+  };
+  try {
+    await transact([
+      put(siteId, "REQUEST", request.id, next, request.revision),
+      event(siteId, "request.paid"),
+    ]);
+    return next;
+  } catch (error) {
+    // Someone else updated it at the same time; the stored copy wins.
+    if (error instanceof HttpError && error.status === 409)
+      return (await read<StoredRequest>(siteId, "REQUEST", request.id))!;
+    throw error;
+  }
+}
+/** Sends the visitor to a checkout for the exact total, reusing an open one. */
+async function startCheckout(siteId: string, requestId: string) {
+  insist(
+    idPattern.test(siteId) && requestIdPattern.test(requestId),
+    404,
+    "This payment page doesn’t exist.",
+  );
+  const request = await read<StoredRequest>(siteId, "REQUEST", requestId);
+  const payment = request?.payment;
+  insist(payment, 404, "This payment page doesn’t exist.");
+  const back = paymentPageUrl(siteId, requestId);
+  const redirect = (location: string): ApiResponse => ({
+    status: 303,
+    headers: {
+      location,
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    },
+    body: Buffer.alloc(0),
+  });
+  if (payment.status === "paid" || payment.amount === null)
+    return redirect(back);
+  const fresh =
+    payment.checkout &&
+    Date.now() - Date.parse(payment.checkout.createdAt) < 20 * 3600 * 1000;
+  if (fresh && payment.checkout) return redirect(payment.checkout.url);
+  const checkout = await createCheckout(siteId, {
+    requestId,
+    reference: payment.reference,
+    amount: payment.amount,
+    currency: payment.currency,
+    description: `${request.itemTitle} · ${payment.reference}`.slice(0, 200),
+    name: request.name,
+    email: request.email,
+    returnUrl: back,
+  });
+  insist(
+    checkout,
+    409,
+    "Online payment isn’t available for this request. Use another option on the previous page.",
+  );
+  await transact([
+    put(
+      siteId,
+      "REQUEST",
+      requestId,
+      {
+        ...request,
+        payment: { ...payment, checkout },
+        revision: request.revision + 1,
+      },
+      request.revision,
+    ),
+  ]);
+  return redirect(checkout.url);
+}
 async function paymentPage(siteId: string, requestId: string) {
   insist(
     idPattern.test(siteId) && requestIdPattern.test(requestId),
     404,
     "This payment page doesn’t exist.",
   );
-  const request = await read<InboxRequest>(siteId, "REQUEST", requestId);
+  let request = await read<InboxRequest & { revision: number }>(
+    siteId,
+    "REQUEST",
+    requestId,
+  );
   insist(request?.payment, 404, "This payment page doesn’t exist.");
+  // Coming back from checkout: ask the provider rather than trusting the URL.
+  request = await confirmWithProvider(siteId, request).catch(() => request!);
   const live = await liveConfig(siteId);
   const payments = live?.value.payments;
   const name = live?.value.site?.name || "the website";
   const accent = safeAccent(live?.value.site?.accent);
   const back = await siteUrl(live?.owner ?? "", siteId).catch(() => "");
-  const { amount, currency, reference, status } = request.payment;
+  const { amount, currency, reference, status, confirmedBy } = request.payment!;
+  const connection =
+    status === "unpaid" && amount !== null && currencyCode(currency)
+      ? await getConnection(siteId)
+      : null;
   const total = amount === null ? "" : formatAmount(amount, currency);
   const noun = REQUEST_KINDS[request.kind].noun.toLowerCase();
   const blocks: string[] = [];
   if (status === "paid")
     blocks.push(
-      `<p class="done">${escape(name)} has marked this ${escape(noun)} as paid. Thank you.</p>`,
+      confirmedBy === "provider"
+        ? `<p class="done">Your payment was received and ${escape(name)} has been notified. Thank you.</p>`
+        : `<p class="done">${escape(name)} has marked this ${escape(noun)} as paid. Thank you.</p>`,
     );
-  else if (!payments)
+  else if (!payments && !connection)
     blocks.push(`<p>${escape(name)} will contact you about payment.</p>`);
-  else {
+  if (status === "unpaid" && connection)
+    // A link, not a form: CSP form-action would block the redirect to the provider.
+    blocks.push(
+      `<section class="primary"><h2>Pay now</h2><a class="button" href="${escape(`${paymentPageUrl(siteId, requestId)}/checkout`)}" rel="noreferrer">Pay ${escape(total)} ${connection.provider === "stripe" ? "by card" : "by card, UPI or netbanking"}</a><p>Secure checkout by ${connection.provider === "stripe" ? "Stripe" : "Razorpay"}. ${escape(name)} sees your payment straight away.</p></section>`,
+    );
+  if (
+    status === "unpaid" &&
+    connection &&
+    (payments?.upi || payments?.bank || payments?.inPerson)
+  )
+    blocks.push(
+      `<p>Or pay another way and add the reference <strong>${escape(reference)}</strong> so ${escape(name)} can match your payment.</p>`,
+    );
+  if (status === "unpaid" && payments) {
     if (payments.upi)
       blocks.push(
         `<section><h2>UPI</h2><a class="button" href="${escape(upiLink(payments, amount, currency, reference))}">Pay with a UPI app</a><p>Or pay to UPI ID <strong>${escape(payments.upi)}</strong>${payments.payee ? ` (${escape(payments.payee)})` : ""}.</p></section>`,
       );
-    if (payments.link)
+    if (payments.link && !connection)
       blocks.push(
         `<section><h2>Pay online</h2><a class="button" href="${escape(payments.link)}" rel="noopener noreferrer">Open the payment page</a><p>Enter ${total ? `${escape(total)} and ` : ""}the reference if asked.</p></section>`,
       );
@@ -290,6 +417,13 @@ async function paymentPage(siteId: string, requestId: string) {
     if (payments.note)
       blocks.push(`<p class="muted">${escape(payments.note)}</p>`);
   }
+  const matchNote = `add the reference <strong>${escape(reference)}</strong> so ${escape(name)} can match your payment.`;
+  const instructions =
+    status === "paid" || !payments
+      ? ""
+      : connection
+        ? ""
+        : `<p>Pay ${total ? escape(total) : "the amount"} using one of these options and ${matchNote}</p>`;
   const heading =
     status === "paid"
       ? "Payment received"
@@ -304,12 +438,13 @@ h2{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin:0 0 .5re
 .total{font-size:1.4rem}
 section{background:#fff;border:1px solid #e7e5e4;border-radius:12px;padding:1rem 1.25rem;margin:0 0 .75rem}
 section p{margin:.5rem 0 0}
+.primary{border-color:var(--accent)}
 .button{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;padding:.65rem 1.1rem;border-radius:8px}
 .pre{white-space:pre-wrap}
 .muted{color:#666;font-size:.9rem}
 .done{background:#ecfdf3;border-radius:12px;padding:1rem 1.25rem}
 .back{display:inline-block;margin-top:1.5rem;color:inherit}
-</style></head><body><h1>${escape(heading)}</h1><p class="muted">Your ${escape(noun)} for ${escape(request.itemTitle)} was sent to ${escape(name)}.</p><dl class="summary">${total ? `<dt>Amount</dt><dd class="total">${escape(total)}</dd>` : ""}<dt>Reference</dt><dd>${escape(reference)}</dd></dl>${status === "paid" || !payments ? "" : `<p>Pay ${total ? escape(total) : "the amount"} using one of these options and add the reference <strong>${escape(reference)}</strong> so ${escape(name)} can match your payment.</p>`}${blocks.join("")}${back ? `<a class="back" href="${escape(back)}">← Back to ${escape(name)}</a>` : ""}</body></html>`;
+</style></head><body><h1>${escape(heading)}</h1><p class="muted">Your ${escape(noun)} for ${escape(request.itemTitle)} was sent to ${escape(name)}.</p><dl class="summary">${total ? `<dt>Amount</dt><dd class="total">${escape(total)}</dd>` : ""}<dt>Reference</dt><dd>${escape(reference)}</dd></dl>${instructions}${blocks.join("")}${back ? `<a class="back" href="${escape(back)}">← Back to ${escape(name)}</a>` : ""}</body></html>`;
   return {
     status: 200,
     headers: {
@@ -328,10 +463,13 @@ section p{margin:.5rem 0 0}
 export async function inboxPublic(
   request: ApiRequest,
 ): Promise<ApiResponse | undefined> {
-  const pay = /^\/inbox\/([^/]+)\/requests\/([^/]+)$/.exec(request.path);
+  const pay = /^\/inbox\/([^/]+)\/requests\/([^/]+)(\/checkout)?$/.exec(
+    request.path,
+  );
   if (pay) {
     try {
       insist(request.method === "GET", 405, "Use GET.");
+      if (pay[3]) return await startCheckout(pay[1], pay[2]);
       return await paymentPage(pay[1], pay[2]);
     } catch (error) {
       if (!(error instanceof HttpError)) throw error;
@@ -429,6 +567,7 @@ export async function updateRequest(
     id,
   );
   insist(current, 404, "Request not found.");
+  if (input.sync === true) return confirmWithProvider(siteId, current);
   const next = { ...current, revision: current.revision + 1 };
   if (input.payment !== undefined) {
     insist(
@@ -437,7 +576,20 @@ export async function updateRequest(
       "Choose paid or unpaid.",
     );
     insist(current.payment, 422, "This request didn’t ask for payment.");
-    next.payment = { ...current.payment, status: input.payment };
+    next.payment =
+      input.payment === "paid"
+        ? {
+            ...current.payment,
+            status: "paid",
+            confirmedBy: "owner",
+            paidAt: now(),
+          }
+        : {
+            ...current.payment,
+            status: "unpaid",
+            confirmedBy: undefined,
+            paidAt: undefined,
+          };
   } else {
     insist(
       input.status === "new" || input.status === "done",

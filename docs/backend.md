@@ -72,7 +72,18 @@ Owners list how visitors can pay in **Settings → Get paid** (also under Data �
 - Publishing records each item's unit price and the usable payment options in the release's inbox config. Badly formatted UPI IDs or links are left out, and the publish review warns about them, about missing options and about UPI with a non-rupee currency.
 - A request then stores `payment {amount, currency, reference, status}`. The amount is price × quantity for orders, × guests for RSVPs, and the price for bookings. Form posts get a `303` to `GET /inbox/{siteId}/requests/{requestId}`, a page on the API origin showing the total, the reference and the options (a `upi://pay` link fills in the amount in rupees). The unguessable request ID is the capability; the page shows no visitor details and sends `Referrer-Policy: no-referrer`.
 - Editors mark requests paid or unpaid with `POST /sites/{id}/inbox/{requestId}` `{payment: "paid" | "unpaid"}`; the Inbox has an **Unpaid** view. Once marked paid, the visitor's page shows "Payment received".
-- Connecting a provider account for automatic confirmation (Stripe Connect, Razorpay Route) is not built yet.
+
+### Card payments through the owner's own account
+
+The site owner can connect their own Stripe or Razorpay account under **Get paid → Card payments** (`backend/payments.ts`). Money goes to their account; Forma takes no fee and never handles card data.
+
+- `POST /sites/{id}/payments` `{provider: "stripe", secret}` or `{provider: "razorpay", keyId, secret}` checks the key with the provider (Stripe: list Checkout Sessions, so a restricted key with **Checkout Sessions: Write** is enough; Razorpay: list payment links) and stores it encrypted with AES-256-GCM. `GET` returns only the provider, test/live mode and the last four characters. `POST /sites/{id}/payments/disconnect` removes it. These routes need the **owner** role.
+- The key is encrypted with `PAYMENT_ENCRYPTION_KEY`. In AWS that comes from a generated Secrets Manager secret (`PaymentKey`, retained on stack deletion); locally a fixed development key is used.
+- When connected, the payment page shows **Pay now**. `GET /inbox/{siteId}/requests/{requestId}/checkout` creates a Stripe Checkout Session or a Razorpay payment link for the exact total (reused for 20 hours, so retries don't create more), then redirects to it. It's a link, not a form, because the page's CSP blocks form redirects.
+- There are no webhooks. When the visitor returns to the payment page, or the owner presses **Check payment** in the Inbox (`POST /sites/{id}/inbox/{requestId}` `{sync: true}`), the server asks the provider. A request is marked paid (`confirmedBy: "provider"`) only when the provider reports it paid in full.
+- The currency comes from the collection's symbol (₹ → INR, $ → USD, € → EUR, £ → GBP, or a three-letter code). Unknown symbols fall back to the other payment options.
+- Provider base URLs can be overridden with `STRIPE_API_BASE` and `RAZORPAY_API_BASE`. `tests/integration/online-payments.test.ts` runs against a fake of both: start the stack with `STRIPE_API_BASE=http://127.0.0.1:8799/stripe RAZORPAY_API_BASE=http://127.0.0.1:8799/razorpay` and run the tests with `TEST_FAKE_PROVIDERS=1`.
+- Not built yet: refunds, and Stripe Connect or Razorpay partner onboarding (OAuth instead of pasted keys).
 - Published pages allow `form-action 'self' https:` (plus the local API origin in local mode).
 
 ## Consistency and limits

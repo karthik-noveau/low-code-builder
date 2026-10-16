@@ -505,3 +505,22 @@ button.data-row:hover,
 .data-payments[open] summary {
   margin-bottom: 10px;
 }
+
+.online-payments,
+.online-payments form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.online-payments {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+.online-payments small {
+  color: var(--ui-muted);
+}
+.online-payments .online-payments-error {
+  color: var(--ui-danger, #b42318);
+}

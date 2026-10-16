@@ -611,6 +611,10 @@ export function template() {
     KVS_ARN: get("Routes", "Arn"),
     SITE_ORIGIN: sub("https://${SiteDistribution.DomainName}"),
     API_ORIGIN: get("Api", "ApiEndpoint"),
+    // Encrypts owners' Stripe/Razorpay keys at rest.
+    PAYMENT_ENCRYPTION_KEY: sub(
+      "{{resolve:secretsmanager:${PaymentKey}:SecretString}}",
+    ),
     ASSET_DIR: "/var/task/images",
   };
   const fn = (worker) =>
@@ -683,6 +687,9 @@ export function template() {
     "POST /sites/{id}/unpublish",
     "GET /sites/{id}/inbox",
     "POST /sites/{id}/inbox/{requestId}",
+    "GET /sites/{id}/payments",
+    "POST /sites/{id}/payments",
+    "POST /sites/{id}/payments/disconnect",
   ].entries()) {
     R[`Route${index}`] = resource("AWS::ApiGatewayV2::Route", {
       ApiId: ref("Api"),
@@ -706,6 +713,21 @@ export function template() {
     Target: sub("integrations/${Integration}"),
     AuthorizationType: "NONE",
   });
+  // Retained: losing it would make every stored provider key unreadable.
+  R.PaymentKey = resource(
+    "AWS::SecretsManager::Secret",
+    {
+      Description: "Encrypts site owners' payment provider keys",
+      GenerateSecretString: { PasswordLength: 64, ExcludePunctuation: true },
+    },
+    { DeletionPolicy: "Retain", UpdateReplacePolicy: "Retain" },
+  );
+  R.InboxCheckoutRoute = resource("AWS::ApiGatewayV2::Route", {
+    ApiId: ref("Api"),
+    RouteKey: "GET /inbox/{id}/requests/{requestId}/checkout",
+    Target: sub("integrations/${Integration}"),
+    AuthorizationType: "NONE",
+  });
   // After an order, booking or RSVP, visitors are sent here to see how to pay.
   R.InboxPaymentRoute = resource("AWS::ApiGatewayV2::Route", {
     ApiId: ref("Api"),
@@ -724,6 +746,10 @@ export function template() {
       "GET /inbox/{id}/requests/{requestId}": {
         ThrottlingBurstLimit: 5,
         ThrottlingRateLimit: 2,
+      },
+      "GET /inbox/{id}/requests/{requestId}/checkout": {
+        ThrottlingBurstLimit: 2,
+        ThrottlingRateLimit: 1,
       },
     },
   });

@@ -20,8 +20,14 @@ export interface PaymentSettings {
   /** How to pay in person, e.g. "Pay at the counter"; empty hides it. */
   inPerson: string;
   note: string;
+  /**
+   * The owner's connected Stripe or Razorpay account, if any. Only a hint for
+   * the editor and pages: the server checks the real connection.
+   */
+  online?: "" | "stripe" | "razorpay";
 }
-export const PAYMENT_LIMITS: Record<keyof PaymentSettings, number> = {
+type TextSetting = Exclude<keyof PaymentSettings, "online">;
+export const PAYMENT_LIMITS: Record<TextSetting, number> = {
   upi: 100,
   payee: 80,
   bank: 600,
@@ -47,8 +53,12 @@ const linkPattern = /^https:\/\/[^\s<>"']{4,}$/;
 export function validatePayments(value: unknown): value is PaymentSettings {
   if (!value || typeof value !== "object") return false;
   const p = value as Record<string, unknown>;
-  return (Object.keys(PAYMENT_LIMITS) as (keyof PaymentSettings)[]).every(
-    (k) => typeof p[k] === "string" && p[k].length <= PAYMENT_LIMITS[k],
+  return (
+    (Object.keys(PAYMENT_LIMITS) as TextSetting[]).every(
+      (k) => typeof p[k] === "string" && p[k].length <= PAYMENT_LIMITS[k],
+    ) &&
+    (p.online === undefined ||
+      ["", "stripe", "razorpay"].includes(p.online as string))
   );
 }
 /** What's wrong with the settings, keyed by field, in words for the owner. */
@@ -73,8 +83,13 @@ export function usablePayments(p?: PaymentSettings): PaymentSettings | null {
     link: problems.link ? "" : p.link.trim(),
     inPerson: p.inPerson.trim(),
     note: p.note.trim(),
+    online: p.online ?? "",
   };
-  return usable.upi || usable.bank || usable.link || usable.inPerson
+  return usable.upi ||
+    usable.bank ||
+    usable.link ||
+    usable.inPerson ||
+    usable.online
     ? usable
     : null;
 }

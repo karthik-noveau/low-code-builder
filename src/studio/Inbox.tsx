@@ -64,7 +64,10 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   }, [siteId, fetchRequests]);
   const mark = async (
     r: InboxRequest,
-    change: { status: InboxRequest["status"] } | { payment: "paid" | "unpaid" },
+    change:
+      | { status: InboxRequest["status"] }
+      | { payment: "paid" | "unpaid" }
+      | { sync: true },
   ) => {
     try {
       const { request } = await cloud.request<{ request: InboxRequest }>(
@@ -208,6 +211,13 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                             <dd>
                               {price(r) || "Amount not set"} · reference{" "}
                               <strong>{r.payment.reference}</strong>
+                              {r.payment.status === "paid" &&
+                                (r.payment.confirmedBy === "provider"
+                                  ? " · paid online"
+                                  : " · marked paid")}
+                              {r.payment.status === "unpaid" &&
+                                r.payment.checkout &&
+                                ` · checkout started with ${r.payment.checkout.provider === "stripe" ? "Stripe" : "Razorpay"}`}
                             </dd>
                           </div>
                         )}
@@ -228,6 +238,15 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                           <Icon name="send" size={14} />
                           Reply
                         </a>
+                        {r.payment?.status === "unpaid" &&
+                          r.payment.checkout && (
+                            <button
+                              className="subtle-button"
+                              onClick={() => void mark(r, { sync: true })}
+                            >
+                              Check payment
+                            </button>
+                          )}
                         {r.payment && (
                           <button
                             className="subtle-button"

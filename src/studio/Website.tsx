@@ -151,6 +151,7 @@ function RequestForm({
     ? [
         usable.upi && "UPI",
         usable.bank && "bank transfer",
+        usable.online && "card",
         usable.link && "online",
         usable.inPerson && "in person",
       ].filter(Boolean)

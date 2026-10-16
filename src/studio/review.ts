@@ -135,7 +135,7 @@ export function reviewProject(project: Project): ReviewItem[] {
     issues.push({
       id: "payments-missing",
       title: "Add a way to get paid",
-      detail: `${paying.map((c) => c.name).join(", ")} ask visitors to pay, but Settings → Get paid has no usable UPI ID, payment link, bank details or in-person option.`,
+      detail: `${paying.map((c) => c.name).join(", ")} ask visitors to pay, but Settings → Get paid has no card payments, UPI ID, payment link, bank details or in-person option.`,
       page: project.pages[0].id,
       kind: "forms",
     });
