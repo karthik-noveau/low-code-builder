@@ -157,7 +157,7 @@
   background: var(--canvas-highlight);
   color: var(--ui-surface);
   font:
-    500 12px/1.25 "DM Sans",
+    500 12px/1.25 var(--ui-font),
     sans-serif;
   letter-spacing: 0;
   text-align: left;
@@ -1040,7 +1040,7 @@
   font-size: 26px;
   letter-spacing: -1.3px;
   font-weight: 650;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--ui-font);
 }
 .canvas-first .forma-brand > span:last-child {
   display: block;

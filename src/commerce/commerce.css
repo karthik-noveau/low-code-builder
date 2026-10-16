@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: var(--ui-canvas);
   color: var(--ui-ink);
-  font-family: var(--ui-font, "DM Sans", sans-serif);
+  font-family: var(--ui-font);
 }
 .commerce-app * {
   box-sizing: border-box;

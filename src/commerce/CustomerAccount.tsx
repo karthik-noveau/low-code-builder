@@ -3,6 +3,7 @@ import { useSession } from "../brand/useSession";
 import { request, signOut } from "../cloud/client";
 import { money, type Address, type Order } from "./types";
 import "./commerce.css";
+import "./storefront.css";
 
 interface Profile {
   email: string;
@@ -44,10 +45,10 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
   };
   const next = encodeURIComponent(`/customer?site=${siteId}`);
   return (
-    <div className="commerce-app">
+    <div className="commerce-app storefront">
       <div className="store-shell">
         <header className="store-header">
-          <a href={`/store?site=${siteId}`} className="store-logo">
+          <a href={`/store?site=${siteId}`} className="store-logo store-back">
             ← Back to store
           </a>
           {session.account && (
@@ -63,7 +64,7 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
             </button>
           )}
         </header>
-        <main className="store-cart">
+        <main className="store-cart store-account">
           <h1>Your account</h1>
           {(error || session.error) && (
             <p className="commerce-notice error" role="alert">
@@ -183,6 +184,11 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
               </section>
               <section className="commerce-panel">
                 <h2>Saved delivery addresses</h2>
+                {!profile.addresses.length && (
+                  <p className="commerce-muted">
+                    Addresses you save here are offered at checkout.
+                  </p>
+                )}
                 {profile.addresses.map((address, index) => (
                   <div className="commerce-step" key={index}>
                     <div className="commerce-article">

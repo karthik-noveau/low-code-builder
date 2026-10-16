@@ -10,7 +10,7 @@
   overflow: auto;
   background: var(--brand-paper);
   color: var(--brand-ink);
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: var(--ui-font);
   font-size: 15px;
   line-height: 1.5;
   scroll-behavior: smooth;
@@ -2645,7 +2645,7 @@
   background: var(--ui-canvas);
   color: var(--ui-muted);
   font:
-    13px "DM Sans",
+    13px var(--ui-font),
     sans-serif;
 }
 .studio-header .brand-lockup {
@@ -4405,7 +4405,7 @@
   background: var(--ui-canvas);
   color: var(--ui-ink);
   font:
-    15px "DM Sans",
+    15px var(--ui-font),
     sans-serif;
 }
 

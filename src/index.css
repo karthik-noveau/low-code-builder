@@ -1,4 +1,6 @@
+@import "@fontsource-variable/inter";
 @import "./theme.css";
+@import "./design/system.css";
 
 @font-face {
   font-family: "DM Sans";

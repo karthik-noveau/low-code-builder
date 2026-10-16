@@ -1,29 +1,62 @@
 /*
- * The editor's chrome on the same system as the workspace admin (brand/admin.css):
- * a grey canvas, white panels raised as cards, a 13px type scale and 32–34px
- * controls. Only editor chrome is styled here, never the website preview.
+ * The editor's chrome on the shared dark design system (src/design/system.css),
+ * like a design tool: near-black header and panels, the website on a dark
+ * canvas, 13–14px type, 34px controls. Only editor chrome is styled here,
+ * never the website preview.
  */
 .studio.canvas-first {
-  --e-canvas: #f1f2ef;
-  --e-surface: #ffffff;
-  --e-subdued: #f7f7f5;
-  --e-ink: #1d2623;
-  --e-text: #303b36;
-  --e-muted: #66716b;
-  --e-divider: #e6e8e4;
-  --e-input: #c4cac5;
-  --e-hover: rgba(29, 38, 35, 0.06);
-  --e-card:
-    0 0 0 1px rgba(29, 38, 35, 0.07), 0 1px 0 rgba(29, 38, 35, 0.07),
-    0 1px 3px rgba(29, 38, 35, 0.06);
-  --e-pop:
-    0 0 0 1px rgba(29, 38, 35, 0.08), 0 16px 40px -10px rgba(29, 38, 35, 0.3);
+  --e-canvas: var(--fx-bg);
+  --e-surface: var(--fx-surface);
+  --e-subdued: var(--fx-surface-2);
+  --e-ink: var(--fx-text);
+  --e-text: var(--fx-text-2);
+  --e-muted: var(--fx-muted);
+  --e-divider: var(--fx-border);
+  --e-input: var(--fx-border-strong);
+  --e-hover: var(--fx-hover);
+  --e-card: 0 0 0 1px var(--fx-border);
+  --e-pop: var(--fx-shadow-pop);
+  /* The editor's older sheets read --ui-*; point them at the dark set. The
+     website preview only reads --site-* and sets its own colours. */
+  --ui-ink: var(--fx-text);
+  --ui-text: var(--fx-text-2);
+  --ui-muted: var(--fx-muted);
+  --ui-subtle: var(--fx-faint);
+  --ui-border: var(--fx-border);
+  --ui-border-strong: var(--fx-border-strong);
+  --ui-canvas: var(--fx-bg);
+  --ui-surface: var(--fx-surface);
+  --ui-surface-alt: var(--fx-surface-2);
+  --ui-accent: var(--fx-accent);
+  --ui-accent-hover: var(--fx-accent-hover);
+  --ui-accent-soft: var(--fx-accent-soft);
+  --ui-accent-border: rgba(79, 124, 255, 0.4);
+  --ui-accent-panel: var(--fx-surface-2);
+  --ui-accent-panel-border: var(--fx-border-strong);
+  --ui-highlight: var(--fx-accent-soft);
+  --ui-highlight-hover: var(--fx-hover);
+  --ui-dark: var(--fx-surface-3);
+  --ui-dark-raised: var(--fx-surface-3);
+  --ui-success: var(--fx-success);
+  --ui-success-soft: var(--fx-success-soft);
+  --ui-danger: var(--fx-danger);
+  --ui-danger-soft: var(--fx-danger-soft);
+  --ui-shadow-sm: none;
+  --ui-shadow-card: none;
+  --workspace: var(--fx-bg);
+  --canvas-highlight: var(--fx-accent);
+  --focus: var(--fx-accent);
+  color-scheme: dark;
+  background: var(--fx-bg);
+  color: var(--fx-text);
+  font-family: var(--fx-font);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Frame: grey canvas, white header. */
 html body .studio.canvas-first .studio-header {
   background: var(--e-surface);
-  border-bottom: 1px solid #e1e3df;
+  border-bottom: 1px solid var(--fx-border);
   box-shadow: none;
 }
 html body .studio.canvas-first .studio-workspace,
@@ -89,7 +122,7 @@ html
   :is(.site-navigator, .context-drawer, .studio-modal)
   .field
   :is(input, select, textarea):hover:not(:disabled, :focus) {
-  border-color: #9aa39d;
+  border-color: rgba(255, 255, 255, 0.24);
 }
 html
   body
@@ -115,8 +148,8 @@ html
 
 /* Dialogs: neutral elevation instead of a coloured outline. */
 html body .studio.canvas-first .modal-backdrop {
-  background: rgba(15, 20, 18, 0.45);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
 }
 html body .studio.canvas-first .studio-modal {
   border: 0;
@@ -156,4 +189,81 @@ html body .studio.canvas-first .header-actions .preview-button {
 }
 html body .studio.canvas-first .studio-header .icon-button {
   border-radius: 8px;
+}
+
+/* Segmented controls: the chosen option is a raised dark chip. */
+html body .studio.canvas-first .segmented {
+  background: var(--fx-bg-raised);
+  border-color: var(--fx-border);
+}
+html
+  body
+  .studio.canvas-first
+  .segmented
+  :is(
+    button.chosen,
+    button.active,
+    button[aria-checked="true"],
+    button[aria-pressed="true"]
+  ) {
+  background: var(--fx-surface-3);
+  color: var(--fx-text);
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+}
+
+/* Template gallery: rows fit their cards instead of shrinking to the dialog. */
+html body .studio.canvas-first .template-gallery {
+  grid-auto-rows: max-content;
+  align-content: start;
+}
+
+/* Every field in panels and dialogs, labelled or not, is a dark field. */
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  :is(
+    select,
+    textarea,
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="range"],
+      [type="color"],
+      [type="file"]
+    )
+  ) {
+  background-color: var(--fx-bg-raised);
+  border-color: var(--fx-border-strong);
+  color: var(--fx-text);
+  color-scheme: dark;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.site-navigator, .context-drawer, .studio-modal)
+  :is(input, textarea)::placeholder {
+  color: var(--fx-faint);
+}
+html body .studio.canvas-first select option {
+  background: var(--fx-surface-2);
+  color: var(--fx-text);
+}
+html body .studio.canvas-first select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+/* Search boxes that wrap their input keep the wrapper as the visible field. */
+html body .studio.canvas-first :is(.search-box, .navigator-search) input {
+  background-color: transparent;
+  border-color: transparent;
+}
+html body .studio.canvas-first :is(.search-box, .navigator-search) {
+  background: var(--fx-bg-raised);
+  border-color: var(--fx-border-strong);
+}
+html body .studio.canvas-first,
+html body .studio.canvas-first * {
+  scrollbar-color: var(--fx-surface-3) transparent;
 }

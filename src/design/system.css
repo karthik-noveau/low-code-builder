@@ -1,0 +1,105 @@
+/*
+ * Forma design system: one source for the app's look (workspace, store admin,
+ * editor, public pages). Dark, design-tool chrome in the spirit of Framer and
+ * Webflow: near-black surfaces, hairline borders, a 14px base, one vivid accent
+ * and soft glows. Storefronts use the light set at the bottom.
+ * Website/template styles never read these tokens.
+ */
+:root {
+  --fx-font: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --fx-font-display: "Inter Variable", "Inter", -apple-system, sans-serif;
+
+  /* Surfaces, darkest to lightest. */
+  --fx-bg: #0b0b0d;
+  --fx-bg-raised: #111114;
+  --fx-surface: #17171b;
+  --fx-surface-2: #1f1f24;
+  --fx-surface-3: #2a2a30;
+  --fx-hover: rgba(255, 255, 255, 0.06);
+  --fx-pressed: rgba(255, 255, 255, 0.1);
+
+  /* Lines. */
+  --fx-border: rgba(255, 255, 255, 0.08);
+  --fx-border-strong: rgba(255, 255, 255, 0.14);
+  --fx-border-focus: rgba(109, 141, 255, 0.7);
+
+  /* Text. */
+  --fx-text: #ededf0;
+  --fx-text-2: #b4b4bd;
+  --fx-muted: #8a8a96;
+  --fx-faint: #5d5d68;
+
+  /* Accent: one vivid blue, with a violet partner for gradients. */
+  --fx-accent: #4f7cff;
+  --fx-accent-hover: #6b91ff;
+  --fx-accent-press: #3d68ea;
+  --fx-accent-soft: rgba(79, 124, 255, 0.14);
+  --fx-accent-text: #8fadff;
+  --fx-violet: #9b6bff;
+  --fx-gradient: linear-gradient(135deg, #4f7cff 0%, #9b6bff 100%);
+  --fx-glow: radial-gradient(
+    60% 50% at 50% 0%,
+    rgba(79, 124, 255, 0.16),
+    transparent 70%
+  );
+
+  /* Status. */
+  --fx-success: #3ecf8e;
+  --fx-success-soft: rgba(62, 207, 142, 0.14);
+  --fx-warning: #f5b544;
+  --fx-warning-soft: rgba(245, 181, 68, 0.14);
+  --fx-danger: #ff5f5f;
+  --fx-danger-soft: rgba(255, 95, 95, 0.14);
+
+  /* Shape and depth. */
+  --fx-radius-sm: 8px;
+  --fx-radius: 10px;
+  --fx-radius-lg: 14px;
+  --fx-radius-xl: 20px;
+  --fx-shadow:
+    0 0 0 1px var(--fx-border), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --fx-shadow-pop:
+    0 0 0 1px var(--fx-border-strong), 0 24px 64px -16px rgba(0, 0, 0, 0.8);
+  --fx-ring: 0 0 0 3px rgba(79, 124, 255, 0.35);
+
+  /* Type scale (14px base). */
+  --fx-text-xs: 12px;
+  --fx-text-sm: 13px;
+  --fx-text-base: 14px;
+  --fx-text-md: 16px;
+  --fx-text-lg: 20px;
+  --fx-text-xl: 28px;
+  --fx-text-2xl: 40px;
+  --fx-text-hero: clamp(44px, 6.4vw, 88px);
+
+  /* Spacing. */
+  --fx-1: 4px;
+  --fx-2: 8px;
+  --fx-3: 12px;
+  --fx-4: 16px;
+  --fx-5: 20px;
+  --fx-6: 24px;
+  --fx-8: 32px;
+  --fx-10: 40px;
+  --fx-12: 48px;
+  --fx-16: 64px;
+  --fx-24: 96px;
+
+  --fx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Storefront (shopper-facing): light, quiet, product-first. */
+  --fx-store-bg: #ffffff;
+  --fx-store-surface: #f6f6f7;
+  --fx-store-text: #111114;
+  --fx-store-muted: #6b6b76;
+  --fx-store-border: #e7e7ea;
+  --fx-store-accent: #111114;
+}
+
+/* Pages showing the app's dark chrome get dark page scrollbars and overscroll. */
+:root:has(.brand-public, .admin-ui, .studio.canvas-first) {
+  color-scheme: dark;
+  background: var(--fx-bg);
+}

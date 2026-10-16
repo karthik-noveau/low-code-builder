@@ -1,36 +1,58 @@
 /*
- * Admin surface for every signed-in workspace page (AppShell). One compact
- * system: a dark top bar, a quiet grey sidebar, white cards raised on a grey
- * canvas, a 13px type scale and 32px controls. Everything is scoped to
+ * Admin surface for every signed-in workspace page (AppShell), on the shared
+ * dark design system (src/design/system.css): near-black chrome, raised dark
+ * cards with hairline borders, a 14px type scale and 36px controls. Everything is scoped to
  * `.admin-ui` and prefixed with `html body` so it wins over the older
  * standalone page styles it replaces, whatever order the sheets load in.
  */
 .admin-ui {
-  --a-canvas: #f1f2ef;
-  --a-side: #ebece8;
-  --a-surface: #ffffff;
-  --a-subdued: #f7f7f5;
-  --a-top: #17201c;
-  --a-top-raised: #26312c;
-  --a-top-text: #e9eeea;
-  --a-top-muted: #9aa8a0;
-  --a-ink: #1d2623;
-  --a-text: #303b36;
-  --a-muted: #66716b;
-  --a-divider: #e6e8e4;
-  --a-input: #c4cac5;
-  --a-hover: rgba(29, 38, 35, 0.06);
-  --a-pressed: rgba(29, 38, 35, 0.1);
-  --a-accent: var(--ui-accent);
-  --a-card:
-    0 0 0 1px rgba(29, 38, 35, 0.07), 0 1px 0 rgba(29, 38, 35, 0.07),
-    0 1px 3px rgba(29, 38, 35, 0.06);
+  --a-canvas: var(--fx-bg);
+  --a-side: var(--fx-bg-raised);
+  --a-surface: var(--fx-surface);
+  --a-subdued: var(--fx-surface-2);
+  --a-top: var(--fx-bg-raised);
+  --a-top-raised: var(--fx-surface-2);
+  --a-top-text: var(--fx-text);
+  --a-top-muted: var(--fx-muted);
+  --a-ink: var(--fx-text);
+  --a-text: var(--fx-text-2);
+  --a-muted: var(--fx-muted);
+  --a-divider: var(--fx-border);
+  --a-input: var(--fx-border-strong);
+  --a-hover: var(--fx-hover);
+  --a-pressed: var(--fx-pressed);
+  --a-accent: var(--fx-accent);
+  --a-card: var(--fx-shadow);
   --a-card-hover:
-    0 0 0 1px rgba(29, 38, 35, 0.09), 0 4px 14px -4px rgba(29, 38, 35, 0.16);
-  --a-pop:
-    0 0 0 1px rgba(29, 38, 35, 0.08), 0 12px 32px -8px rgba(29, 38, 35, 0.28);
-  --a-radius: 12px;
-  --a-radius-control: 8px;
+    0 0 0 1px var(--fx-border-strong), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+  --a-pop: var(--fx-shadow-pop);
+  --a-radius: var(--fx-radius-lg);
+  --a-radius-control: var(--fx-radius-sm);
+  /* Older page styles read the shared --ui-* tokens: point them at the dark set. */
+  --ui-ink: var(--fx-text);
+  --ui-text: var(--fx-text-2);
+  --ui-muted: var(--fx-muted);
+  --ui-subtle: var(--fx-faint);
+  --ui-border: var(--fx-border);
+  --ui-border-strong: var(--fx-border-strong);
+  --ui-canvas: var(--fx-bg);
+  --ui-surface: var(--fx-surface);
+  --ui-surface-alt: var(--fx-surface-2);
+  --ui-accent: var(--fx-accent);
+  --ui-accent-hover: var(--fx-accent-hover);
+  --ui-accent-soft: var(--fx-accent-soft);
+  --ui-accent-border: rgba(79, 124, 255, 0.4);
+  --ui-accent-panel: var(--fx-surface-2);
+  --ui-accent-panel-border: var(--fx-border-strong);
+  --ui-highlight: var(--fx-accent-soft);
+  --ui-highlight-hover: var(--fx-hover);
+  --ui-success: var(--fx-success);
+  --ui-success-soft: var(--fx-success-soft);
+  --ui-danger: var(--fx-danger);
+  --ui-danger-soft: var(--fx-danger-soft);
+  --ui-shadow-sm: none;
+  --ui-shadow-card: var(--fx-shadow);
+  color-scheme: dark;
 }
 
 /* ---------- Frame ---------- */
@@ -44,7 +66,7 @@ html body .admin-ui {
   overflow: hidden;
   background: var(--a-canvas);
   color: var(--a-text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -76,14 +98,14 @@ html body .admin-ui .admin-logo .brand-wordmark {
   color: #fff;
 }
 html body .admin-ui .admin-logo .brand-mark-background {
-  fill: #2f9d76;
+  fill: var(--fx-accent);
 }
 html body .admin-ui .dashboard-crumbs {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-top-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -98,7 +120,7 @@ html body .admin-ui .dashboard-crumbs a.crumb:hover {
   color: #fff;
 }
 html body .admin-ui .dashboard-crumbs .crumb-sep {
-  color: #4d5b54;
+  color: var(--fx-faint);
   margin: 0;
 }
 html body .admin-ui .dashboard-crumbs strong {
@@ -113,8 +135,8 @@ html body .admin-ui .admin-topbar-extra {
   align-items: center;
 }
 html body .admin-ui .admin-topbar .admin-topbar-extra select {
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   max-width: 220px;
   padding: 0 30px 0 12px;
   border: 1px solid transparent;
@@ -124,20 +146,20 @@ html body .admin-ui .admin-topbar .admin-topbar-extra select {
   background-repeat: no-repeat;
   background-position: right 10px center;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: none;
   cursor: pointer;
 }
 html body .admin-ui .admin-topbar .admin-topbar-extra select:hover {
-  background-color: #33403a;
+  background-color: var(--fx-surface-3);
 }
 html body .admin-ui .admin-topbar .admin-topbar-extra select:focus-visible {
-  outline: 2px solid #6fd3ad;
+  outline: 2px solid var(--fx-accent);
   outline-offset: 1px;
 }
 html body .admin-ui .admin-topbar .admin-topbar-extra select option {
-  background: #fff;
+  background: var(--fx-surface-3);
   color: var(--a-ink);
 }
 html body .admin-ui .admin-menu-button {
@@ -181,16 +203,16 @@ html body .admin-ui .admin-account[open] > summary {
   background: var(--a-top-raised);
 }
 html body .admin-ui .admin-account > summary:focus-visible {
-  outline: 2px solid #6fd3ad;
+  outline: 2px solid var(--fx-accent);
   outline-offset: 1px;
 }
 html body .admin-ui .admin-account .dashboard-avatar {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #2f9d76;
+  background: var(--fx-accent);
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 html body .admin-ui .admin-account .dashboard-account-email {
@@ -198,7 +220,7 @@ html body .admin-ui .admin-account .dashboard-account-email {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--a-top-text);
 }
@@ -220,13 +242,13 @@ html body .admin-ui .admin-account-menu > p {
   margin: 0 0 6px;
   padding: 8px 10px 10px;
   border-bottom: 1px solid var(--a-divider);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .admin-account-menu > p > strong {
   display: block;
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-ink);
   overflow: hidden;
@@ -245,7 +267,7 @@ html body .admin-ui .admin-account-menu > button {
   background: none;
   color: var(--a-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   text-align: left;
   text-decoration: none;
@@ -261,7 +283,7 @@ html body .admin-ui .admin-account-menu svg {
 html body .admin-ui .admin-login {
   margin-left: auto;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -282,7 +304,7 @@ html body .admin-ui .dashboard-sidebar {
   padding: 12px 10px 14px;
   background: var(--a-side);
   border: 0;
-  border-right: 1px solid #e1e3df;
+  border-right: 1px solid var(--fx-border);
   color: var(--a-text);
   overflow-y: auto;
 }
@@ -302,14 +324,14 @@ html body .admin-ui .dashboard-sidebar-bottom > a {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 32px;
-  height: 32px;
+  min-height: 36px;
+  height: 36px;
   padding: 0 8px;
   border-radius: var(--a-radius-control);
   background: transparent;
   box-shadow: none;
   color: var(--a-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   text-decoration: none;
   justify-content: flex-start;
@@ -326,8 +348,8 @@ html body .admin-ui .dashboard-sidebar-bottom > a[aria-current] {
   color: var(--a-ink);
   font-weight: 650;
   box-shadow:
-    0 0 0 1px rgba(29, 38, 35, 0.05),
-    0 1px 2px rgba(29, 38, 35, 0.08);
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.08);
 }
 html body .admin-ui .dashboard-sidebar > nav > a > span,
 html body .admin-ui .dashboard-sidebar-bottom > a > span {
@@ -347,9 +369,9 @@ html body .admin-ui .dashboard-nav-count {
   height: 20px;
   padding: 0 6px;
   border-radius: 6px;
-  background: rgba(29, 38, 35, 0.07);
+  background: rgba(0, 0, 0, 0.07);
   color: var(--a-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 20px;
   text-align: center;
@@ -362,13 +384,13 @@ html body .admin-ui .dashboard-subnav nav {
   gap: 1px;
   margin: 2px 0 8px 17px;
   padding-left: 10px;
-  border-left: 1px solid #d6d9d4;
+  border-left: 1px solid var(--fx-border-strong);
 }
 html body .admin-ui .dashboard-subnav button {
   height: 30px;
   padding: 0 10px;
   border-radius: var(--a-radius-control);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--a-muted);
   background: none;
@@ -424,7 +446,7 @@ html body .admin-ui .dashboard-heading {
 html body .admin-ui .dashboard-heading .brand-kicker {
   display: block;
   margin: 0 0 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 550;
   letter-spacing: 0;
   text-transform: none;
@@ -432,16 +454,16 @@ html body .admin-ui .dashboard-heading .brand-kicker {
 }
 html body .admin-ui .dashboard-heading h1 {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.25;
-  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 650;
   letter-spacing: -0.015em;
   color: var(--a-ink);
 }
 html body .admin-ui .dashboard-heading p {
   max-width: 640px;
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-muted);
 }
 html body .admin-ui .dashboard-heading-actions {
@@ -464,14 +486,14 @@ html body .admin-ui :is(.brand-button, .commerce-button) {
   justify-content: center;
   gap: 6px;
   width: auto;
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   padding: 0 12px;
   border: 0;
   border-radius: var(--a-radius-control);
   background: var(--a-accent);
   color: #fff !important;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -480,13 +502,13 @@ html body .admin-ui :is(.brand-button, .commerce-button) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     inset 0 -1px 0 rgba(0, 0, 0, 0.22),
-    0 1px 1px rgba(29, 38, 35, 0.14);
+    0 1px 1px rgba(0, 0, 0, 0.14);
   transition:
     background-color 120ms ease,
     box-shadow 120ms ease;
 }
 html body .admin-ui :is(.brand-button, .commerce-button):hover {
-  background: var(--ui-accent-hover);
+  background: var(--fx-accent-hover);
   filter: none;
   transform: none;
 }
@@ -504,9 +526,9 @@ html
   background: var(--a-surface);
   color: var(--a-ink) !important;
   box-shadow:
-    inset 0 0 0 1px #d3d7d2,
-    inset 0 -1px 0 #c3c8c2,
-    0 1px 0 rgba(29, 38, 35, 0.05);
+    inset 0 0 0 1px var(--fx-border-strong),
+    inset 0 -1px 0 var(--fx-border-strong),
+    0 1px 0 rgba(0, 0, 0, 0.05);
 }
 html
   body
@@ -519,7 +541,7 @@ html
   background: var(--a-subdued);
 }
 html body .admin-ui .commerce-button.danger {
-  background: var(--ui-danger);
+  background: var(--fx-danger);
   color: #fff !important;
 }
 html body .admin-ui :is(.brand-button, .commerce-button):disabled {
@@ -533,7 +555,7 @@ html body .admin-ui :is(.brand-button, .commerce-button) svg {
 }
 html body .admin-ui .commerce-link {
   color: var(--a-accent);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -555,16 +577,16 @@ html
     select,
     textarea
   ) {
-  min-height: 34px;
+  min-height: 36px;
   border: 1px solid var(--a-input);
   border-radius: var(--a-radius-control);
   background-color: var(--a-surface);
   color: var(--a-ink);
-  font-size: 13px;
+  font-size: 14px;
   box-shadow: none;
 }
 html body .admin-ui :is(input, select, textarea):hover:not(:disabled) {
-  border-color: #9aa39d;
+  border-color: var(--fx-faint);
 }
 html body .admin-ui :is(input, select, textarea):focus-visible {
   outline: 2px solid var(--a-accent);
@@ -573,14 +595,14 @@ html body .admin-ui :is(input, select, textarea):focus-visible {
 }
 html body .admin-ui .commerce-field {
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--a-ink);
 }
 html body .admin-ui .commerce-field small,
 html body .admin-ui .commerce-muted {
   color: var(--a-muted);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
 }
 
@@ -601,7 +623,7 @@ html body .admin-ui .motion-tabs > button {
   height: 30px;
   padding: 0 10px;
   border-radius: var(--a-radius-control);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--a-muted);
 }
@@ -616,7 +638,7 @@ html body .admin-ui .motion-tabs > button[aria-pressed="true"] {
 }
 html body .admin-ui .motion-tabs > button > span {
   margin-left: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--a-muted);
 }
@@ -643,7 +665,7 @@ html body .admin-ui :is(.commerce-panel, .domain-panel) h2 {
   color: var(--a-ink);
 }
 html body .admin-ui :is(.commerce-panel, .domain-panel) h3 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--a-ink);
 }
@@ -670,7 +692,7 @@ html body .admin-ui .commerce-stat {
   background: var(--a-surface);
 }
 html body .admin-ui .commerce-stat > span {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--a-muted);
 }
@@ -683,7 +705,7 @@ html body .admin-ui .commerce-stat > strong {
   color: var(--a-ink);
 }
 html body .admin-ui .commerce-stat > small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .commerce-columns {
@@ -694,16 +716,16 @@ html body .admin-ui .commerce-columns {
 html body .admin-ui .commerce-step {
   padding: 10px 0;
   border-color: var(--a-divider);
-  font-size: 13px;
+  font-size: 14px;
 }
 html body .admin-ui .commerce-step strong {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-ink);
 }
 html body .admin-ui .commerce-footer-note {
   margin-top: 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 
@@ -723,7 +745,7 @@ html body .admin-ui .admin-setup-progress {
   align-items: center;
   gap: 10px;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .admin-setup-progress > span {
@@ -731,7 +753,7 @@ html body .admin-ui .admin-setup-progress > span {
   max-width: 160px;
   height: 6px;
   border-radius: 6px;
-  background: #e3e6e2;
+  background: var(--fx-surface-3);
   overflow: hidden;
 }
 html body .admin-ui .admin-setup-progress > span > i {
@@ -765,16 +787,17 @@ html body .admin-ui .admin-setup-check {
   height: 22px;
   margin-top: 1px;
   border-radius: 50%;
-  border: 1.5px dashed #9ba49e;
+  border: 1.5px dashed var(--fx-faint);
   color: #fff;
 }
 html body .admin-ui .admin-setup li.is-done .admin-setup-check {
   border: 0;
-  background: var(--a-ink);
+  background: var(--fx-success);
+  color: #0b0b0d;
 }
 html body .admin-ui .admin-setup li strong {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-ink);
 }
@@ -784,7 +807,7 @@ html body .admin-ui .admin-setup li.is-done strong {
 }
 html body .admin-ui .admin-setup li p {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-muted);
 }
 html body .admin-ui .admin-setup li:not(.is-next) p {
@@ -809,7 +832,7 @@ html body .admin-ui .admin-metric-list li {
   justify-content: space-between;
   padding: 9px 0;
   border-top: 1px solid var(--a-divider);
-  font-size: 13px;
+  font-size: 14px;
 }
 html body .admin-ui .admin-metric-list li strong {
   font-variant-numeric: tabular-nums;
@@ -822,13 +845,13 @@ html body .admin-ui .commerce-scroll {
   margin-inline: -20px;
 }
 html body .admin-ui .commerce-table {
-  font-size: 13px;
+  font-size: 14px;
 }
 html body .admin-ui .commerce-table th {
   padding: 8px 12px;
   background: var(--a-subdued);
   border-bottom: 1px solid var(--a-divider);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -845,7 +868,7 @@ html body .admin-ui .commerce-table td {
   border-bottom: 1px solid var(--a-divider);
 }
 html body .admin-ui .commerce-table tbody tr:hover td {
-  background: #fafaf9;
+  background: var(--fx-hover);
 }
 
 /* Badges. */
@@ -856,9 +879,9 @@ html body .admin-ui :is(.commerce-badge, .dashboard-site-status) {
   padding: 0 8px;
   border: 0;
   border-radius: 7px;
-  background: #e4e6e2;
-  color: #47514c;
-  font-size: 12px;
+  background: var(--fx-surface-3);
+  color: var(--fx-text-2);
+  font-size: 13px;
   font-weight: 550;
   letter-spacing: 0;
   text-transform: none;
@@ -866,8 +889,8 @@ html body .admin-ui :is(.commerce-badge, .dashboard-site-status) {
 }
 html body .admin-ui .dashboard-site-status.is-live,
 html body .admin-ui .commerce-badge:not(.neutral) {
-  background: #d3f2df;
-  color: #0b5a3c;
+  background: var(--fx-success-soft);
+  color: var(--fx-success);
 }
 html body .admin-ui .dashboard-site-status.is-live::before {
   content: "";
@@ -875,7 +898,7 @@ html body .admin-ui .dashboard-site-status.is-live::before {
   height: 6px;
   margin-right: 6px;
   border-radius: 50%;
-  background: #1a9a63;
+  background: var(--fx-success);
 }
 
 /* Banners. */
@@ -883,19 +906,19 @@ html body .admin-ui .commerce-notice {
   padding: 12px 16px;
   border: 0;
   border-radius: var(--a-radius);
-  background: #e6f3ec;
-  box-shadow: inset 0 0 0 1px #c3e1cf;
-  color: #12452f;
-  font-size: 13px;
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.35);
+  color: var(--fx-text);
+  font-size: 14px;
 }
 html body .admin-ui .commerce-notice.error,
 html body .admin-ui .brand-form-error {
-  background: #fdeceb;
-  box-shadow: inset 0 0 0 1px #f5c7c2;
+  background: var(--fx-danger-soft);
+  box-shadow: inset 0 0 0 1px rgba(255, 95, 95, 0.35);
   border: 0;
   border-radius: var(--a-radius);
-  color: #8e1f0b;
-  font-size: 13px;
+  color: #ffb4b4;
+  font-size: 14px;
 }
 
 /* ---------- Websites page ---------- */
@@ -919,7 +942,7 @@ html body .admin-ui .dashboard-search-wrap {
   display: flex;
   align-items: center;
   width: 220px;
-  height: 32px;
+  height: 36px;
   padding: 0;
   border: 0;
   background: none;
@@ -933,28 +956,28 @@ html body .admin-ui .dashboard-search-wrap > svg {
 }
 html body .admin-ui .dashboard-search-wrap > input.dashboard-search {
   width: 100%;
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   padding: 0 10px 0 32px;
 }
 html body .admin-ui .dashboard-site-toolbar select {
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   width: auto;
   padding: 0 30px 0 10px;
 }
 html body .admin-ui .dashboard-refresh,
 html body .admin-ui .dashboard-view-toggle {
-  height: 32px;
+  height: 36px;
   border: 0;
   border-radius: var(--a-radius-control);
   background: var(--a-surface);
-  box-shadow: inset 0 0 0 1px #d3d7d2;
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
 }
 html body .admin-ui .dashboard-refresh {
   display: grid;
   place-items: center;
-  width: 32px;
+  width: 36px;
   padding: 0;
   color: var(--a-muted);
 }
@@ -1031,9 +1054,9 @@ html body .admin-ui .site-card-preview-overlay {
   align-items: center;
   gap: 4px;
   border-radius: 8px;
-  background: rgba(23, 32, 28, 0.88);
+  background: rgba(0, 0, 0, 0.72);
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 html body .admin-ui .dashboard-site-card-body {
@@ -1065,7 +1088,7 @@ html body .admin-ui .dashboard-site-card-body h2 a {
 }
 html body .admin-ui .dashboard-site-card-body > p {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .dashboard-site-card-body > .dashboard-site-actions {
@@ -1082,7 +1105,7 @@ html body .admin-ui .dashboard-site-actions > a {
   padding: 0 8px;
   border-radius: 7px;
   color: var(--a-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
 }
 html body .admin-ui .dashboard-site-actions > a:hover {
@@ -1097,8 +1120,8 @@ html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary {
   color: var(--a-ink);
   font-weight: 600;
   box-shadow:
-    inset 0 0 0 1px #d3d7d2,
-    inset 0 -1px 0 #c3c8c2;
+    inset 0 0 0 1px var(--fx-border-strong),
+    inset 0 -1px 0 var(--fx-border-strong);
 }
 html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary:hover {
   background: var(--a-subdued);
@@ -1107,8 +1130,8 @@ html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary:hover {
 }
 html body .admin-ui .dashboard-site-error {
   margin-top: 6px;
-  font-size: 12px;
-  color: var(--ui-danger);
+  font-size: 13px;
+  color: var(--fx-danger);
 }
 /* List view: one row per website. */
 html body .admin-ui .dashboard-site-grid.is-list {
@@ -1134,7 +1157,7 @@ html
   border-bottom: 0;
 }
 html body .admin-ui .dashboard-site-grid.is-list > .dashboard-site-card:hover {
-  background: #fafaf9;
+  background: var(--fx-hover);
 }
 html body .admin-ui .dashboard-site-grid.is-list .site-card-preview {
   flex: 0 0 72px;
@@ -1144,7 +1167,7 @@ html body .admin-ui .dashboard-site-grid.is-list .site-card-preview {
   margin: 10px 0 10px 16px;
   border: 0;
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgba(29, 38, 35, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 html body .admin-ui .dashboard-site-grid.is-list .site-card-monogram {
   font-size: 18px;
@@ -1191,11 +1214,11 @@ html
 }
 html body .admin-ui .dashboard-quota {
   margin: 18px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .brand-muted {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-muted);
 }
 html body .admin-ui .dashboard-zero {
@@ -1212,7 +1235,7 @@ html body .admin-ui .dashboard-zero h2 {
   color: var(--a-ink);
 }
 html body .admin-ui .dashboard-zero p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-muted);
 }
 
@@ -1255,7 +1278,7 @@ html body .admin-ui .dashboard-zero p {
     display: block;
     border: 0;
     padding: 0;
-    background: rgba(15, 20, 18, 0.4);
+    background: rgba(0, 0, 0, 0.55);
     opacity: 0;
     pointer-events: none;
     transition: opacity 200ms ease;
@@ -1353,15 +1376,15 @@ html body .admin-ui .dashboard-heading-actions .commerce-badge {
     border: 0;
     border-radius: var(--a-radius-control);
     background: var(--a-surface);
-    box-shadow: inset 0 0 0 1px #d8dcd7;
+    box-shadow: inset 0 0 0 1px var(--fx-border-strong);
     color: var(--a-text);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 550;
   }
   html body .admin-ui .commerce-tabs button[aria-current] {
-    background: var(--a-ink);
+    background: var(--fx-text);
     box-shadow: none;
-    color: #fff;
+    color: var(--fx-bg);
   }
 }
 @media (max-width: 560px) {
@@ -1400,7 +1423,7 @@ html body .admin-ui .commerce-bulk > div {
 }
 html body .admin-ui .commerce-bulk strong {
   margin-right: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--a-ink);
 }
@@ -1408,11 +1431,11 @@ html body .admin-ui .commerce-bulk .commerce-button {
   height: 28px;
   min-height: 28px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 13px;
 }
 html body .admin-ui .commerce-bulk .commerce-link {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
 }
 html
   body
@@ -1421,7 +1444,7 @@ html
   tbody
   tr:has(input:checked)
   td {
-  background: #f3f6f4;
+  background: var(--fx-accent-soft);
 }
 
 /* ---------- Top bar tools: search and notifications ---------- */
@@ -1441,16 +1464,16 @@ html body .admin-ui .admin-search {
   width: clamp(180px, 22vw, 300px);
   height: 34px;
   padding: 0 8px 0 12px;
-  border: 1px solid #34413b;
+  border: 1px solid var(--fx-border-strong);
   border-radius: 10px;
   background: var(--a-top-raised);
   color: var(--a-top-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 html body .admin-ui .admin-search:hover {
-  border-color: #4a5952;
+  border-color: var(--fx-faint);
   color: var(--a-top-text);
 }
 html body .admin-ui .admin-search > span {
@@ -1464,10 +1487,10 @@ html body .admin-ui kbd {
   height: 20px;
   padding: 0 5px;
   border-radius: 5px;
-  font: 600 11px/1 var(--ui-font, inherit);
+  font: 600 12px/1 var(--ui-font, inherit);
 }
 html body .admin-ui .admin-search kbd {
-  background: #35433c;
+  background: var(--fx-surface-3);
   color: var(--a-top-muted);
 }
 html body .admin-ui .admin-icon-button {
@@ -1495,7 +1518,7 @@ html body .admin-ui .admin-badge-dot {
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: #e5484d;
+  background: var(--fx-danger);
   box-shadow: 0 0 0 2px var(--a-top);
   color: #fff;
   font-size: 10px;
@@ -1545,7 +1568,7 @@ html body .admin-ui .admin-notifications-panel li > a:hover {
   background: var(--a-hover);
 }
 html body .admin-ui .admin-notifications-panel li > a.is-new {
-  background: #eef6f1;
+  background: var(--fx-accent-soft);
 }
 html body .admin-ui .admin-notice-icon {
   display: grid;
@@ -1553,41 +1576,41 @@ html body .admin-ui .admin-notice-icon {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #e8eae6;
+  background: var(--fx-surface-3);
   color: var(--a-muted);
 }
 html body .admin-ui a.is-success .admin-notice-icon {
-  background: #d3f2df;
-  color: #0b5a3c;
+  background: var(--fx-success-soft);
+  color: var(--fx-success);
 }
 html body .admin-ui a.is-warning .admin-notice-icon {
-  background: #fdecc8;
-  color: #8a4b00;
+  background: var(--fx-warning-soft);
+  color: var(--fx-warning);
 }
 html body .admin-ui .admin-notifications-panel strong {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-ink);
 }
 html body .admin-ui .admin-notifications-panel small {
   display: block;
   margin-top: 1px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 html body .admin-ui .admin-notifications-panel time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--a-muted);
   white-space: nowrap;
 }
 html body .admin-ui .admin-notifications-empty {
   margin: 0;
   padding: 28px 20px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--a-muted);
   text-align: center;
 }
@@ -1601,7 +1624,7 @@ html body .admin-ui .admin-palette-backdrop {
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: rgba(15, 20, 18, 0.45);
+  background: rgba(0, 0, 0, 0.6);
   animation: admin-fade 140ms ease;
 }
 html body .admin-ui .admin-palette {
@@ -1638,7 +1661,7 @@ html body .admin-ui .admin-palette-input input:focus-visible {
   outline: 0;
 }
 html body .admin-ui .admin-palette kbd {
-  background: #eceeea;
+  background: var(--fx-surface-3);
   color: var(--a-muted);
 }
 html body .admin-ui .admin-palette ul {
@@ -1651,7 +1674,7 @@ html body .admin-ui .admin-palette ul {
 html body .admin-ui .admin-palette-group {
   display: block;
   padding: 10px 10px 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--a-muted);
 }
@@ -1663,7 +1686,7 @@ html body .admin-ui .admin-palette-item {
   padding: 0 10px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
 }
 html body .admin-ui .admin-palette-item[aria-selected="true"] {
   background: var(--a-hover);
@@ -1674,7 +1697,7 @@ html body .admin-ui .admin-palette-icon {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: #eef0ec;
+  background: var(--fx-surface-3);
   color: var(--a-muted);
 }
 html
@@ -1682,7 +1705,7 @@ html
   .admin-ui
   .admin-palette-item[aria-selected="true"]
   .admin-palette-icon {
-  background: var(--a-ink);
+  background: var(--fx-accent);
   color: #fff;
 }
 html body .admin-ui .admin-palette-label {
@@ -1699,7 +1722,7 @@ html body .admin-ui .admin-palette-item small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .admin-palette-empty {
@@ -1713,12 +1736,12 @@ html body .admin-ui .admin-palette footer {
   padding: 8px 14px;
   border-top: 1px solid var(--a-divider);
   background: var(--a-subdued);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .admin-palette footer kbd {
   margin-right: 3px;
-  background: #fff;
+  background: var(--fx-surface-3);
   box-shadow: inset 0 0 0 1px var(--a-divider);
 }
 @keyframes admin-fade {
@@ -1774,7 +1797,7 @@ html body .admin-ui .settings-section {
   gap: 16px 40px;
   max-width: 960px;
   padding: 24px 0;
-  border-top: 1px solid #e1e3df;
+  border-top: 1px solid var(--fx-border);
 }
 html body .admin-ui .settings-section:first-of-type {
   padding-top: 4px;
@@ -1788,12 +1811,12 @@ html body .admin-ui .settings-section-intro h2 {
 }
 html body .admin-ui .settings-section-intro p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--a-muted);
 }
 html body .admin-ui .settings-section.is-danger .settings-section-intro h2 {
-  color: var(--ui-danger);
+  color: var(--fx-danger);
 }
 html body .admin-ui .settings-section-body > .commerce-panel {
   margin: 0;
@@ -1817,9 +1840,9 @@ html body .admin-ui .commerce-form-actions {
 }
 html body .admin-ui details.settings-danger > summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--ui-danger);
+  color: var(--fx-danger);
 }
 html body .admin-ui details.settings-danger[open] > summary {
   margin-bottom: 14px;
@@ -1850,7 +1873,7 @@ html body .admin-ui .domain-panel-heading h2 {
 }
 html body .admin-ui .domain-panel p,
 html body .admin-ui .domain-small {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--a-muted);
 }
@@ -1869,7 +1892,7 @@ html body .admin-ui .domain-steps li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--a-muted);
 }
@@ -1880,9 +1903,9 @@ html body .admin-ui .domain-steps li > span {
   height: 22px;
   border: 0;
   border-radius: 50%;
-  background: #e4e6e2;
+  background: var(--fx-surface-3);
   color: var(--a-text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 html body .admin-ui .domain-local-banner {
@@ -1890,10 +1913,10 @@ html body .admin-ui .domain-local-banner {
   padding: 12px 16px;
   border: 0;
   border-radius: var(--a-radius);
-  background: #e6f3ec;
-  box-shadow: inset 0 0 0 1px #c3e1cf;
-  color: #12452f;
-  font-size: 13px;
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.35);
+  color: var(--fx-text);
+  font-size: 14px;
 }
 html body .admin-ui .domain-layout {
   gap: 16px;
@@ -1908,11 +1931,11 @@ html body .admin-ui .domain-publish-facts > div {
   border-color: var(--a-divider);
 }
 html body .admin-ui .domain-publish-facts dt {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .domain-publish-facts dd {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--a-ink);
 }
@@ -1927,7 +1950,7 @@ html body .admin-ui .domain-help h3 {
 }
 html body .admin-ui .domain-help .brand-text-link,
 html body .admin-ui .domain-panel .brand-text-link {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-accent);
 }
@@ -1946,7 +1969,7 @@ html body .admin-ui .new-site-error {
 html body .admin-ui .new-site-name .brand-field {
   display: grid;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--a-ink);
 }
@@ -1992,7 +2015,7 @@ html body .admin-ui .new-site-grid > label:hover {
 html body .admin-ui .new-site-grid > label.is-selected {
   box-shadow:
     0 0 0 2px var(--a-accent),
-    0 4px 14px -6px rgba(8, 107, 79, 0.35);
+    0 4px 14px -6px rgba(79, 124, 255, 0.35);
 }
 html body .admin-ui .new-site-grid > label:has(input:focus-visible) {
   outline: 2px solid var(--a-accent);
@@ -2025,12 +2048,12 @@ html body .admin-ui .new-site-caption {
   padding: 10px 14px 12px;
 }
 html body .admin-ui .new-site-caption strong {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--a-ink);
 }
 html body .admin-ui .new-site-caption small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 html body .admin-ui .new-site-check {
@@ -2066,7 +2089,7 @@ html body .admin-ui .new-site-footer {
 }
 html body .admin-ui .new-site-footer p {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--a-muted);
 }
 @media (max-width: 560px) {
@@ -2096,7 +2119,7 @@ html body .admin-ui .commerce-empty-icon {
   height: 48px;
   margin-bottom: 8px;
   border-radius: 14px;
-  background: #e9f3ed;
+  background: var(--fx-accent-soft);
   color: var(--a-accent);
 }
 html body .admin-ui .commerce-empty h2 {
@@ -2107,7 +2130,7 @@ html body .admin-ui .commerce-empty h2 {
 html body .admin-ui .commerce-empty p {
   max-width: 420px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--a-muted);
 }
@@ -2149,8 +2172,8 @@ html body .admin-ui .commerce-index-search > svg {
 html body .admin-ui .commerce-index-search > input {
   width: 100%;
   max-width: 360px;
-  height: 32px;
-  min-height: 32px;
+  height: 36px;
+  min-height: 36px;
   padding: 0 10px 0 32px;
   border-color: transparent;
   background: var(--a-subdued);
@@ -2161,10 +2184,325 @@ html body .admin-ui .commerce-index-search > input:focus-visible {
 html body .admin-ui .commerce-index-empty {
   margin: 0;
   padding: 28px 20px;
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
   color: var(--a-muted);
 }
 html body .admin-ui .commerce-index .commerce-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+/* ---------- Dark finish ---------- */
+html body .admin-ui {
+  font-family: var(--fx-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
+}
+html body .admin-ui .admin-topbar {
+  border-bottom: 1px solid var(--fx-border);
+}
+html body .admin-ui .dashboard-sidebar {
+  border-right: 1px solid var(--fx-border);
+}
+html body .admin-ui .dashboard-content {
+  background:
+    var(--fx-glow) no-repeat top center / 100% 420px,
+    var(--fx-bg);
+}
+html body .admin-ui .dashboard-sidebar > nav > a[aria-current],
+html body .admin-ui .dashboard-sidebar-bottom > a[aria-current] {
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+}
+html body .admin-ui .dashboard-sidebar a[aria-current] > span {
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .dashboard-subnav nav {
+  border-left-color: var(--fx-border-strong);
+}
+html body .admin-ui .admin-logo .brand-mark-background {
+  fill: var(--fx-accent);
+}
+html body .admin-ui .admin-logo .brand-mark-cutout {
+  fill: #fff;
+}
+html body .admin-ui .admin-account .dashboard-avatar {
+  background: var(--fx-gradient);
+}
+html body .admin-ui ::selection {
+  background: rgba(79, 124, 255, 0.4);
+}
+html body .admin-ui a {
+  color: inherit;
+}
+html body .admin-ui :is(h1, h2, h3, strong):not(.template-art *) {
+  color: var(--fx-text);
+}
+html body .admin-ui .dashboard-heading h1 {
+  letter-spacing: -0.025em;
+}
+
+/* Controls on dark. */
+html body .admin-ui :is(.brand-button, .commerce-button) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+html
+  body
+  .admin-ui
+  :is(
+    .brand-button-outline,
+    .commerce-button.secondary,
+    .commerce-button.neutral
+  ) {
+  background: var(--fx-surface-2);
+  color: var(--fx-text) !important;
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+}
+html
+  body
+  .admin-ui
+  :is(
+    .brand-button-outline,
+    .commerce-button.secondary,
+    .commerce-button.neutral
+  ):hover {
+  background: var(--fx-surface-3);
+}
+html body .admin-ui .commerce-button.danger {
+  background: #d93d3d;
+}
+html
+  body
+  .admin-ui
+  :is(
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="file"],
+      [type="range"],
+      [type="color"]
+    ),
+    select,
+    textarea
+  ) {
+  min-height: 38px;
+  background-color: var(--fx-bg-raised);
+  border-color: var(--fx-border-strong);
+  color: var(--fx-text);
+  color-scheme: dark;
+}
+html body .admin-ui :is(input, textarea)::placeholder {
+  color: var(--fx-faint);
+}
+html body .admin-ui :is(input, select, textarea):hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+html body .admin-ui :is(input, select, textarea):focus-visible {
+  outline: 0;
+  border-color: var(--fx-accent);
+  box-shadow: var(--fx-ring);
+}
+html body .admin-ui select option {
+  background: var(--fx-surface-2);
+  color: var(--fx-text);
+}
+html body .brand-app.admin-ui select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+html body .admin-ui .commerce-select-cell input,
+html body .admin-ui input[type="checkbox"],
+html body .admin-ui input[type="radio"] {
+  accent-color: var(--fx-accent);
+}
+
+/* Older page rules that hard-code white. */
+html body .admin-ui :is(.commerce-panel, .commerce-stat, .domain-panel) {
+  background: var(--fx-surface);
+}
+html body .admin-ui .commerce-stats {
+  background: var(--fx-border);
+}
+html body .admin-ui .commerce-notice.error {
+  border: 0;
+}
+html body .admin-ui details.commerce-panel > summary {
+  color: var(--fx-text);
+}
+html body .admin-ui details.settings-danger > summary {
+  color: var(--fx-danger);
+}
+html body .admin-ui .commerce-tabs button {
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  color: var(--fx-text-2);
+}
+html body .admin-ui .commerce-tabs button[aria-current] {
+  background: var(--fx-text);
+  color: var(--fx-bg);
+}
+html body .admin-ui .domain-steps li > span {
+  background: var(--fx-surface-3);
+  color: var(--fx-text);
+}
+html body .admin-ui .commerce-table th {
+  background: var(--fx-surface-2);
+}
+html body .admin-ui .commerce-table tbody tr:hover td {
+  background: var(--fx-hover);
+}
+html body .admin-ui code,
+html body .admin-ui .commerce-code {
+  background: var(--fx-bg-raised);
+  color: var(--fx-text-2);
+  border-color: var(--fx-border);
+}
+
+/* Website cards: richer previews on dark. */
+html body .admin-ui .dashboard-site-card > .site-card-preview {
+  background: var(--fx-bg-raised);
+}
+html body .admin-ui .site-card-monogram {
+  color: #fff;
+  background:
+    radial-gradient(
+      120% 90% at 0% 0%,
+      hsl(var(--monogram-hue) 80% 62% / 0.55),
+      transparent 60%
+    ),
+    radial-gradient(
+      100% 100% at 100% 100%,
+      hsl(calc(var(--monogram-hue) + 60) 80% 55% / 0.45),
+      transparent 60%
+    ),
+    var(--fx-surface-2);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+html body .admin-ui .dashboard-site-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .admin-ui .dashboard-site-card:hover {
+    transform: none;
+  }
+}
+
+/* Template thumbnails are light pictures of websites: keep their own palette. */
+html body .admin-ui .template-art {
+  --ui-ink: #1d2926;
+  --ui-text: #3c4a45;
+  --ui-muted: #55645b;
+  --ui-subtle: #627167;
+  --ui-border: #dadfd9;
+  --ui-canvas: #f6f7f3;
+  --ui-surface: #ffffff;
+  --ui-surface-alt: #eef1e9;
+  --ui-accent: #086b4f;
+  color: #1d2926;
+  color-scheme: light;
+}
+
+/* ---------- Sweep fixes ---------- */
+/* List view: one compact row per website, thumbnail at a fixed size. */
+html body .admin-ui .dashboard-site-grid.is-list > .dashboard-site-card {
+  display: flex;
+  grid-template-columns: none;
+}
+html body .admin-ui .dashboard-site-grid.is-list .site-card-preview {
+  height: 46px;
+  align-self: center;
+}
+/* Search box in the palette: no ring inside the dialog's own frame. */
+html body .admin-ui .admin-palette-input input,
+html body .admin-ui .admin-palette-input input:focus-visible {
+  min-height: 52px;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+/* Checkboxes and radios drawn for dark surfaces. */
+html body .admin-ui input[type="checkbox"],
+html body .admin-ui input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  border: 1px solid var(--fx-border-strong);
+  border-radius: 4px;
+  background: var(--fx-bg-raised);
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+html body .admin-ui input[type="radio"] {
+  border-radius: 50%;
+}
+html body .admin-ui input[type="checkbox"]:hover,
+html body .admin-ui input[type="radio"]:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+html body .admin-ui input[type="checkbox"]:checked,
+html body .admin-ui input[type="checkbox"]:indeterminate,
+html body .admin-ui input[type="radio"]:checked {
+  border-color: var(--fx-accent);
+  background: var(--fx-accent);
+}
+html body .admin-ui input[type="checkbox"]:checked::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+}
+html body .admin-ui input[type="checkbox"]:indeterminate::before {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: #fff;
+}
+html body .admin-ui input[type="radio"]:checked::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+html
+  body
+  .admin-ui
+  :is(input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: 0;
+  box-shadow: var(--fx-ring);
+}
+/* Dark scrollbars everywhere in the app. */
+html body .admin-ui,
+html body .admin-ui * {
+  scrollbar-color: var(--fx-surface-3) transparent;
+}
+/* Buttons beside inputs share their height. */
+html body .admin-ui .domain-add :is(button, .brand-button) {
+  height: 38px;
+  min-height: 38px;
+}
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  .dashboard-site-card
+  > a.site-card-preview {
+  min-height: 0;
+  height: 46px;
+  padding: 0;
+  border-right: 0;
 }

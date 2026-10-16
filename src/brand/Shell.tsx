@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { Brand, Arrow } from "./Brand";
+import { Icon } from "../studio/Icon";
 import { useMotionSurface } from "./useMotionSurface";
 import "./brand.css";
+// The workspace still relies on these older sheets; they load app-wide from here.
 import "./product.css";
 import "./experience.css";
 import "./motion.css";
+import "./public.css";
 
 const navigation = [
   ["/features", "Product"],
@@ -21,95 +24,89 @@ export function Header({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <header className="brand-header">
-      <a className="brand-home" href="/" aria-label="Forma home">
-        <Brand />
-      </a>
-      <nav
-        className="brand-nav"
-        data-open={open}
-        aria-label="Main navigation"
-        id="main-navigation"
-      >
-        {navigation.map(([href, label]) => (
+    <header className="pub-header">
+      <div className="pub-container pub-header-inner">
+        <a className="pub-logo" href="/" aria-label="Forma home">
+          <Brand />
+        </a>
+        <nav
+          className="pub-nav"
+          data-open={open}
+          aria-label="Main navigation"
+          id="main-navigation"
+        >
+          {navigation.map(([href, label]) => (
+            <a
+              key={href}
+              href={href}
+              aria-current={path.startsWith(href) ? "page" : undefined}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+        <div className="pub-header-actions">
           <a
-            key={href}
-            href={href}
-            aria-current={path.startsWith(href) ? "page" : undefined}
+            className="pub-signin"
+            href={authenticated ? "/workspace" : "/login"}
           >
-            {label}
+            {authenticated ? "Your workspace" : "Log in"}
           </a>
-        ))}
-      </nav>
-      <div className="brand-header-actions">
-        <a
-          className="brand-signin"
-          href={authenticated ? "/workspace" : "/login"}
-        >
-          {authenticated ? "Your workspace" : "Log in"}
-        </a>
-        <a
-          className="brand-button brand-button-small"
-          href={authenticated ? "/new" : "/signup"}
-        >
-          {authenticated ? "Create website" : "Get started"} <Arrow />
-        </a>
-        <button
-          className="brand-menu-button"
-          aria-label={open ? "Close navigation" : "Open navigation"}
-          aria-expanded={open}
-          aria-controls="main-navigation"
-          onClick={() => setOpen(!open)}
-        >
-          <span />
-          <span />
-        </button>
+          <a
+            className="pub-btn pub-btn-primary pub-btn-small"
+            href={authenticated ? "/new" : "/signup"}
+          >
+            {authenticated ? "Create website" : "Get started"}
+          </a>
+          <button
+            className="pub-menu-button"
+            aria-label={open ? "Close navigation" : "Open navigation"}
+            aria-expanded={open}
+            aria-controls="main-navigation"
+            onClick={() => setOpen(!open)}
+          >
+            <Icon name={open ? "x" : "menu"} size={18} />
+          </button>
+        </div>
       </div>
     </header>
   );
 }
 export function Footer() {
   return (
-    <footer className="brand-footer">
-      <div className="brand-footer-top">
-        <div className="brand-footer-intro">
+    <footer className="pub-footer">
+      <div className="pub-container pub-footer-top">
+        <div className="pub-footer-intro">
           <a href="/" aria-label="Forma home">
             <Brand />
           </a>
           <p>
-            Your website, from first draft
-            <br />
-            to what’s next.
+            The independent website builder. From first draft to your own
+            domain.
           </p>
         </div>
-        <div>
-          <h2>Make it yours</h2>
+        <div className="pub-footer-col">
+          <h2>Product</h2>
           <a href="/features">Website builder</a>
           <a href="/templates">Templates</a>
           <a href="/pricing">Pricing & hosting</a>
           <a href="/new">Start a website</a>
         </div>
-        <div>
-          <h2>Find your way</h2>
+        <div className="pub-footer-col">
+          <h2>Resources</h2>
           <a href="/help">Guides & help</a>
           <a href="/help/publish">Publishing a website</a>
           <a href="/workspace">Your workspace</a>
           <a href="/editor">Continue your draft</a>
         </div>
-        <div>
-          <h2>A little more</h2>
+        <div className="pub-footer-col">
+          <h2>Company</h2>
           <a href="/about">Our approach</a>
           <a href="/privacy">Data & privacy</a>
-          <span className="brand-footer-note">
-            Independent ideas
-            <br />
-            welcome here.
-          </span>
         </div>
       </div>
-      <div className="brand-footer-bottom">
+      <div className="pub-container pub-footer-bottom">
         <span>© {new Date().getFullYear()} Forma</span>
-        <span>Build with intention. Publish with confidence.</span>
         <a href="#main">Back to top ↑</a>
       </div>
     </footer>
@@ -130,7 +127,7 @@ export function Shell({
   return (
     <div
       ref={motionRef}
-      className={`brand-app brand-page-${path?.split("/")[1] || "home"} ${path === "/" ? "brand-homepage" : ""}`}
+      className={`brand-app brand-public brand-page-${path?.split("/")[1] || "home"}`}
     >
       <a className="brand-skip" href="#main">
         Skip to content
@@ -145,25 +142,23 @@ export function Shell({
 }
 export function FinalCTA() {
   return (
-    <section className="brand-final-cta" data-reveal>
-      <div className="brand-cta-copy">
-        <span className="brand-kicker">FROM IDEA TO WEBSITE</span>
+    <div className="pub-container">
+      <section className="pub-cta" data-reveal>
         <h2>
           Your website starts here.
           <br />
-          Make it your own.
+          <span className="pub-gradient-text">Make it your own.</span>
         </h2>
-      </div>
-      <div className="brand-cta-actions">
-        <a className="brand-button" href="/templates">
-          Find your starting point <Arrow />
-        </a>
-        <span className="brand-cta-note">
-          Start with a template or a blank canvas.
-          <br />
-          No code required.
-        </span>
-      </div>
-    </section>
+        <p>Start with a template or a blank canvas. No code required.</p>
+        <div className="pub-hero-actions">
+          <a className="pub-btn pub-btn-primary" href="/templates">
+            Find your starting point <Arrow />
+          </a>
+          <a className="pub-btn pub-btn-ghost" href="/new?template=blank">
+            Start from scratch
+          </a>
+        </div>
+      </section>
+    </div>
   );
 }

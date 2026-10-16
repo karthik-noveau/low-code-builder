@@ -11,6 +11,7 @@ import * as cloud from "../cloud/client";
 import { createProject } from "../studio/templates";
 import { type TemplateId, type Project } from "../studio/model";
 import "./brand.css";
+import "./public.css";
 
 import { safeDestination } from "./navigation";
 
@@ -51,48 +52,54 @@ export function AuthPage({
     }
   };
   return (
-    <div ref={motionRef} className="brand-app brand-auth">
-      <aside className="brand-auth-story">
+    <div ref={motionRef} className="brand-app brand-public pub-auth">
+      <aside className="pub-auth-story">
         <a href="/" aria-label="Forma home">
           <Brand />
         </a>
-        <div className="auth-story-copy">
-          <span className="brand-kicker">YOUR WEBSITE WORKSPACE</span>
-          <h1>
+        <div className="pub-auth-copy">
+          <span className="pub-eyebrow">
+            <i /> Your website workspace
+          </span>
+          <h1 style={{ marginTop: 24 }}>
             Everything you need.
             <br />
-            <em>Room to create.</em>
+            <span className="pub-gradient-text">Room to create.</span>
           </h1>
           <p>
-            Design, manage, and publish your website
-            <br />
-            from one connected workspace.
+            Design, manage, and publish your website from one connected
+            workspace.
           </p>
+          <div className="pub-auth-points">
+            <span>
+              <Icon name="check" size={14} /> Visual editor
+            </span>
+            <span>
+              <Icon name="check" size={14} /> Store & inbox
+            </span>
+            <span>
+              <Icon name="check" size={14} /> Your own domain
+            </span>
+          </div>
         </div>
-        <div className="auth-art">
+        <div className="pub-auth-art">
           <TemplateArt template="studio" />
         </div>
-        <span className="auth-story-footer">
-          DESIGN WITH PURPOSE. PUBLISH WITH CONFIDENCE.
-        </span>
       </aside>
-      <main className="brand-auth-main" id="main">
-        <div className="auth-top">
-          <a className="auth-mobile-brand" href="/" aria-label="Forma home">
+      <main className="pub-auth-main" id="main">
+        <div className="pub-auth-top">
+          <a className="pub-auth-mobile-brand" href="/" aria-label="Forma home">
             <Brand />
           </a>
           <a href="/">← Back to Forma</a>
         </div>
-        <div className="auth-form-wrap">
-          <span className="brand-kicker">
-            {signup ? "GET STARTED" : "WELCOME BACK"}
-          </span>
+        <div className="pub-auth-card">
           <h2>
             {callback
-              ? "Welcome to Forma."
+              ? "Welcome to Forma"
               : signup
-                ? "Create your workspace."
-                : "Log in to your workspace."}
+                ? "Create your workspace"
+                : "Log in to your workspace"}
           </h2>
           <p>
             {signup
@@ -100,31 +107,28 @@ export function AuthPage({
               : "Manage your websites and pick up where you left off."}
           </p>
           {(error || session.error) && (
-            <div className="brand-form-error" role="alert">
+            <div className="pub-error" role="alert">
               {error || session.error}
             </div>
           )}
           {session.loading ||
           (callback && !!session.account && !session.error) ? (
-            <div className="brand-loading" role="status">
+            <div className="pub-loading" role="status">
               <span />
               Opening your workspace…
             </div>
           ) : !session.config.enabled ? (
-            <div className="auth-offline">
+            <div className="pub-offline">
               <h3>Your browser is a good place to begin.</h3>
               <p>
                 The account service isn't connected right now. You can still
                 create, edit, and export a website in this browser.
               </p>
-              <a className="brand-button" href="/new">
+              <a className="pub-btn pub-btn-primary" href="/new">
                 Start a browser draft <Arrow />
               </a>
               {session.error && (
-                <button
-                  className="brand-text-link"
-                  onClick={() => location.reload()}
-                >
+                <button className="pub-link" onClick={() => location.reload()}>
                   Try connecting again
                 </button>
               )}
@@ -133,7 +137,7 @@ export function AuthPage({
             <form onSubmit={(event) => void submit(event)}>
               {session.config.mode === "local" ? (
                 <>
-                  <label className="brand-field">
+                  <label className="pub-field">
                     Email address
                     <input
                       type="email"
@@ -146,16 +150,14 @@ export function AuthPage({
                       onChange={(event) => setEmail(event.target.value)}
                     />
                   </label>
-                  <div className="brand-field">
-                    <span className="brand-field-row">
+                  <div className="pub-field">
+                    <span className="pub-field-row">
                       <label htmlFor="workspace-password">Password</label>
                       {!signup && !callback && (
-                        <a className="brand-text-link" href="/account?forgot">
-                          Forgot password?
-                        </a>
+                        <a href="/account?forgot">Forgot password?</a>
                       )}
                     </span>
-                    <span className="brand-password-field">
+                    <span className="pub-password">
                       <input
                         id="workspace-password"
                         type={showPassword ? "text" : "password"}
@@ -185,18 +187,18 @@ export function AuthPage({
                       </button>
                     </span>
                   </div>
-                  <p className="auth-local-note">
-                    <span />
+                  <p className="pub-auth-note">
+                    <i />
                     Local workspace · Saved on this computer
                   </p>
                 </>
               ) : (
-                <p className="auth-local-note">
+                <p className="pub-auth-note">
                   Continue to secure sign-in. Cloud workspace access is
                   currently by invitation.
                 </p>
               )}
-              <button className="brand-button auth-submit" disabled={busy}>
+              <button className="pub-btn pub-btn-accent" disabled={busy}>
                 {busy
                   ? "One moment…"
                   : session.config.mode === "aws"
@@ -206,7 +208,7 @@ export function AuthPage({
                       : "Log in"}
                 <Arrow />
               </button>
-              <p className="auth-switch">
+              <p className="pub-auth-switch">
                 {signup ? "Already have a workspace?" : "New to Forma?"}{" "}
                 <a
                   href={`${signup ? "/login" : "/signup"}?next=${encodeURIComponent(next)}`}
@@ -216,7 +218,7 @@ export function AuthPage({
               </p>
             </form>
           )}
-          <div className="auth-bottom-note">
+          <div className="pub-auth-bottom">
             Your ideas stay yours. <a href="/privacy">Privacy & data →</a>
           </div>
         </div>

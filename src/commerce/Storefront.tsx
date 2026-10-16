@@ -13,6 +13,7 @@ import {
   type StoreSettings,
 } from "./types";
 import "./commerce.css";
+import "./storefront.css";
 
 interface Cart {
   revision: number;
@@ -342,13 +343,13 @@ export function Storefront({ siteId }: { siteId: string }) {
         <>
           <section className="store-hero">
             <div>
-              <span className="commerce-eyebrow">
+              <span className="store-eyebrow">
                 Welcome to {data.settings.name}
               </span>
               <h1>Find your next favorite.</h1>
               <p>Thoughtful products, ready to make part of your everyday.</p>
             </div>
-            <label className="commerce-field">
+            <label className="commerce-field store-market">
               Shopping in
               <select
                 value={marketId}
@@ -377,28 +378,37 @@ export function Storefront({ siteId }: { siteId: string }) {
               </select>
             </label>
           </section>
-          <div className="commerce-toolbar">
-            <input
-              aria-label="Search store products"
-              placeholder="Find something you’ll love"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <label className="commerce-field">
-              <span className="sr-only">Collection</span>
-              <select
-                value={collection}
-                onChange={(e) => setCollection(e.target.value)}
-              >
-                <option value="">All collections</option>
-                {[
-                  ...new Set(
-                    data.products.map((p) => p.collection).filter(Boolean),
-                  ),
-                ].map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+          <div className="store-toolbar">
+            <div
+              className="store-collections"
+              role="group"
+              aria-label="Collection"
+            >
+              {[
+                "",
+                ...new Set(
+                  data.products.map((p) => p.collection).filter(Boolean),
+                ),
+              ].map((c) => (
+                <button
+                  key={c || "all"}
+                  aria-pressed={collection === c}
+                  onClick={() => setCollection(c)}
+                >
+                  {c || "All"}
+                </button>
+              ))}
+            </div>
+            <label className="store-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6" />
+              </svg>
+              <input
+                aria-label="Search store products"
+                placeholder="Search products"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </label>
           </div>
           <div className="store-grid">
@@ -415,7 +425,7 @@ export function Storefront({ siteId }: { siteId: string }) {
             ))}
           </div>
           {!products.length && (
-            <div className="commerce-panel commerce-empty">
+            <div className="store-empty">
               <h2>
                 {search || collection
                   ? "No matching products"
@@ -436,7 +446,7 @@ export function Storefront({ siteId }: { siteId: string }) {
         <div className="store-cart">
           <h1>Your cart</h1>
           {!cart?.cart.lines.length ? (
-            <div className="commerce-panel commerce-empty">
+            <div className="store-empty">
               <h2>Your cart is waiting</h2>
               <p className="commerce-muted">
                 Explore the collection and add something you like.
@@ -453,6 +463,13 @@ export function Storefront({ siteId }: { siteId: string }) {
               <div className="commerce-panel">
                 {cart.quote.lines.map((line) => (
                   <div className="store-cart-line" key={line.variantId}>
+                    <ProductThumb
+                      title={line.title}
+                      image={
+                        data.products.find((p) => p.id === line.productId)
+                          ?.image
+                      }
+                    />
                     <div>
                       <strong>{line.title}</strong>
                       <p>
@@ -841,7 +858,7 @@ export function Storefront({ siteId }: { siteId: string }) {
                     key={entry.id}
                     onClick={() => setArticle(entry)}
                   >
-                    <span className="commerce-eyebrow">
+                    <span className="store-eyebrow">
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </span>
                     <h2>{entry.title}</h2>
@@ -854,7 +871,10 @@ export function Storefront({ siteId }: { siteId: string }) {
                 ))}
               </div>
               {!data.content.length && (
-                <p className="commerce-muted">New stories are coming soon.</p>
+                <div className="store-empty">
+                  <h2>Nothing here yet</h2>
+                  <p className="commerce-muted">New stories are coming soon.</p>
+                </div>
               )}
             </>
           )}
@@ -907,7 +927,7 @@ export function Storefront({ siteId }: { siteId: string }) {
     return null;
   };
   return (
-    <div className="commerce-app">
+    <div className="commerce-app storefront">
       {data?.sandbox && (
         <div className="store-sandbox">
           Local demo store · Payments are simulated. No real money is collected.
@@ -923,7 +943,7 @@ export function Storefront({ siteId }: { siteId: string }) {
             <button onClick={() => navigate("journal")}>Journal</button>
             <button onClick={() => navigate("contact")}>Contact</button>
             <button
-              className="commerce-button secondary"
+              className="store-cart-button"
               onClick={() => navigate("cart")}
             >
               Cart (
@@ -1045,22 +1065,26 @@ function ProductCard({
   const translation = product.translations[language];
   return (
     <article className="store-product">
-      {product.image ? (
-        <img
-          className="store-product-image"
-          src={product.image}
-          alt={translation?.title || product.title}
-          loading="lazy"
-        />
-      ) : (
-        <div className="store-product-image" />
-      )}
+      <ProductThumb
+        title={translation?.title || product.title}
+        image={product.image}
+        large
+      />
       <div className="store-product-body">
-        <span className="commerce-eyebrow">
+        <span className="store-eyebrow">
           {product.collection || "Collection"}
         </span>
-        <h2>{translation?.title || product.title}</h2>
-        <p>{translation?.description || product.description}</p>
+        <div className="store-product-title">
+          <h2>{translation?.title || product.title}</h2>
+          <strong>
+            {price === undefined
+              ? "Not sold in this market"
+              : money(price, currency)}
+          </strong>
+        </div>
+        {(translation?.description || product.description) && (
+          <p>{translation?.description || product.description}</p>
+        )}
         {product.variants.length > 1 && (
           <select
             aria-label={`Options for ${product.title}`}
@@ -1075,22 +1099,39 @@ function ProductCard({
             ))}
           </select>
         )}
-        <div className="store-product-bottom">
-          <strong>
-            {price === undefined
-              ? "Not sold in this market"
-              : money(price, currency)}
-          </strong>
-          <button
-            className="commerce-button"
-            disabled={busy || !variant.stock || price === undefined}
-            onClick={() => void onAdd(variant.id)}
-          >
-            {!variant.stock ? "Sold out" : "Add to cart"}
-          </button>
-        </div>
+        <button
+          className="commerce-button store-add"
+          disabled={busy || !variant.stock || price === undefined}
+          onClick={() => void onAdd(variant.id)}
+        >
+          {!variant.stock ? "Sold out" : "Add to cart"}
+        </button>
       </div>
     </article>
+  );
+}
+/** A product image, or a calm lettered tile when there is none. */
+function ProductThumb({
+  title,
+  image,
+  large,
+}: {
+  title: string;
+  image?: string;
+  large?: boolean;
+}) {
+  const className = `store-thumb ${large ? "is-large" : ""}`;
+  return image ? (
+    <img
+      className={className}
+      src={image}
+      alt={large ? title : ""}
+      loading="lazy"
+    />
+  ) : (
+    <div className={`${className} is-empty`} aria-hidden="true">
+      {title.trim()[0]?.toUpperCase()}
+    </div>
   );
 }
 function StoreForm({
