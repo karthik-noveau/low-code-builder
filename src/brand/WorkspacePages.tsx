@@ -4,6 +4,7 @@ import { useMotionSurface } from "./useMotionSurface";
 import { MotionTabs } from "./MotionTabs";
 import { Brand, Arrow } from "./Brand";
 import { AppShell, PageHeading } from "./AppShell";
+import { ago, loadNotices, type Notice } from "./activity";
 import { TemplateArt } from "./TemplateArt";
 import { collections } from "./content";
 import { useSession } from "./useSession";
@@ -296,6 +297,18 @@ export function Dashboard() {
         : b.updatedAt.localeCompare(a.updatedAt),
     );
   const published = sites.filter((site) => !!site.publishedRelease).length;
+  const [notices, setNotices] = useState<Notice[] | null>(null);
+  useEffect(() => {
+    if (!session.account) return;
+    let active = true;
+    loadNotices()
+      .then((list) => active && setNotices(list))
+      .catch(() => active && setNotices([]));
+    return () => {
+      active = false;
+    };
+  }, [session.account]);
+  const ready = !!session.account && !loading;
   return (
     <AppShell
       area="websites"
@@ -304,10 +317,10 @@ export function Dashboard() {
       contentRef={motionRef}
     >
       <PageHeading
-        title="Websites"
+        title={session.account ? greeting(session.account.email) : "Websites"}
         description={
-          session.account && !loading
-            ? `${sites.length} ${sites.length === 1 ? "website" : "websites"} · ${published} published · ${Math.max(0, 10 - sites.length)} spaces left`
+          ready
+            ? "Here’s what’s happening across your websites."
             : "A home for everything you’re building."
         }
         action={
@@ -316,7 +329,12 @@ export function Dashboard() {
           </a>
         }
       />
-      <div className={`dashboard-body ${session.account ? "" : "is-guest"}`}>
+      {ready && (
+        <WorkspaceStats sites={sites} published={published} notices={notices} />
+      )}
+      <div
+        className={`dashboard-body ${session.account ? "" : "is-guest"} ${ready ? "has-side" : ""}`}
+      >
         <div className="dashboard-library">
           {(error || session.error) && (
             <div className="brand-form-error" role="alert">
@@ -552,13 +570,245 @@ export function Dashboard() {
                 {sites.length} of 10 website spaces used <span>·</span> Changes
                 stay in your draft until you publish.
               </p>
+              <TemplateRow />
             </>
           )}
         </div>
+        {ready && <WorkspaceSide sites={sites} notices={notices} />}
       </div>
     </AppShell>
   );
 }
+const greeting = (email: string) => {
+  const hour = new Date().getHours();
+  const part =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  // A first name only when the address starts with one (karthik.b@… → Karthik).
+  const name = /^[a-z]{3,}/i.exec(email.split("@")[0])?.[0];
+  return name
+    ? `${part}, ${name[0].toUpperCase()}${name.slice(1).toLowerCase()}`
+    : part;
+};
+
+/** One card of headline numbers across the workspace. */
+function WorkspaceStats({
+  sites,
+  published,
+  notices,
+}: {
+  sites: cloud.Site[];
+  published: number;
+  notices: Notice[] | null;
+}) {
+  const [weekAgo] = useState(() =>
+    new Date(Date.now() - 7 * 86400000).toISOString(),
+  );
+  const requests = notices?.filter((n) => n.icon === "mail" && n.at > weekAgo);
+  const issues = sites.filter((site) => site.error).length;
+  const stats = [
+    {
+      label: "Websites",
+      value: sites.length,
+      note: `${Math.max(0, 10 - sites.length)} of 10 spaces left`,
+      icon: "grid",
+    },
+    {
+      label: "Published",
+      value: published,
+      note: published ? "Live on the web" : "Nothing live yet",
+      icon: "globe",
+    },
+    {
+      label: "New requests",
+      value: requests ? requests.length : "–",
+      note: "Orders, bookings and messages this week",
+      icon: "mail",
+    },
+    {
+      label: "Needs attention",
+      value: issues,
+      note: issues ? "Publishing problems to review" : "All clear",
+      icon: "help",
+      tone: issues ? "warning" : "ok",
+    },
+  ];
+  return (
+    <div className="ws-stats">
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className={`ws-stat ${stat.tone === "warning" ? "is-warning" : ""}`}
+        >
+          <span className="ws-stat-icon" aria-hidden="true">
+            <Icon name={stat.icon} size={15} />
+          </span>
+          <span className="ws-stat-label">{stat.label}</span>
+          <strong>{stat.value}</strong>
+          <small>{stat.note}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Start something new from a template, right under your websites. */
+function TemplateRow() {
+  return (
+    <section className="ws-templates" aria-labelledby="ws-templates-title">
+      <div className="ws-section-head">
+        <h2 id="ws-templates-title">Start from a template</h2>
+        <a href="/templates">
+          Browse all <Arrow />
+        </a>
+      </div>
+      <div className="ws-template-row">
+        {collections.map((item) => (
+          <a
+            key={item.id}
+            href={`/new?template=${item.id}`}
+            className="ws-template"
+          >
+            <span className="ws-template-art">
+              <TemplateArt template={item.id} />
+            </span>
+            <strong>{item.name}</strong>
+            <small>{item.category}</small>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Setup progress, recent activity and shortcuts beside your websites. */
+function WorkspaceSide({
+  sites,
+  notices,
+}: {
+  sites: cloud.Site[];
+  notices: Notice[] | null;
+}) {
+  const latest = [...sites].sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt),
+  )[0];
+  const steps = [
+    {
+      label: "Create your first website",
+      done: sites.length > 0,
+      href: "/new",
+    },
+    {
+      label: "Make it yours in the editor",
+      done: sites.some((site) => site.version > 0),
+      href: latest ? `/editor?site=${latest.id}` : "/new",
+    },
+    {
+      label: "Publish it",
+      done: sites.some((site) => !!site.publishedRelease),
+      href: latest ? `/domains?site=${latest.id}` : "/new",
+    },
+    {
+      label: "Connect your own domain",
+      done: sites.some((site) => !!site.primaryDomain),
+      href: latest ? `/domains?site=${latest.id}` : "/new",
+    },
+  ];
+  const done = steps.filter((step) => step.done).length;
+  return (
+    <aside className="ws-side" aria-label="Workspace overview">
+      {done < steps.length && (
+        <section className="ws-card">
+          <div className="ws-section-head">
+            <h2>Get set up</h2>
+            <span className="ws-count">
+              {done}/{steps.length}
+            </span>
+          </div>
+          <span className="ws-progress" aria-hidden="true">
+            <i style={{ width: `${(done / steps.length) * 100}%` }} />
+          </span>
+          <ol className="ws-steps">
+            {steps.map((step) => (
+              <li key={step.label} className={step.done ? "is-done" : ""}>
+                <span className="ws-step-check" aria-hidden="true">
+                  {step.done && <Icon name="check" size={11} />}
+                </span>
+                {step.done ? (
+                  <span>{step.label}</span>
+                ) : (
+                  <a href={step.href}>
+                    {step.label} <Arrow />
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      <section className="ws-card">
+        <div className="ws-section-head">
+          <h2>Recent activity</h2>
+        </div>
+        {!notices ? (
+          <p className="ws-empty">Loading…</p>
+        ) : !notices.length ? (
+          <p className="ws-empty">
+            New orders, bookings, payments and publishing updates will show up
+            here.
+          </p>
+        ) : (
+          <ul className="ws-activity">
+            {notices.slice(0, 5).map((n) => (
+              <li key={n.id}>
+                <a href={n.href} className={n.tone ? `is-${n.tone}` : ""}>
+                  <span className="ws-activity-icon" aria-hidden="true">
+                    <Icon name={n.icon} size={13} />
+                  </span>
+                  <span>
+                    <strong>{n.title}</strong>
+                    <small>{n.detail}</small>
+                  </span>
+                  <time dateTime={n.at}>{ago(n.at)}</time>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="ws-card">
+        <div className="ws-section-head">
+          <h2>Shortcuts</h2>
+        </div>
+        <div className="ws-shortcuts">
+          {latest && (
+            <a href={`/editor?site=${latest.id}`}>
+              <Icon name="edit" size={15} />
+              <span>
+                Continue editing
+                <small>{latest.name}</small>
+              </span>
+            </a>
+          )}
+          <a href="/commerce">
+            <Icon name="store" size={15} />
+            <span>
+              Store management
+              <small>Products, orders, customers</small>
+            </span>
+          </a>
+          <a href="/help">
+            <Icon name="help" size={15} />
+            <span>
+              Guides & help
+              <small>Domains, publishing, design</small>
+            </span>
+          </a>
+        </div>
+      </section>
+    </aside>
+  );
+}
+
 export function NewWebsite() {
   const session = useSession();
   const requested = new URLSearchParams(location.search).get("template");

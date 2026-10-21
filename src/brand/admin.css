@@ -2815,3 +2815,364 @@ html body .admin-ui .ns-list-thumb {
   isolation: isolate;
   z-index: 0;
 }
+
+/* ---------- Your websites: stats, sites + templates, and a side column ---------- */
+html body .admin-ui .dashboard-main:has(.ws-stats) {
+  max-width: 1720px;
+}
+html body .admin-ui .ws-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+}
+html body .admin-ui .ws-stat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "icon label" "value value" "note note";
+  align-items: center;
+  gap: 4px 10px;
+  padding: 16px 18px;
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+}
+html body .admin-ui .ws-stat-icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .ws-stat.is-warning .ws-stat-icon {
+  background: var(--fx-warning-soft);
+  color: var(--fx-warning);
+}
+html body .admin-ui .ws-stat-label {
+  grid-area: label;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-stat > strong {
+  grid-area: value;
+  margin-top: 8px;
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+html body .admin-ui .ws-stat > small {
+  grid-area: note;
+  font-size: 12px;
+  color: var(--fx-muted);
+}
+
+html body .admin-ui .dashboard-body.has-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+html body .admin-ui .dashboard-body.has-side > .dashboard-library {
+  min-width: 0;
+}
+
+html body .admin-ui .ws-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+html body .admin-ui .ws-section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+html body .admin-ui .ws-section-head > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .ws-section-head > a svg {
+  width: 12px;
+}
+
+/* Template row under the sites. */
+html body .admin-ui .ws-templates {
+  margin-top: 28px;
+}
+html body .admin-ui .ws-template-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+html body .admin-ui .ws-template {
+  display: grid;
+  gap: 2px;
+  padding: 8px 8px 12px;
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+html body .admin-ui .ws-template:hover {
+  box-shadow: var(--fx-shadow-hover);
+  transform: translateY(-2px);
+}
+html body .admin-ui .ws-template-art {
+  display: block;
+  aspect-ratio: 16 / 10;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  isolation: isolate;
+}
+html body .admin-ui .ws-template-art > * {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+html body .admin-ui .ws-template > strong {
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+html body .admin-ui .ws-template > small {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--fx-muted);
+}
+
+/* Side column. */
+html body .admin-ui .ws-side {
+  display: grid;
+  gap: 16px;
+}
+html body .admin-ui .ws-card {
+  padding: 18px;
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+}
+html body .admin-ui .ws-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-progress {
+  display: block;
+  height: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--fx-surface-3);
+}
+html body .admin-ui .ws-progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fx-gradient);
+}
+html body .admin-ui .ws-steps {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html body .admin-ui .ws-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  font-size: 14px;
+}
+html body .admin-ui .ws-steps li.is-done {
+  color: var(--fx-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--fx-faint);
+}
+html body .admin-ui .ws-steps a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 550;
+  color: var(--fx-text);
+}
+html body .admin-ui .ws-steps a:hover {
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .ws-steps a svg {
+  width: 12px;
+}
+html body .admin-ui .ws-step-check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--fx-faint);
+}
+html body .admin-ui .is-done > .ws-step-check {
+  border: 0;
+  background: var(--fx-success);
+  color: #fff;
+}
+html body .admin-ui .ws-empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-activity {
+  display: grid;
+  gap: 2px;
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+html body .admin-ui .ws-activity a {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 8px;
+  border-radius: 10px;
+}
+html body .admin-ui .ws-activity a:hover {
+  background: var(--fx-hover);
+}
+html body .admin-ui .ws-activity-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--fx-surface-2);
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-activity a.is-success .ws-activity-icon {
+  background: var(--fx-success-soft);
+  color: var(--fx-success);
+}
+html body .admin-ui .ws-activity a.is-warning .ws-activity-icon {
+  background: var(--fx-warning-soft);
+  color: var(--fx-warning);
+}
+html body .admin-ui .ws-activity strong {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .ws-activity small {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--fx-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .ws-activity time {
+  font-size: 11px;
+  color: var(--fx-muted);
+  white-space: nowrap;
+}
+html body .admin-ui .ws-shortcuts {
+  display: grid;
+  gap: 2px;
+  margin: 0 -8px;
+}
+html body .admin-ui .ws-shortcuts a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 550;
+}
+html body .admin-ui .ws-shortcuts a:hover {
+  background: var(--fx-hover);
+}
+html body .admin-ui .ws-shortcuts a > svg {
+  flex-shrink: 0;
+  padding: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--fx-surface-2);
+  color: var(--fx-text-2);
+}
+html body .admin-ui .ws-shortcuts small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--fx-muted);
+}
+
+@media (max-width: 1200px) {
+  html body .admin-ui .dashboard-body.has-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html body .admin-ui .ws-side {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 900px) {
+  html body .admin-ui .ws-stats,
+  html body .admin-ui .ws-template-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .admin-ui .ws-template:hover {
+    transform: none;
+  }
+}
+/* With the side column, keep site cards compact and the toolbar on one line. */
+html
+  body
+  .admin-ui
+  .dashboard-body.has-side
+  .dashboard-site-grid:not(.is-list) {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+html body .admin-ui .dashboard-body.has-side .dashboard-site-toolbar {
+  flex-wrap: nowrap;
+}
+html body .admin-ui .dashboard-body.has-side .dashboard-search-wrap {
+  width: clamp(150px, 16vw, 240px);
+}
+html body .admin-ui .ws-stat {
+  align-content: start;
+}
+@media (max-width: 1360px) {
+  html body .admin-ui .dashboard-body.has-side .dashboard-site-toolbar {
+    flex-wrap: wrap;
+  }
+}
+html body .admin-ui .dashboard-site-toolbar .motion-tabs {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
