@@ -24,6 +24,7 @@ export const privatePaths = [
   "/login",
   "/signup",
   "/workspace",
+  "/workspace/templates",
   "/domains",
   "/new",
   "/editor",

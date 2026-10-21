@@ -15,7 +15,7 @@ import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 import "./admin.css";
 
-export type ShellArea = "websites" | "store" | "account";
+export type ShellArea = "websites" | "templates" | "store" | "account";
 export interface Crumb {
   label: string;
   href?: string;
@@ -201,12 +201,7 @@ export function AppShell({
             ),
           )}
           {link("store", "/commerce", "store", "Store management")}
-          <a href="/templates">
-            <span>
-              <Icon name="panel" size={16} />
-            </span>
-            Templates
-          </a>
+          {link("templates", "/workspace/templates", "panel", "Templates")}
           <a href="/editor">
             <span>
               <Icon name="edit" size={16} />

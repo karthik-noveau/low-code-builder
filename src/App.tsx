@@ -41,6 +41,11 @@ const Dashboard = lazy(() =>
     default: module.Dashboard,
   })),
 );
+const WorkspaceTemplates = lazy(() =>
+  import("./brand/WorkspaceTemplates").then((module) => ({
+    default: module.WorkspaceTemplates,
+  })),
+);
 const NewWebsite = lazy(() =>
   import("./brand/WorkspacePages").then((module) => ({
     default: module.NewWebsite,
@@ -70,6 +75,7 @@ export default function App() {
   if (callback || path === "/login" || path === "/signup")
     page = <AuthPage signup={path === "/signup"} callback={callback} />;
   else if (path === "/workspace") page = <Dashboard />;
+  else if (path === "/workspace/templates") page = <WorkspaceTemplates />;
   else if (path === "/commerce")
     page = <CommercePage initialSiteId={query.get("site") || ""} />;
   else if (path === "/store")

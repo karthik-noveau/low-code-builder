@@ -41,7 +41,7 @@ const PLACES: SearchItem[] = [
     label: "Templates",
     group: "Go to",
     icon: "panel",
-    href: "/templates",
+    href: "/workspace/templates",
   },
   {
     id: "go-account",

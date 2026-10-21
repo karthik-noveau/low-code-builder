@@ -60,6 +60,10 @@ export const pageMeta: Record<string, { title: string; description: string }> =
       title: "Your websites — Forma",
       description: "A home for your ideas, drafts, and published websites.",
     },
+    "/workspace/templates": {
+      title: "Templates — Forma",
+      description: "Preview the templates and start a website from one.",
+    },
     "/new": {
       title: "Start a website — Forma",
       description: "Choose a starting point and give your new website a name.",

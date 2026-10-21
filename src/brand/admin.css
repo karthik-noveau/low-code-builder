@@ -3215,3 +3215,358 @@ html body .admin-ui .ws-new-tile small {
   font-size: 12px;
   color: var(--fx-muted);
 }
+
+/* ---------- Templates inside the workspace ---------- */
+html body .admin-ui .dashboard-main:has(.tp-grid, .tp-toolbar) {
+  max-width: 1480px;
+}
+html body .admin-ui .tp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+html body .admin-ui .tp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+html body .admin-ui .tp-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fx-text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+}
+html body .admin-ui .tp-filters button:hover {
+  background: var(--fx-hover);
+}
+html body .admin-ui .tp-filters button[aria-pressed="true"] {
+  background: var(--fx-contrast);
+  color: var(--fx-on-contrast);
+}
+html body .admin-ui .tp-filters button > span {
+  font-size: 12px;
+  opacity: 0.6;
+}
+html body .admin-ui .tp-search {
+  width: 260px;
+}
+html body .admin-ui .tp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+html body .admin-ui .tp-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--fx-radius-xl);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+html body .admin-ui .tp-card:hover {
+  box-shadow: var(--fx-shadow-hover);
+  transform: translateY(-2px);
+}
+html body .admin-ui .tp-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  margin: 10px 10px 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  isolation: isolate;
+  cursor: zoom-in;
+}
+html body .admin-ui .tp-art > .template-art {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: transform 400ms var(--fx-ease);
+}
+html body .admin-ui .tp-card:hover .tp-art > .template-art {
+  transform: scale(1.03);
+}
+html body .admin-ui .tp-art-hover {
+  position: absolute;
+  inset: auto auto 12px 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(17, 17, 20, 0.78);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+html body .admin-ui .tp-art:hover .tp-art-hover,
+html body .admin-ui .tp-art:focus-visible .tp-art-hover {
+  opacity: 1;
+  transform: none;
+}
+html body .admin-ui .tp-art:focus-visible {
+  outline: 0;
+  box-shadow: var(--fx-ring);
+}
+html body .admin-ui .tp-body {
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px 18px;
+}
+html body .admin-ui .tp-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+html body .admin-ui .tp-title h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+html body .admin-ui .tp-tag {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  color: var(--fx-text-2);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 22px;
+  white-space: nowrap;
+}
+html body .admin-ui .tp-body > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fx-muted);
+}
+html body .admin-ui .tp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+html body .admin-ui .tp-palette {
+  display: flex;
+  gap: 5px;
+}
+html body .admin-ui .tp-palette span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(17, 17, 20, 0.12);
+}
+html body .admin-ui .tp-actions {
+  display: flex;
+  gap: 8px;
+}
+html body .admin-ui .tp-blank {
+  color: var(--fx-text);
+}
+html body .admin-ui .tp-blank-art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  margin: 10px 10px 0;
+  border-radius: 12px;
+  border: 1.5px dashed var(--fx-border-strong);
+  background:
+    radial-gradient(circle, var(--fx-border) 1px, transparent 1.5px) 0 0 / 16px
+      16px,
+    var(--fx-surface-2);
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .tp-blank:hover .tp-blank-art {
+  border-color: var(--fx-accent);
+}
+
+/* Preview panel over the workspace. */
+html body .admin-ui .tp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  padding: 24px;
+  background: var(--fx-overlay);
+  backdrop-filter: blur(4px);
+  animation: admin-fade 160ms ease;
+}
+html body .admin-ui .tp-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--fx-radius-xl);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-pop);
+  animation: admin-rise 200ms var(--fx-ease);
+}
+html body .admin-ui .tp-panel-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  padding: 10px 14px 10px 20px;
+  border-bottom: 1px solid var(--fx-border);
+}
+html body .admin-ui .tp-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+html body .admin-ui .tp-panel-title strong {
+  font-size: 16px;
+  font-weight: 650;
+}
+html body .admin-ui .tp-pages {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  overflow-x: auto;
+}
+html body .admin-ui .tp-pages button,
+html body .admin-ui .tp-device button {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fx-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+}
+html body .admin-ui .tp-pages button:hover,
+html body .admin-ui .tp-device button:hover {
+  background: var(--fx-hover);
+}
+html body .admin-ui .tp-pages button[aria-pressed="true"],
+html body .admin-ui .tp-device button[aria-pressed="true"] {
+  background: var(--fx-surface-2);
+  color: var(--fx-text);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+}
+html body .admin-ui .tp-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html body .admin-ui .tp-device {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+}
+html body .admin-ui .tp-device button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+}
+html body .admin-ui .tp-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fx-text-2);
+  cursor: pointer;
+}
+html body .admin-ui .tp-close:hover {
+  background: var(--fx-hover);
+  color: var(--fx-text);
+}
+html body .admin-ui .tp-stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--fx-bg);
+}
+html body .admin-ui .tp-frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--fx-shadow);
+}
+html body .admin-ui .tp-frame.is-mobile {
+  width: 390px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  html body .admin-ui .tp-overlay {
+    padding: 0;
+  }
+  html body .admin-ui .tp-panel {
+    border-radius: 0;
+  }
+  html body .admin-ui .tp-panel-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  html body .admin-ui .tp-pages {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+  html body .admin-ui .tp-device {
+    display: none;
+  }
+  html body .admin-ui .tp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html body .admin-ui .tp-search {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .admin-ui .tp-card:hover,
+  html body .admin-ui .tp-card:hover .tp-art > .template-art {
+    transform: none;
+  }
+}

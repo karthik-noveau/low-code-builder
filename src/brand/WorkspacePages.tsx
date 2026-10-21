@@ -666,7 +666,7 @@ function TemplateRow() {
     <section className="ws-templates" aria-labelledby="ws-templates-title">
       <div className="ws-section-head">
         <h2 id="ws-templates-title">Start from a template</h2>
-        <a href="/templates">
+        <a href="/workspace/templates">
           Browse all <Arrow />
         </a>
       </div>
