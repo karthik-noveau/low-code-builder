@@ -537,15 +537,35 @@ export function Dashboard() {
                             >
                               Open editor
                             </a>
-                            <a href={`/domains?site=${site.id}`}>Domains</a>
-                            <a href={`/commerce?site=${site.id}`}>Store</a>
+                            <a
+                              className="ws-icon-action"
+                              href={`/domains?site=${site.id}`}
+                              aria-label={`Domains for ${site.name}`}
+                              title="Domains & publishing"
+                            >
+                              <Icon name="globe" size={15} />
+                              <span>Domains</span>
+                            </a>
+                            <a
+                              className="ws-icon-action"
+                              href={`/commerce?site=${site.id}`}
+                              aria-label={`Store for ${site.name}`}
+                              title="Store"
+                            >
+                              <Icon name="store" size={15} />
+                              <span>Store</span>
+                            </a>
                             {site.url && (
                               <a
+                                className="ws-icon-action"
                                 href={site.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                aria-label={`Visit ${site.name}`}
+                                title="Visit live site"
                               >
-                                Visit <Arrow diagonal />
+                                <Icon name="arrowUpRight" size={15} />
+                                <span>Visit</span>
                               </a>
                             )}
                           </div>

@@ -3640,3 +3640,84 @@ html body .admin-ui .tp-blank-art {
 html body .admin-ui .tp-title h2 {
   font-size: 18px;
 }
+
+/* Site cards: the name truncates beside its badge; the actions always fit.
+   Secondary actions show labels when there's room and shrink to icons when
+   there isn't (container query on the card). */
+html body .admin-ui .dashboard-site-card {
+  container-type: inline-size;
+}
+html body .admin-ui .dashboard-site-card-body > div:first-child {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+html body .admin-ui .dashboard-site-card-body h2 {
+  flex: 1;
+  min-width: 0;
+}
+html body .admin-ui .dashboard-site-card-body .dashboard-site-status {
+  flex-shrink: 0;
+}
+html body .admin-ui .dashboard-site-card-body > .dashboard-site-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary {
+  flex-shrink: 0;
+  margin-right: auto;
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action {
+  flex-shrink: 0;
+  gap: 5px;
+  padding: 0 8px;
+  color: var(--fx-text-2);
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action svg {
+  flex-shrink: 0;
+  color: var(--fx-muted);
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action:hover svg {
+  color: var(--fx-text);
+}
+@container (max-width: 330px) {
+  html body .admin-ui .dashboard-site-actions > a.ws-icon-action {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+  }
+  html body .admin-ui .dashboard-site-actions > a.ws-icon-action > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+/* List rows have room for labels. */
+html
+  body
+  .admin-ui
+  .dashboard-site-grid.is-list
+  .dashboard-site-actions
+  > a.ws-icon-action {
+  width: auto;
+  padding: 0 8px;
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action > svg {
+  width: 16px;
+  height: 16px;
+}
+@container (max-width: 330px) {
+  html body .admin-ui .dashboard-site-actions > a.ws-icon-action {
+    height: 30px;
+    border-radius: 8px;
+  }
+  html body .admin-ui .dashboard-site-actions > a.ws-icon-action:hover {
+    background: var(--fx-hover);
+  }
+}
