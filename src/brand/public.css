@@ -2264,3 +2264,14 @@ html body .brand-public .pub-preview-frame.is-mobile {
     #b79bff 100%
   );
 }
+/* Phones: the category row scrolls; fade its edge so that reads. */
+@media (max-width: 760px) {
+  html body .brand-public .pub-toolbar .pub-segmented {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 calc(100% - 28px),
+      transparent
+    );
+  }
+}
