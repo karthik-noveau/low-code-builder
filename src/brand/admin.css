@@ -3570,3 +3570,73 @@ html body .admin-ui .tp-frame.is-mobile {
     transform: none;
   }
 }
+
+/* ---------- Use the full width on large screens ---------- */
+html body .admin-ui .dashboard-main,
+html body .admin-ui .dashboard-main:has(.ws-stats),
+html body .admin-ui .dashboard-main:has(.tp-grid, .tp-toolbar) {
+  max-width: none;
+  padding-inline: clamp(16px, 2.4vw, 40px);
+}
+html body .admin-ui .tp-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+/* Account settings: one card per section, side by side when there's room. */
+html body .admin-ui .account-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+html body .admin-ui .account-settings > :not(.settings-section) {
+  grid-column: 1 / -1;
+}
+html body .admin-ui .account-settings .settings-section,
+html body .admin-ui .account-settings .settings-section:first-of-type {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+}
+html body .admin-ui .account-settings .settings-section-intro {
+  padding: 18px 20px 4px;
+}
+html body .admin-ui .account-settings .settings-section-body > .commerce-panel,
+html body .admin-ui .account-settings .settings-section-body > details {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+html
+  body
+  .admin-ui
+  .account-settings
+  .settings-section-body
+  .commerce-field
+  input {
+  max-width: none;
+}
+html body .admin-ui .account-settings .settings-section.is-danger {
+  box-shadow:
+    0 0 0 1px rgba(220, 53, 69, 0.25),
+    0 1px 2px rgba(17, 17, 20, 0.04);
+}
+/* Templates: big previews, three across on wide screens. */
+html body .admin-ui .tp-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: 24px;
+}
+html body .admin-ui .tp-art,
+html body .admin-ui .tp-blank-art {
+  aspect-ratio: 16 / 9.5;
+}
+html body .admin-ui .tp-title h2 {
+  font-size: 18px;
+}
