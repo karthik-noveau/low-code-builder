@@ -558,6 +558,15 @@ export function Dashboard() {
                         </div>
                       </article>
                     ))}
+                    {view === "grid" && sites.length < 10 && !search && (
+                      <a className="ws-new-tile" href="/new">
+                        <span className="ws-new-icon" aria-hidden="true">
+                          <Icon name="plus" size={20} />
+                        </span>
+                        <strong>New website</strong>
+                        <small>From a template or a blank page</small>
+                      </a>
+                    )}
                   </div>
                   {!visible.length && (
                     <p className="brand-muted">
