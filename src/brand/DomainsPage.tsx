@@ -3,6 +3,7 @@ import { AppShell, PageHeading } from "./AppShell";
 import { Arrow } from "./Brand";
 import { useSession } from "./useSession";
 import * as cloud from "../cloud/client";
+import { Icon } from "../studio/Icon";
 import "./domains.css";
 
 const labels: Record<cloud.DomainConnection["status"], string> = {
@@ -24,6 +25,18 @@ const steps = [
   "Publish",
 ];
 
+/** How far setup has come: the index of the step being worked on. */
+const STEP_FOR: Record<string, number> = {
+  ownership: 1,
+  certificate: 2,
+  deploying: 2,
+  dns: 3,
+  connected: 4,
+};
+function progress(domains: cloud.DomainConnection[], site?: cloud.Site) {
+  const at = Math.max(0, ...domains.map((d) => STEP_FOR[d.status] ?? 0));
+  return at === 4 && site?.publishedRelease ? 5 : at;
+}
 export function DomainsPage({ siteId }: { siteId: string }) {
   const session = useSession();
   const [site, setSite] = useState<cloud.Site>();
@@ -208,13 +221,28 @@ export function DomainsPage({ siteId }: { siteId: string }) {
             )
           }
         />
-        <ol className="domain-steps">
-          {steps.map((step, index) => (
-            <li key={step}>
-              <span>{index + 1}</span>
-              {step}
-            </li>
-          ))}
+        <ol className="domain-steps" aria-label="Setup progress">
+          {steps.map((step, index) => {
+            const at = progress(domains, site);
+            const state =
+              index < at ? "done" : index === at ? "current" : "upcoming";
+            return (
+              <li
+                key={step}
+                className={`is-${state}`}
+                aria-current={state === "current" ? "step" : undefined}
+              >
+                <span>
+                  {state === "done" ? (
+                    <Icon name="check" size={13} />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                {step}
+              </li>
+            );
+          })}
         </ol>
         {(error || session.error || site?.error) && (
           <div className="brand-form-error" role="alert">
@@ -532,6 +560,17 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     )}
                   </section>
                 ))}
+                <section className="domain-panel domain-help">
+                  <h3>A little help with DNS</h3>
+                  <p>
+                    Some providers add the zone name automatically. Enter only
+                    the host prefix when their form requires it. Keep your
+                    existing email records unchanged.
+                  </p>
+                  <a className="brand-text-link" href="/help/domains">
+                    Read the domain guide <Arrow />
+                  </a>
+                </section>
               </div>
               <aside className="domain-publishing">
                 <section className="domain-panel">
@@ -552,10 +591,6 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     recent editor changes before publishing here.
                   </p>
                   <dl className="domain-publish-facts">
-                    <div>
-                      <dt>Website</dt>
-                      <dd>{site.name}</dd>
-                    </div>
                     <div>
                       <dt>Address</dt>
                       <dd>
@@ -684,17 +719,6 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     )}
                   </section>
                 )}
-                <section className="domain-panel domain-help">
-                  <h3>A little help with DNS</h3>
-                  <p>
-                    Some providers add the zone name automatically. Enter only
-                    the host prefix when their form requires it. Keep your
-                    existing email records unchanged.
-                  </p>
-                  <a className="brand-text-link" href="/help/domains">
-                    Read the domain guide <Arrow />
-                  </a>
-                </section>
               </aside>
             </div>
           </>

@@ -6,6 +6,7 @@ import { Brand, Arrow } from "./Brand";
 import { AppShell, PageHeading } from "./AppShell";
 import { ago, loadNotices, type Notice } from "./activity";
 import { TemplateArt } from "./TemplateArt";
+import { SiteThumbnail } from "./SiteThumbnail";
 import { collections } from "./content";
 import { useSession } from "./useSession";
 import * as cloud from "../cloud/client";
@@ -482,29 +483,18 @@ export function Dashboard() {
                         key={site.id}
                         data-reveal
                       >
-                        <a
-                          className="site-card-preview"
-                          href={`/editor?site=${site.id}`}
-                          aria-label={`Edit ${site.name}`}
-                        >
-                          {site.template && site.template !== "blank" ? (
-                            <TemplateArt template={site.template} />
-                          ) : (
-                            // No template to show: a calm initial instead of
-                            // blank-page art that reads as an "add" button.
-                            <span
-                              className="site-card-monogram"
-                              style={{
-                                ["--monogram-hue" as string]: `${[...site.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360}`,
-                              }}
-                            >
-                              {site.name.trim()[0]?.toUpperCase() || "W"}
+                        <div className="site-card-preview">
+                          <SiteThumbnail site={site} />
+                          <a
+                            className="site-card-preview-link"
+                            href={`/editor?site=${site.id}`}
+                            aria-label={`Edit ${site.name}`}
+                          >
+                            <span className="site-card-preview-overlay">
+                              Open editor <Arrow diagonal />
                             </span>
-                          )}
-                          <span className="site-card-preview-overlay">
-                            Open editor <Arrow diagonal />
-                          </span>
-                        </a>
+                          </a>
+                        </div>
                         <div className="dashboard-site-card-body">
                           <div>
                             <h2>

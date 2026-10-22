@@ -14,6 +14,7 @@ import { GlobalSearch, Notifications, type SearchItem } from "./ShellTools";
 import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 import "./admin.css";
+import "./polish.css";
 
 export type ShellArea = "websites" | "templates" | "store" | "account";
 export interface Crumb {

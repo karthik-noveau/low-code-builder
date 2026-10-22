@@ -1,0 +1,697 @@
+/*
+ * Finish layer for the workspace: one set of surfaces, radii and type that
+ * every page shares. Loaded after admin.css, so equal selectors win here.
+ */
+html body .admin-ui {
+  --p-radius: 12px;
+  --p-card: var(--fx-surface);
+  --p-line: var(--fx-border);
+  --p-shadow: 0 0 0 1px var(--fx-border), 0 1px 2px rgba(17, 17, 20, 0.04);
+  --p-shadow-hover:
+    0 0 0 1px var(--fx-border-strong), 0 8px 24px -12px rgba(17, 17, 20, 0.18);
+}
+:root[data-theme="dark"] body .admin-ui {
+  --p-shadow: 0 0 0 1px var(--fx-border), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --p-shadow-hover:
+    0 0 0 1px var(--fx-border-strong), 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- Canvas and headings ---------- */
+/* A flat canvas: the old glow read as a smudge behind every header. */
+html body .admin-ui .dashboard-content {
+  background: var(--fx-bg);
+}
+html body .admin-ui .dashboard-heading {
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+html body .admin-ui .dashboard-heading h1 {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+html body .admin-ui .dashboard-heading p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--fx-muted);
+}
+html body .admin-ui .dashboard-heading .brand-kicker {
+  display: inline-flex;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fx-accent-text);
+}
+
+/* ---------- Sidebar ---------- */
+html body .admin-ui .dashboard-sidebar > nav > a,
+html body .admin-ui .dashboard-sidebar-bottom > a {
+  height: 34px;
+  border-radius: 8px;
+  font-weight: 500;
+  color: var(--fx-text-2);
+}
+html body .admin-ui .dashboard-sidebar > nav > a:hover,
+html body .admin-ui .dashboard-sidebar-bottom > a:hover {
+  background: var(--fx-hover);
+  color: var(--fx-text);
+}
+html body .admin-ui .dashboard-sidebar > nav > a[aria-current],
+html body .admin-ui .dashboard-sidebar-bottom > a[aria-current] {
+  background: var(--fx-accent-soft);
+  box-shadow: none;
+  color: var(--fx-accent-text);
+  font-weight: 600;
+}
+html body .admin-ui .dashboard-sidebar a[aria-current] svg {
+  color: var(--fx-accent-text);
+}
+
+/* ---------- Stats: compact tiles ---------- */
+html body .admin-ui .ws-stats {
+  gap: 12px;
+  margin-bottom: 20px;
+}
+html body .admin-ui .ws-stat {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon value"
+    "note note";
+  column-gap: 12px;
+  row-gap: 0;
+  align-items: center;
+  min-height: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+}
+html body .admin-ui .ws-stat-icon {
+  grid-area: icon;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .ws-stat:nth-child(2) .ws-stat-icon {
+  background: var(--fx-success-soft);
+  color: var(--fx-success);
+}
+html body .admin-ui .ws-stat:nth-child(3) .ws-stat-icon {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--fx-violet);
+}
+html body .admin-ui .ws-stat:nth-child(4) .ws-stat-icon {
+  background: var(--fx-tint-2);
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-stat.is-warning .ws-stat-icon {
+  background: var(--fx-warning-soft);
+  color: var(--fx-warning);
+}
+html body .admin-ui .ws-stat-label {
+  grid-area: label;
+  align-self: end;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fx-muted);
+}
+html body .admin-ui .ws-stat > strong {
+  grid-area: value;
+  align-self: start;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+html body .admin-ui .ws-stat > small {
+  grid-area: note;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--p-line);
+  font-size: 12px;
+  color: var(--fx-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Site cards ---------- */
+html body .admin-ui .dashboard-site-grid {
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+html body .admin-ui .dashboard-site-grid.is-list {
+  grid-auto-rows: auto;
+}
+html body .admin-ui .dashboard-site-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+  transition:
+    box-shadow 160ms var(--fx-ease),
+    transform 160ms var(--fx-ease);
+}
+html body .admin-ui .dashboard-site-card:hover {
+  box-shadow: var(--p-shadow-hover);
+  transform: translateY(-1px);
+}
+html body .admin-ui .dashboard-site-card > .site-card-preview {
+  margin: 8px 8px 0;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--p-line);
+  background: var(--fx-surface-2);
+}
+html body .admin-ui .dashboard-site-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 12px;
+}
+html body .admin-ui .dashboard-site-card-body h2 {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+html body .admin-ui .dashboard-site-card-body > p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--fx-muted);
+}
+html body .admin-ui .dashboard-site-status {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--fx-tint-2);
+  color: var(--fx-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+html body .admin-ui .dashboard-site-status.is-live {
+  background: var(--fx-success-soft);
+  color: var(--fx-success);
+}
+html body .admin-ui .dashboard-site-card-body > .dashboard-site-actions {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--p-line);
+}
+html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fx-contrast);
+  color: var(--fx-on-contrast);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+}
+html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary:hover {
+  opacity: 0.88;
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action {
+  height: 30px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+html body .admin-ui .dashboard-site-actions > a.ws-icon-action:hover {
+  background: var(--fx-hover);
+}
+
+/* Live thumbnail of the site's own home page. */
+html body .admin-ui .site-thumb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  pointer-events: none;
+  user-select: none;
+}
+html body .admin-ui .site-thumb-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  transform-origin: top left;
+  animation: thumb-in 260ms var(--fx-ease);
+}
+html body .admin-ui .site-thumb > .template-art {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+html body .admin-ui .site-thumb-blank {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(
+      80% 90% at 15% 10%,
+      hsl(var(--thumb-hue) 85% 92%),
+      transparent 60%
+    ),
+    radial-gradient(
+      70% 80% at 90% 100%,
+      hsl(calc(var(--thumb-hue) + 60) 80% 92%),
+      transparent 60%
+    ),
+    #fbfbfc;
+}
+html body .admin-ui .site-thumb-blank > span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(17, 17, 20, 0.06),
+    0 6px 16px -8px rgba(17, 17, 20, 0.25);
+  color: #111114;
+  font-size: 22px;
+  font-weight: 650;
+}
+html body .admin-ui .site-thumb-blank > small {
+  color: #6b6b76;
+  font-size: 12px;
+}
+@keyframes thumb-in {
+  from {
+    opacity: 0;
+  }
+}
+html body .admin-ui .site-card-preview-overlay {
+  inset: auto 8px 8px auto;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 140ms var(--fx-ease),
+    transform 140ms var(--fx-ease);
+  backdrop-filter: blur(6px);
+}
+html body .admin-ui .site-card-preview-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+html body .admin-ui .site-card-preview-link:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 2px;
+}
+html body .admin-ui .site-card-preview:hover .site-card-preview-overlay,
+html
+  body
+  .admin-ui
+  .site-card-preview-link:focus-visible
+  .site-card-preview-overlay {
+  opacity: 1;
+  transform: none;
+}
+
+/* New website tile: same size as a card, quiet until hovered. */
+html body .admin-ui .ws-new-tile {
+  min-height: 0;
+  border: 1px dashed var(--fx-border-strong);
+  border-radius: var(--p-radius);
+  background: transparent;
+  box-shadow: none;
+}
+html body .admin-ui .ws-new-tile:hover {
+  border-color: var(--fx-accent);
+  background: var(--fx-accent-soft);
+}
+html body .admin-ui .ws-new-tile:hover .ws-new-icon {
+  background: var(--fx-accent);
+  color: #fff;
+}
+
+/* ---------- Side cards and generic panels ---------- */
+html body .admin-ui .ws-card,
+html body .admin-ui .commerce-panel,
+html body .admin-ui .domain-panel {
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+}
+html body .admin-ui .ws-section-head h2,
+html body .admin-ui .ws-section-head h3,
+html body .admin-ui .domain-panel-heading h2,
+html body .admin-ui .domain-panel h3 {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+/* Finished setup steps: ticked and muted, not struck through. */
+html body .admin-ui .ws-steps li.is-done {
+  text-decoration: none;
+  color: var(--fx-muted);
+}
+
+/* ---------- Domains ---------- */
+html body .admin-ui .domain-steps {
+  display: flex;
+  gap: 0;
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+  counter-reset: none;
+  overflow-x: auto;
+}
+html body .admin-ui .domain-steps li {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 10px;
+  min-width: max-content;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fx-muted);
+  white-space: nowrap;
+}
+html body .admin-ui .domain-steps li:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  min-width: 16px;
+  height: 1px;
+  margin: 0 12px;
+  background: var(--fx-border-strong);
+}
+html body .admin-ui .domain-steps li.is-done:not(:last-child)::after {
+  background: var(--fx-accent);
+}
+html body .admin-ui .domain-steps li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+  color: var(--fx-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+html body .admin-ui .domain-steps li.is-current {
+  color: var(--fx-text);
+  font-weight: 600;
+}
+html body .admin-ui .domain-steps li.is-current > span {
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--fx-accent);
+  color: var(--fx-accent-text);
+}
+html body .admin-ui .domain-steps li.is-done {
+  color: var(--fx-text-2);
+}
+html body .admin-ui .domain-steps li.is-done > span {
+  background: var(--fx-accent);
+  box-shadow: none;
+  color: #fff;
+}
+html body .admin-ui .domain-local-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fx-tint-2);
+  box-shadow: none;
+  font-size: 13px;
+}
+html body .admin-ui .domain-local-banner strong {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--fx-text);
+}
+html body .admin-ui .domain-local-banner strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: var(--fx-warning);
+  vertical-align: 1px;
+}
+html body .admin-ui .domain-local-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fx-muted);
+}
+html body .admin-ui .domain-layout {
+  gap: 20px;
+  align-items: start;
+}
+html body .admin-ui .domain-publishing {
+  display: grid;
+  gap: 16px;
+}
+html body .admin-ui .domain-connections {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+html body .admin-ui .domain-connections > .domain-panel,
+html body .admin-ui .domain-publishing > .domain-panel {
+  margin: 0;
+}
+html body .admin-ui .domain-help {
+  padding: 18px 20px;
+  background:
+    linear-gradient(135deg, var(--fx-accent-soft), transparent 60%),
+    var(--p-card);
+}
+html body .admin-ui .domain-help h3 {
+  margin: 0 0 6px;
+}
+html body .admin-ui .domain-help p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--fx-muted);
+}
+html body .admin-ui .domain-publish-facts {
+  margin: 16px 0;
+  border-radius: 10px;
+  background: var(--fx-tint);
+  box-shadow: inset 0 0 0 1px var(--p-line);
+}
+html body .admin-ui .domain-publish-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--p-line);
+  font-size: 13px;
+}
+html body .admin-ui .domain-publish-facts > div:first-child {
+  border-top: 0;
+}
+html body .admin-ui .domain-publish-facts dt {
+  margin: 0;
+  color: var(--fx-muted);
+}
+html body .admin-ui .domain-publish-facts dd {
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ---------- Account settings: one card per topic, label left ---------- */
+html body .admin-ui .account-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+html body .admin-ui .account-settings .settings-section,
+html body .admin-ui .account-settings .settings-section:first-of-type {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+}
+html body .admin-ui .account-settings .settings-section-intro {
+  padding: 22px 24px;
+  border-right: 1px solid var(--p-line);
+}
+html body .admin-ui .account-settings .settings-section-intro h2 {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 650;
+}
+html body .admin-ui .account-settings .settings-section-intro p {
+  font-size: 13px;
+}
+html body .admin-ui .account-settings .settings-section-body {
+  min-width: 0;
+}
+html body .admin-ui .account-settings .settings-section-body > .commerce-panel,
+html body .admin-ui .account-settings .settings-section-body > details {
+  height: 100%;
+  margin: 0;
+  padding: 22px 24px;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+html body .admin-ui .account-settings .commerce-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 720px;
+  gap: 14px 16px;
+  align-content: start;
+}
+html body .admin-ui .account-settings .commerce-form > :not(.commerce-field),
+html body .admin-ui .account-settings .commerce-form > p {
+  grid-column: 1 / -1;
+}
+html
+  body
+  .admin-ui
+  .account-settings
+  .settings-section-body
+  .commerce-field
+  input {
+  max-width: none;
+  height: 38px;
+}
+html body .admin-ui .account-settings .commerce-form-actions {
+  justify-content: flex-start;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+html body .admin-ui .account-settings .settings-section.is-danger {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fx-danger) 28%, transparent),
+    0 1px 2px rgba(17, 17, 20, 0.04);
+}
+html body .admin-ui .account-settings details.settings-danger > summary {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--fx-danger) 40%, transparent);
+  color: var(--fx-danger);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+html
+  body
+  .admin-ui
+  .account-settings
+  details.settings-danger
+  > summary::-webkit-details-marker {
+  display: none;
+}
+html body .admin-ui .account-settings details.settings-danger > summary:hover {
+  background: var(--fx-danger-soft);
+}
+html body .admin-ui .account-settings details.settings-danger[open] > summary {
+  margin-bottom: 16px;
+}
+html
+  body
+  .admin-ui
+  .account-settings
+  details.settings-danger
+  .commerce-form-actions {
+  padding-top: 0;
+  border: 0;
+}
+@media (max-width: 760px) {
+  html body .admin-ui .account-settings .settings-section,
+  html body .admin-ui .account-settings .settings-section:first-of-type {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html body .admin-ui .account-settings .settings-section-intro {
+    padding-bottom: 0;
+    border-right: 0;
+  }
+  html body .admin-ui .account-settings .commerce-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Buttons and fields: one height, one radius ---------- */
+html body .admin-ui .brand-button,
+html body .admin-ui .commerce-button {
+  height: 36px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+html body .admin-ui .brand-button-outline,
+html body .admin-ui .commerce-button.secondary {
+  border: 0;
+  background: var(--p-card);
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+  color: var(--fx-text);
+}
+html body .admin-ui .brand-button-outline:hover,
+html body .admin-ui .commerce-button.secondary:hover {
+  background: var(--fx-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body .admin-ui .dashboard-site-card,
+  html body .admin-ui .site-thumb-canvas,
+  html body .admin-ui .site-card-preview-overlay {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ---------- New website: same surfaces and buttons as everywhere ---------- */
+html body .admin-ui .ns-panel,
+html body .admin-ui .ns-browser {
+  border-radius: 14px;
+}
+html body .admin-ui .brand-button.ns-create,
+html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  background: var(--fx-accent);
+  filter: none;
+  box-shadow: 0 6px 18px -8px rgba(59, 104, 240, 0.55);
+}
+html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
+  background: var(--fx-accent-hover);
+}
