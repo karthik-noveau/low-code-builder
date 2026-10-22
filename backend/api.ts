@@ -24,6 +24,7 @@ import { inboxPublic, listRequests, updateRequest } from "./inbox";
 import { connect, disconnect, getConnection } from "./payments";
 import { allow, sharedSites, siteAccess } from "./access";
 import { deleteLocalSite } from "./lifecycle";
+import { getItem, putItem } from "./database";
 
 export interface ApiRequest {
   method: string;
@@ -125,6 +126,26 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
         return jsonResponse({
           request: await updateRequest(siteId, requestId, data()),
         });
+      throw new HttpError(405, "Method not allowed.");
+    }
+    // When the account last read its notifications, so every browser agrees.
+    if (path === "/account/notifications") {
+      const key = { pk: `USER#${owner}`, sk: "NOTIFICATIONS" };
+      if (method === "GET")
+        return jsonResponse({
+          seenAt:
+            (await getItem<{ seenAt?: string }>(key.pk, key.sk))?.seenAt ?? "",
+        });
+      if (method === "POST") {
+        const seenAt = String(data().seenAt ?? "");
+        insist(
+          !Number.isNaN(Date.parse(seenAt)) && seenAt.length <= 40,
+          400,
+          "Expected a date.",
+        );
+        await putItem({ ...key, seenAt });
+        return jsonResponse({ seenAt });
+      }
       throw new HttpError(405, "Method not allowed.");
     }
     if (path === "/sites" && method === "GET")

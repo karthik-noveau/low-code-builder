@@ -4,6 +4,7 @@ import { TemplateArt } from "./TemplateArt";
 import { collections } from "./content";
 import { Arrow } from "./Brand";
 import { Icon } from "../studio/Icon";
+import { useFocusTrap } from "../design/focus";
 import { Website } from "../studio/Website";
 import { createProject } from "../studio/templates";
 import type { TemplateId } from "../studio/model";
@@ -166,6 +167,8 @@ function TemplatePreviewPanel({
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const frame = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useFocusTrap(panel);
   const page = project.pages.find((p) => p.id === pageId) ?? project.pages[0];
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -187,6 +190,7 @@ function TemplatePreviewPanel({
       }}
     >
       <div
+        ref={panel}
         className="tp-panel"
         role="dialog"
         aria-modal="true"

@@ -199,6 +199,14 @@ export async function request<T>(
   return (await fetchApi(path, options)).json() as Promise<T>;
 }
 export const listSites = () => request<{ sites: Site[] }>("/sites");
+/** When this account last opened its notifications (shared by every browser). */
+export const notificationsSeen = () =>
+  request<{ seenAt: string }>("/account/notifications");
+export const markNotificationsSeen = (seenAt: string) =>
+  request<{ seenAt: string }>("/account/notifications", {
+    method: "POST",
+    body: JSON.stringify({ seenAt }),
+  });
 export const createSite = (name: string) =>
   request<{ site: Site }>("/sites", {
     method: "POST",

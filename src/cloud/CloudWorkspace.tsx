@@ -9,6 +9,7 @@ import { Modal } from "../studio/ui";
 import { Icon } from "../studio/Icon";
 import { useStudio } from "../studio/store";
 import { validateProject } from "../studio/model";
+import { createProject } from "../studio/templates";
 import * as cloud from "./client";
 import "./cloud.css";
 
@@ -93,8 +94,19 @@ export function CloudWorkspace({
           throw new Error(
             "This website link is invalid. Open a site from Your websites.",
           );
-        const draft = await cloud.loadDraft(initialSiteId);
         const latest = (await cloud.siteStatus(initialSiteId)).site;
+        // A site whose first save never landed starts from its template and is
+        // saved on the next autosave, instead of stopping on an error.
+        const draft = await cloud.loadDraft(initialSiteId).catch((error) => {
+          if (!(error instanceof cloud.ApiError) || error.status !== 404)
+            throw error;
+          const project = createProject(latest.template ?? "blank");
+          return {
+            project: { ...project, name: latest.name || project.name },
+            version: latest.version,
+            fresh: true,
+          };
+        });
         if (cancelled) return;
         if (latest.version !== draft.version)
           throw new Error(
@@ -112,7 +124,7 @@ export function CloudWorkspace({
           }
         }
         generation.current++;
-        lastSaved.current = incoming;
+        lastSaved.current = "fresh" in draft ? "" : incoming;
         paused.current = false;
         useStudio.getState().importProject(draft.project);
         bind(latest);

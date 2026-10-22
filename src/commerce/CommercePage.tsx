@@ -109,6 +109,8 @@ interface Selection {
   cell: (id: string, label: string) => ReactNode;
   toggleAll: () => void;
   clear: () => void;
+  /** Leaves only these rows selected, e.g. the ones a bulk action couldn't change. */
+  keep: (ids: string[]) => void;
 }
 function useSelection(ids: string[]): Selection {
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -137,6 +139,7 @@ function useSelection(ids: string[]): Selection {
     toggleAll: () =>
       setPicked(selected.length === ids.length ? new Set() : new Set(ids)),
     clear: () => setPicked(new Set()),
+    keep: (ids) => setPicked(new Set(ids)),
   };
 }
 function Table({
@@ -341,23 +344,28 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   const customerSelection = useSelection(
     data?.customers.map((c) => c.id) || [],
   );
-  /** Runs one request per selected row, then reports what worked. */
+  /**
+   * Runs one request per selected row, then reports what worked. Rows that
+   * failed stay selected so they can be retried.
+   */
   const bulk = async <T,>(
     items: T[],
     run: (item: T) => Promise<unknown>,
     done: (count: number) => string,
-    after?: () => void,
+    after?: (failed: T[]) => void,
   ) => {
     setBusy(true);
     setError("");
     setNotice("");
     let ok = 0;
     let failure = "";
+    const failed: T[] = [];
     for (const item of items) {
       try {
         await run(item);
         ok++;
       } catch (e) {
+        failed.push(item);
         failure ||= e instanceof Error ? e.message : "Something went wrong.";
       }
     }
@@ -367,11 +375,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       /* the next load shows the current state */
     }
     setBusy(false);
-    after?.();
+    after?.(failed);
     if (ok) setNotice(done(ok));
     if (failure)
       setError(
-        `${items.length - ok} of ${items.length} couldn’t be updated: ${failure}`,
+        `${failed.length} of ${items.length} couldn’t be updated and ${failed.length === 1 ? "is" : "are"} still selected: ${failure}`,
       );
   };
   const setProductStatus = (status: Product["status"]) => {
@@ -386,7 +394,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       items,
       (p) => commerceRequest(siteId, "products", { ...p, status }),
       (n) => `${n} product${n === 1 ? "" : "s"} set to ${status}.`,
-      productSelection.clear,
+      (failed) => productSelection.keep(failed.map((p) => p.id)),
     );
   };
   const fulfillOrders = () => {
@@ -410,7 +418,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         (chosen.length > items.length
           ? ` ${chosen.length - items.length} skipped (not paid).`
           : ""),
-      orderSelection.clear,
+      (failed) => orderSelection.keep(failed.map((o) => o.id)),
     );
   };
   const exportOrders = (orders: Order[]) =>

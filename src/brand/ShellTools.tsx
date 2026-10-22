@@ -224,6 +224,8 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") close();
+                  // The results are picked with the arrows, so Tab stays here.
+                  else if (event.key === "Tab") event.preventDefault();
                   else if (event.key === "ArrowDown") {
                     event.preventDefault();
                     setActive((i) => Math.min(results.length - 1, i + 1));
@@ -316,7 +318,23 @@ export function Notifications({ account }: { account: string }) {
     void fetchNotices();
   };
   useEffect(() => {
+    // The account's read mark wins when another browser read further.
+    cloud
+      .notificationsSeen()
+      .then(({ seenAt }) => {
+        if (!seenAt) return;
+        setSeen((local) => (seenAt > local ? seenAt : local));
+        setOpenedSeen((local) => (seenAt > local ? seenAt : local));
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
     void fetchNotices();
+    // New orders and bookings show up without a reload while the tab is in view.
+    const timer = setInterval(() => {
+      if (!document.hidden) void fetchNotices();
+    }, 60000);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -340,8 +358,9 @@ export function Notifications({ account }: { account: string }) {
     try {
       localStorage.setItem(key, now);
     } catch {
-      /* unread counts just won't survive a reload */
+      /* the account's read mark below still keeps it */
     }
+    void cloud.markNotificationsSeen(now).catch(() => {});
   };
   const toggle = () => {
     if (!open) {
@@ -352,7 +371,16 @@ export function Notifications({ account }: { account: string }) {
     setOpen(!open);
   };
   return (
-    <div className="admin-notifications" ref={root}>
+    <div
+      className="admin-notifications"
+      ref={root}
+      onBlur={(event) => {
+        // Tabbing out of the panel closes it, like any menu.
+        const next = event.relatedTarget as Node | null;
+        if (open && next && !root.current?.contains(next))
+          setOpen(false);
+      }}
+    >
       <button
         className="admin-icon-button"
         aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}

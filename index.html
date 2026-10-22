@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/forma.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Apply the saved theme before the first paint (see src/design/theme.ts).
+      try {
+        var t = localStorage.getItem("forma-theme");
+        if (t === "system")
+          t = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        if (t === "dark") document.documentElement.dataset.theme = "dark";
+      } catch (e) {}
+    </script>
     <meta
       name="description"
       content="Design, manage, and publish your website in one workspace. Start with a template, make it yours, and connect your own domain."

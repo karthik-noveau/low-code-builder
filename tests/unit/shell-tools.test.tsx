@@ -14,6 +14,8 @@ vi.mock("../../src/cloud/client", async (original) => ({
   ...(await original<typeof import("../../src/cloud/client")>()),
   listSites: vi.fn(),
   request: vi.fn(),
+  notificationsSeen: vi.fn(),
+  markNotificationsSeen: vi.fn(),
 }));
 const site = (id: string, name: string, extra = {}): cloud.Site => ({
   id,
@@ -26,6 +28,8 @@ const site = (id: string, name: string, extra = {}): cloud.Site => ({
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  vi.mocked(cloud.notificationsSeen).mockResolvedValue({ seenAt: "" });
+  vi.mocked(cloud.markNotificationsSeen).mockResolvedValue({ seenAt: "" });
   vi.mocked(cloud.listSites).mockResolvedValue({
     sites: [
       site("s1", "Fern House"),
@@ -56,6 +60,18 @@ describe("top bar search", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect(run).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("keeps Tab inside the open search", async () => {
+    render(<GlobalSearch />);
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    const input = await screen.findByRole("combobox");
+    const tab = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
   });
 });
 
@@ -106,6 +122,21 @@ describe("notifications", () => {
         .closest("a")
         ?.getAttribute("href"),
     ).toBe("/editor?site=s1&open=inbox");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Notifications" }),
+      ).toBeTruthy(),
+    );
+    // Reading is saved to the account, so other browsers agree.
+    expect(cloud.markNotificationsSeen).toHaveBeenCalled();
+  });
+  it("uses the account's read mark from another browser", async () => {
+    vi.mocked(cloud.notificationsSeen).mockResolvedValue({
+      seenAt: "2030-01-01T00:00:00Z",
+    });
+    vi.mocked(cloud.request).mockRejectedValue(new Error("Forbidden"));
+    render(<Notifications account="owner@local.test" />);
+    await waitFor(() => expect(cloud.notificationsSeen).toHaveBeenCalled());
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Notifications" }),

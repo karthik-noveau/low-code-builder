@@ -690,6 +690,8 @@ export function template() {
     "GET /sites/{id}/payments",
     "POST /sites/{id}/payments",
     "POST /sites/{id}/payments/disconnect",
+    "GET /account/notifications",
+    "POST /account/notifications",
   ].entries()) {
     R[`Route${index}`] = resource("AWS::ApiGatewayV2::Route", {
       ApiId: ref("Api"),
