@@ -30,6 +30,7 @@ import "./canvas-first.css";
 import { Navigator } from "./Navigator";
 import { CommandMenu, type StudioCommand } from "./CommandMenu";
 import { reviewProject } from "./review";
+import { ReviewScores } from "./ReviewScores";
 import { Brand } from "../brand/Brand";
 import "../brand/brand.css";
 import "./product-ui.css";
@@ -166,6 +167,26 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     },
     [],
   );
+  /** Opens what a review item points at and focuses the field that fixes it. */
+  const openIssue = (pageId: string, section?: string, label?: string) => {
+    navigate(pageId);
+    store.select(section ?? null);
+    setInspectorSession((n) => n + 1);
+    setInspectorOpen(true);
+    setDialog(null);
+    if (section) focusSection(section);
+    if (!label) return;
+    requestAnimationFrame(() => {
+      const field = Array.from(
+        document.querySelectorAll<HTMLLabelElement>(".inspector label"),
+      ).find((node) => node.textContent === label);
+      const input = field?.htmlFor
+        ? document.getElementById(field.htmlFor)
+        : null;
+      input?.focus();
+      input?.scrollIntoView({ block: "nearest" });
+    });
+  };
   const openLibrary = (after?: string) => {
     setInsertAfter(after);
     setSearch("");
@@ -920,50 +941,42 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             <div>
               <strong>
                 {reviewItems.length
-                  ? `${reviewItems.length} things worth a look`
+                  ? `${reviewItems.length} ${reviewItems.length === 1 ? "thing" : "things"} worth a look`
                   : "Looking good."}
               </strong>
               <p>
-                Checked page descriptions, image descriptions, internal links,
-                and forms.
+                Checked search titles and descriptions, headings, image sizes,
+                image descriptions, links and forms.
               </p>
             </div>
           </div>
+          <ReviewScores
+            project={project}
+            onOpen={(check) =>
+              openIssue(check.page, check.section, check.field)
+            }
+          />
           <div className="review-items">
             {reviewItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
-                  navigate(item.page);
                   if (item.id.startsWith("empty-")) {
+                    navigate(item.page);
                     openLibrary("start");
                     return;
                   }
-                  store.select(item.section ?? null);
-                  setInspectorSession((n) => n + 1);
-                  setInspectorOpen(true);
-                  setDialog(null);
-                  if (item.section) focusSection(item.section);
-                  const label =
+                  openIssue(
+                    item.page,
+                    item.section,
                     item.kind === "forms"
                       ? "Form endpoint"
                       : item.kind === "images"
                         ? "Image description"
                         : item.kind === "links"
                           ? "Link URL"
-                          : "Meta description";
-                  requestAnimationFrame(() => {
-                    const field = Array.from(
-                      document.querySelectorAll<HTMLLabelElement>(
-                        ".inspector label",
-                      ),
-                    ).find((node) => node.textContent === label);
-                    const input = field?.htmlFor
-                      ? document.getElementById(field.htmlFor)
-                      : null;
-                    input?.focus();
-                    input?.scrollIntoView({ block: "nearest" });
-                  });
+                          : "Meta description",
+                  );
                 }}
               >
                 <span className={`review-kind kind-${item.kind}`}>

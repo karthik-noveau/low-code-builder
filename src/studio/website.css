@@ -44,7 +44,8 @@
 .website h1 {
   font-size: calc(clamp(38px, 5.5cqw, 78px) * var(--site-scale, 1));
 }
-.website h2 {
+.website h2,
+.website h1.site-title-main {
   font-size: calc(clamp(28px, 3.6cqw, 46px) * var(--site-scale, 1));
 }
 .website.font-editorial h1,

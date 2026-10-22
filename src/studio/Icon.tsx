@@ -7,6 +7,7 @@ const paths: Record<string, string> = {
   plus: "M12 5v14M5 12h14",
   x: "m6 6 12 12M6 18 18 6",
   check: "m5 12 4 4L19 6",
+  zap: "M13 2 4 14h7l-1 8 9-12h-7l1-8Z",
   chevron: "m9 5 7 7-7 7",
   down: "m6 9 6 6 6-6",
   arrow: "M4 12h16m-6-6 6 6-6 6",

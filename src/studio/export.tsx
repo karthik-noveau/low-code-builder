@@ -28,8 +28,15 @@ const escape = (value: string) =>
         c
       ]!,
   );
+/** Title and description for link previews in chats and social apps. */
+const shareTags = (title: string, description: string) =>
+  `<meta property="og:type" content="website"><meta property="og:title" content="${escape(title)}">` +
+  (description
+    ? `<meta property="og:description" content="${escape(description)}">`
+    : "") +
+  '<meta name="twitter:card" content="summary">';
 export function renderPage(project: Project, page: Page) {
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}"><meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css"></head><body>${renderToStaticMarkup(<Website project={project} page={page} exporting preview />)}</body></html>`;
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css"></head><body>${renderToStaticMarkup(<Website project={project} page={page} exporting preview />)}</body></html>`;
 }
 /** An item's own page. It lives one folder down, so <base> keeps every relative link working. */
 export function renderItemPage(
@@ -43,7 +50,7 @@ export function renderItemPage(
     .replace(/\s+/g, " ")
     .slice(0, 160);
   const title = `${itemTitle(collection, item)} — ${project.name}`;
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css"></head><body>${renderToStaticMarkup(<Website project={project} page={project.pages[0]} item={{ collection, item }} inbox={options.inbox} exporting preview />)}</body></html>`.replace(
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css"></head><body>${renderToStaticMarkup(<Website project={project} page={project.pages[0]} item={{ collection, item }} inbox={options.inbox} exporting preview />)}</body></html>`.replace(
     // <base href="../"> would send in-page "#" links to the home page.
     /href="#/g,
     `href="${itemHref(collection, item)}#`,

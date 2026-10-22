@@ -447,6 +447,88 @@
 .review-clear {
   padding: 5px 8px;
 }
+/* Search and speed scores at the top of Review site. */
+.review-scores {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.review-scores.is-loading {
+  padding: 18px 25px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.review-score-rings {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 4px 25px 18px;
+}
+.review-score-rings p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.score-ring {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  --score: #0f9f6e;
+}
+.score-ring.is-fair {
+  --score: #c27c0e;
+}
+.score-ring.is-poor {
+  --score: #dc3545;
+}
+.score-ring svg {
+  width: 56px;
+  height: 56px;
+  transform: rotate(-90deg);
+}
+.score-ring circle {
+  fill: none;
+  stroke-width: 5;
+}
+.score-track {
+  stroke: var(--line);
+}
+.score-value {
+  stroke: var(--score);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+.score-ring strong {
+  position: absolute;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.score-ring span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.review-scores .review-items {
+  padding-bottom: 8px;
+}
+@media (max-width: 520px) {
+  .review-score-rings {
+    flex-wrap: wrap;
+  }
+  .review-score-rings p {
+    flex-basis: 100%;
+  }
+}
 @media (max-width: 760px) {
   .canvas-first .studio-modal {
     max-height: calc(100dvh - 24px);

@@ -515,10 +515,13 @@ export function SectionContent({
   onFinishEdit,
   onDraft,
   selectedBlock,
+  main = false,
 }: {
   section: Section;
   project: Project;
   exporting?: boolean;
+  /** This section's title is the page's main heading (pages without a hero). */
+  main?: boolean;
   selectedBlock?: string | null;
   onEdit?: (
     field: "title" | "body" | "eyebrow" | "buttonLabel",
@@ -553,7 +556,8 @@ export function SectionContent({
   const heading = (
     <>
       {s.eyebrow && text("eyebrow", "div", "site-eyebrow")}
-      {s.title && text("title", "h2")}
+      {s.title &&
+        (main ? text("title", "h1", "site-title-main") : text("title", "h2"))}
       {s.body && text("body", "p", "site-description")}
     </>
   );
@@ -909,6 +913,15 @@ export function SectionContent({
   return content;
 }
 
+/** Section types whose title isn't shown as a heading. */
+const PLAIN_TITLES = new Set<Section["type"]>([
+  "announcement",
+  "header",
+  "hero",
+  "features",
+  "custom",
+  "footer",
+]);
 export function Website({
   project,
   page,
@@ -958,6 +971,12 @@ export function Website({
     ...(item ? [] : page.sections),
     ...project.footer,
   ];
+  // Every page gets one main heading: the hero's, or else the first section title.
+  const visible = page.sections.filter((s) => !s.hidden);
+  const mainHeading =
+    item || visible.some((s) => s.type === "hero" && s.title)
+      ? undefined
+      : visible.find((s) => s.title && !PLAIN_TITLES.has(s.type))?.id;
   const theme = project.theme;
   const clickLink = (event: MouseEvent) => {
     if (!preview || exporting) return;
@@ -1042,6 +1061,7 @@ export function Website({
             onFinishEdit={onFinishEdit}
             onDraft={onDraft}
             selectedBlock={selected === s.id ? selectedBlock : null}
+            main={s.id === mainHeading}
           />
         </div>
         {!preview && (
