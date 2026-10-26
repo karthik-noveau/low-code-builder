@@ -530,3 +530,30 @@ button.data-row:hover,
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* Asks before a delete, in place of a browser dialog. */
+.inline-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-surface-alt);
+}
+.inline-confirm p {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 12px;
+}
+.inline-confirm > div {
+  display: flex;
+  gap: 8px;
+}
+.inbox-note {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 12px;
+}

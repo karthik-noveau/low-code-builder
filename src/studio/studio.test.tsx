@@ -148,13 +148,23 @@ describe("portable websites", () => {
     "renders the same markup in preview and export for the %s template",
     (id) => {
       const p = createProject(id);
-      // Page links differ by design (/slug in the editor, slug.html in export).
-      const withoutHrefs = (html: string) => html.replace(/ href="[^"]*"/g, "");
+      // Page links differ by design (/slug in the editor, slug.html in export),
+      // and only published forms carry the inbox endpoint and its hidden fields.
+      const withoutHrefs = (html: string) =>
+        html
+          .replace(/ (href|action)="[^"]*"/g, "")
+          .replace(/<input type="hidden" name="form"[^>]*\/>/g, "")
+          .replace(/<label class="site-request-trap"[\s\S]*?<\/label>/g, "")
+          // App forms say where they work ("…published site" vs "…with Forma").
+          .replace(/<p class="app-preview-note">[\s\S]*?<\/p>/g, "")
+          .replace(/(class="app-form is-preview"[^>]*?) inert=""/g, "$1");
       for (const pg of p.pages) {
         const preview = renderToStaticMarkup(
           <Website project={p} page={pg} preview />,
         );
-        const exported = renderPage(p, pg).match(/<body>([\s\S]*)<\/body>/)![1];
+        const exported = renderPage(p, pg, {
+          inbox: "https://api.test/inbox/site",
+        }).match(/<body>([\s\S]*)<\/body>/)![1];
         expect(withoutHrefs(preview)).toBe(withoutHrefs(exported));
       }
     },
@@ -197,7 +207,10 @@ describe("portable websites", () => {
         const html = renderPage(p, pg);
         expect(html).toContain("<!doctype html>");
         expect(html).toContain("styles.css");
-        expect(html).not.toContain('inert=""');
+        // Only app forms, which are inert until published with Forma.
+        expect(
+          html.replace(/class="app-form is-preview"[^>]*inert=""/g, ""),
+        ).not.toContain('inert=""');
         expect(html).not.toContain("section-selection-label");
         expect(html).not.toContain("site-empty");
       }
@@ -472,16 +485,14 @@ describe("canvas-first workflow", () => {
     expect(html).not.toContain("data-edit-field");
     expect(html).not.toContain('role="textbox"');
   });
-  it("reviews form connections without treating submit buttons as missing links", () => {
+  it("doesn't flag forms, which post to the inbox when published", () => {
     const project = createProject();
     const form = project.pages[0].sections.find(
       (section) => section.type === "newsletter",
     )!;
     expect(
-      reviewProject(project)
-        .filter((issue) => issue.section === form.id)
-        .map((issue) => issue.kind),
-    ).toEqual(["forms"]);
+      reviewProject(project).filter((issue) => issue.section === form.id),
+    ).toHaveLength(0);
     form.formAction = "https://example.com/contact";
     expect(
       reviewProject(project).filter((issue) => issue.section === form.id),
@@ -578,7 +589,7 @@ describe("page and section workflows", () => {
       state.project.pages.find((page) => page.id === state.activePage)?.name,
     ).toBe("Contact");
     expect(findSection(state.project, state.selected)?.type).toBe("contact");
-    expect(screen.getByLabelText("Form endpoint")).toBeTruthy();
+    expect(screen.getByLabelText("Send messages to (optional)")).toBeTruthy();
   });
   it("opens page actions with the keyboard, restores focus, and duplicates from the navigator", () => {
     render(<Studio />);

@@ -195,7 +195,7 @@ async function handler(event) {
   try { live = await kvs.get(match[1]); } catch (_) { return {statusCode: 404}; }
   const explicit = /^releases\\/([a-f0-9-]{36})\\/(.*)$/.exec(match[2]);
   const file = (explicit ? explicit[2] : match[2]) || 'index.html';
-  if (!/^(?:(?:[a-z0-9-]+\\/)?[a-z0-9-]+\\.html|styles\\.css|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
+  if (!/^(?:(?:[a-z0-9-]+\\/)?[a-z0-9-]+\\.html|styles\\.css|app\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
   request.uri = '/sites/' + match[1] + '/releases/' + (explicit ? explicit[1] : live) + '/' + file;
   return request;
 }`;
@@ -281,8 +281,11 @@ export function template() {
             ? {
                 ContentSecurityPolicy: {
                   Override: true,
-                  ContentSecurityPolicy:
-                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; form-action 'self' https:; base-uri 'self'; frame-ancestors 'none'",
+                  // Same as the local site server: only Forma's app.js and sw.js run,
+                  // talking to the API and (for the offline cache) the site itself.
+                  ContentSecurityPolicy: sub(
+                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${Api.ApiEndpoint}; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; base-uri 'self'; frame-ancestors 'none'",
+                  ),
                 },
               }
             : {}),
@@ -571,6 +574,11 @@ export function template() {
               ["s3:PutObject", "s3:DeleteObject"],
               sub("${DraftsBucket.Arn}/inbox/*"),
             ),
+            // Per-release business app configs, read by the public app routes.
+            allow(
+              ["s3:PutObject", "s3:DeleteObject"],
+              sub("${DraftsBucket.Arn}/apps/*"),
+            ),
             allow(
               [
                 "sqs:ReceiveMessage",
@@ -611,6 +619,8 @@ export function template() {
     KVS_ARN: get("Routes", "Arn"),
     SITE_ORIGIN: sub("https://${SiteDistribution.DomainName}"),
     API_ORIGIN: get("Api", "ApiEndpoint"),
+    // Links in owner notifications and emails open the editor.
+    EDITOR_ORIGIN: editorUrl,
     // Encrypts owners' Stripe/Razorpay keys at rest.
     PAYMENT_ENCRYPTION_KEY: sub(
       "{{resolve:secretsmanager:${PaymentKey}:SecretString}}",
@@ -643,8 +653,11 @@ export function template() {
   R.Api = resource("AWS::ApiGatewayV2::Api", {
     Name: sub("${AWS::StackName}-api"),
     ProtocolType: "HTTP",
+    // Published sites (any domain) call the public app routes and read the
+    // response. HTTP APIs have one CORS policy, so it is open; owner routes
+    // stay safe because they need a bearer token, never a cookie.
     CorsConfiguration: {
-      AllowOrigins: [editorUrl],
+      AllowOrigins: ["*"],
       AllowMethods: ["GET", "POST", "PUT", "OPTIONS"],
       AllowHeaders: ["authorization", "content-type", "if-match"],
       ExposeHeaders: ["x-draft-version"],
@@ -690,6 +703,10 @@ export function template() {
     "GET /sites/{id}/payments",
     "POST /sites/{id}/payments",
     "POST /sites/{id}/payments/disconnect",
+    "GET /sites/{id}/app",
+    "GET /sites/{id}/app/{proxy+}",
+    "POST /sites/{id}/app/{proxy+}",
+    "PUT /sites/{id}/app/{proxy+}",
     "GET /account/notifications",
     "POST /account/notifications",
   ].entries()) {
@@ -715,6 +732,21 @@ export function template() {
     Target: sub("integrations/${Integration}"),
     AuthorizationType: "NONE",
   });
+  // Business app forms and lookups on published sites, and the push key.
+  for (const [name, route] of [
+    ["AppFindRoute", "GET /apps/{id}/forms/{formId}/find"],
+    ["AppSubmitRoute", "POST /apps/{id}/forms/{formId}"],
+    ["AppAvailabilityRoute", "GET /apps/{id}/forms/{formId}/availability"],
+    ["AppPayRoute", "GET /apps/{id}/records/{recordId}/pay"],
+    ["AppCheckoutRoute", "GET /apps/{id}/records/{recordId}/checkout"],
+    ["PushKeyRoute", "GET /push/key"],
+  ])
+    R[name] = resource("AWS::ApiGatewayV2::Route", {
+      ApiId: ref("Api"),
+      RouteKey: route,
+      Target: sub("integrations/${Integration}"),
+      AuthorizationType: "NONE",
+    });
   // Retained: losing it would make every stored provider key unreadable.
   R.PaymentKey = resource(
     "AWS::SecretsManager::Secret",
@@ -750,6 +782,27 @@ export function template() {
         ThrottlingRateLimit: 2,
       },
       "GET /inbox/{id}/requests/{requestId}/checkout": {
+        ThrottlingBurstLimit: 2,
+        ThrottlingRateLimit: 1,
+      },
+      // Per-IP lookup limits live in the API; these cap the whole route.
+      "GET /apps/{id}/forms/{formId}/find": {
+        ThrottlingBurstLimit: 10,
+        ThrottlingRateLimit: 5,
+      },
+      "POST /apps/{id}/forms/{formId}": {
+        ThrottlingBurstLimit: 5,
+        ThrottlingRateLimit: 2,
+      },
+      "GET /apps/{id}/forms/{formId}/availability": {
+        ThrottlingBurstLimit: 10,
+        ThrottlingRateLimit: 5,
+      },
+      "GET /apps/{id}/records/{recordId}/pay": {
+        ThrottlingBurstLimit: 5,
+        ThrottlingRateLimit: 2,
+      },
+      "GET /apps/{id}/records/{recordId}/checkout": {
         ThrottlingBurstLimit: 2,
         ThrottlingRateLimit: 1,
       },

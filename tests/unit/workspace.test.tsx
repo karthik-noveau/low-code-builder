@@ -53,7 +53,7 @@ afterEach(() => {
 });
 async function workspace() {
   render(<CloudWorkspace />);
-  fireEvent.click(screen.getByRole("button", { name: "Open workspace" }));
+  fireEvent.click(screen.getByRole("button", { name: "My sites" }));
   await screen.findByText("owner@local.test");
 }
 describe("connected editor workflow", () => {
@@ -70,7 +70,7 @@ describe("connected editor workflow", () => {
       JSON.parse(localStorage.getItem("forma-workspace-recovery")!),
     ).toEqual(previous);
     expect(cloud.saveDraft).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Open workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "My sites" }));
     expect(
       await screen.findByRole("button", { name: "Save now" }),
     ).toBeTruthy();
@@ -78,7 +78,7 @@ describe("connected editor workflow", () => {
   it("saves a site and publishes the saved version without duplicate saves", async () => {
     await workspace();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Save as a new site" }),
+      await screen.findByRole("button", { name: "Save to my sites" }),
     );
     await screen.findByText(/Saved to local workspace/);
     expect(cloud.saveDraft).toHaveBeenCalledTimes(1);
@@ -98,7 +98,7 @@ describe("connected editor workflow", () => {
   it("keeps the draft after a conflict and never publishes stale changes", async () => {
     await workspace();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Save as a new site" }),
+      await screen.findByRole("button", { name: "Save to my sites" }),
     );
     await screen.findByText(/Saved to local workspace/);
     act(() =>
@@ -135,7 +135,7 @@ describe("connected editor workflow", () => {
   it("debounces autosaving instead of writing for each keystroke", async () => {
     await workspace();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Save as a new site" }),
+      await screen.findByRole("button", { name: "Save to my sites" }),
     );
     await screen.findByText(/Saved to local workspace/);
     await waitFor(() =>

@@ -27,6 +27,8 @@ import {
   type Page,
   type TemplateId,
 } from "./model";
+import { validateApp, type App } from "../apps/model";
+import { collectionUsedBy } from "../apps/edit";
 
 export const STORAGE_KEY = "forma-studio-project-v1";
 /** Where a save that failed validation is kept instead of being overwritten. */
@@ -70,6 +72,11 @@ interface StudioState {
   saveError: string;
   savedAt: number;
   /**
+   * Set while a workspace site is open: its account save state ("Saving…",
+   * "Saved to workspace", "Edits kept in browser") and whether it is live.
+   */
+  cloud?: { sync: string; live: boolean; failed: boolean };
+  /**
    * Applies an edit. Edits that would make the project invalid are refused, so
    * a bad value can never be saved over a good project. Consecutive edits with
    * the same `coalesce` key (e.g. typing in one field) share one undo step.
@@ -89,7 +96,31 @@ interface StudioState {
   /** Adds a collection (from a blueprint, or an imported one) and returns its id. */
   addCollection: (source: Blueprint | Collection) => string;
   updateCollection: (id: string, update: (c: Collection) => Collection) => void;
-  removeCollection: (id: string) => void;
+  /**
+   * Deletes a collection. Refused (false) while the app's item fields choose
+   * from it; `collectionUsedBy` says why.
+   */
+  removeCollection: (id: string) => boolean;
+  /**
+   * Changes the business app (creating an empty one is up to the caller).
+   * Refused, returning false, if the result isn't a valid app. Sections that
+   * showed a form this change deletes are removed with it.
+   */
+  updateApp: (update: (app: App) => App, coalesce?: string) => boolean;
+  /**
+   * Sets up the app from a template. With `page`, also adds a page of that
+   * name holding one App form section per form; returns that page's id.
+   */
+  installApp: (
+    app: App,
+    page?: string,
+    /** Collections the app's item fields choose from, added with it. */
+    collections?: Collection[],
+  ) => string | undefined;
+  /** Deletes the app and every App form section. */
+  removeApp: () => void;
+  /** Adds an App form section showing `form` at the end of a page (default: the current one). */
+  addAppSection: (form: string, page?: string) => string | undefined;
   goToPage: (id: string) => void;
   updateSection: (id: string, values: Partial<Section>) => void;
   addSection: (type: SectionType, after?: string) => string;
@@ -160,12 +191,30 @@ function copySection(section: Section): Section {
   if (section.blocks) copy.blocks = copyBlocks(section.blocks);
   return copy;
 }
+/** An App form section; its heading and intro come from the form itself. */
+function appSection(form: string | undefined, title: string, padding = 64) {
+  return createSection("app", {
+    ...(form ? { name: title } : {}),
+    title,
+    eyebrow: "",
+    body: "",
+    padding,
+    ...(form ? { appForm: form } : {}),
+  });
+}
 /** The blueprint that fits a template, for a first Collection list section. */
 const templateBlueprint: Record<TemplateId, Blueprint> = {
   botanical: "products",
   table: "menu",
   studio: "services",
   folio: "posts",
+  volt: "products",
+  dhanlaxmi: "products",
+  glow: "services",
+  fixright: "services",
+  brightminds: "custom",
+  pulse: "services",
+  freshbasket: "products",
   blank: "products",
 };
 function updateBlocks(
@@ -350,11 +399,107 @@ export const useStudio = create<StudioState>((set, get) => ({
       }),
       `collection:${id}`,
     ),
-  removeCollection: (id) =>
+  removeCollection: (id) => {
+    if (collectionUsedBy(get().project.app, id).length) return false;
     get().commit((p) => ({
       ...p,
       collections: (p.collections ?? []).filter((c) => c.id !== id),
-    })),
+    }));
+    return !(get().project.collections ?? []).some((c) => c.id === id);
+  },
+  updateApp: (update, coalesce) => {
+    const current = get().project;
+    if (!current.app) return false;
+    const app = update(current.app);
+    if (app === current.app) return true;
+    const collections = (current.collections ?? []).map((c) => c.id);
+    if (!validateApp(app, collections)) {
+      set({
+        saveError:
+          "That app change wasn’t applied because it would leave the app unable to work.",
+      });
+      return false;
+    }
+    const kept = new Set(app.forms.map((f) => f.id));
+    const gone = new Set(
+      current.app.forms.filter((f) => !kept.has(f.id)).map((f) => f.id),
+    );
+    get().commit(
+      (p) => {
+        const next = { ...p, app };
+        return gone.size
+          ? mapSections(next, (sections) =>
+              sections.filter(
+                (s) => !(s.type === "app" && s.appForm && gone.has(s.appForm)),
+              ),
+            )
+          : next;
+      },
+      coalesce && `app:${coalesce}`,
+    );
+    return get().project.app === app;
+  },
+  installApp: (app, pageName, collections = []) => {
+    const project = get().project;
+    const had = new Set((project.collections ?? []).map((c) => c.id));
+    const added = collections.filter((c) => !had.has(c.id));
+    if (!validateApp(app, [...had, ...added.map((c) => c.id)])) return;
+    let page: Page | undefined;
+    if (pageName && app.forms.length) {
+      const stem = slugify(pageName);
+      let slug = stem;
+      let n = 2;
+      while (project.pages.some((pg) => pg.slug === slug))
+        slug = `${stem}-${n++}`;
+      page = {
+        id: uid(),
+        name: pageName,
+        slug,
+        title: `${pageName} — ${project.name}`,
+        description: app.forms[0].intro.slice(0, 160),
+        sections: app.forms.map((form) =>
+          appSection(form.id, form.title, form.kind === "lookup" ? 48 : 64),
+        ),
+      };
+    }
+    get().commit((p) => ({
+      ...p,
+      app,
+      ...(added.length
+        ? { collections: [...(p.collections ?? []), ...added] }
+        : {}),
+      ...(page ? { pages: [...p.pages, page] } : {}),
+    }));
+    if (page && get().project.pages.some((pg) => pg.id === page.id)) {
+      set({ activePage: page.id, selected: null, selectedBlock: null });
+      return page.id;
+    }
+  },
+  removeApp: () =>
+    get().commit((p) => {
+      const next = mapSections(p, (sections) =>
+        sections.filter((s) => s.type !== "app"),
+      );
+      delete next.app;
+      if (next.savedSections)
+        next.savedSections = next.savedSections.filter((s) => s.type !== "app");
+      return next;
+    }),
+  addAppSection: (formId, pageId) => {
+    const p = get().project;
+    const form = p.app?.forms.find((f) => f.id === formId);
+    const target = pageId ?? get().activePage;
+    if (!form || !p.pages.some((pg) => pg.id === target)) return;
+    const section = appSection(form.id, form.title);
+    get().commit((p) => ({
+      ...p,
+      pages: p.pages.map((pg) =>
+        pg.id === target ? { ...pg, sections: [...pg.sections, section] } : pg,
+      ),
+    }));
+    set({ activePage: target, selected: section.id, selectedBlock: null });
+    return section.id;
+  },
   moveBlock: (section, id, offset) =>
     get().commit((p) =>
       updateBlocks(p, section, (blocks) =>
@@ -379,7 +524,23 @@ export const useStudio = create<StudioState>((set, get) => ({
     ),
   addSection: (type, after) => {
     const section = createSection(type);
+    // Library defaults link to the Botanical pages; point them at a page this site has.
+    const pages = get().project.pages;
+    const internal = /^\/[a-z0-9-]+$/;
+    const onSite = (url: string) =>
+      !internal.test(url) || pages.some((p) => `/${p.slug}` === url);
+    const fallback = `/${pages[0].slug}`;
+    if (section.buttonUrl && !onSite(section.buttonUrl))
+      section.buttonUrl = fallback;
+    for (const i of section.items)
+      if (i.url && !onSite(i.url)) i.url = fallback;
     let created: Collection | undefined;
+    if (type === "app") {
+      const form = get().project.app?.forms[0];
+      Object.assign(section, appSection(form?.id, form?.title ?? "App form"), {
+        id: section.id,
+      });
+    }
     if (type === "collection") {
       const p = get().project;
       const existing = p.collections?.[0];
@@ -601,8 +762,32 @@ export const useStudio = create<StudioState>((set, get) => ({
     // A template replaces the layout, not the business: keep data, uploads and saved sections.
     const current = get().project;
     const p = createProject(id);
-    if (current.collections?.length) p.collections = current.collections;
+    // A business template brings its collections and app; an existing app wins,
+    // and the template's form sections for an app that isn't there are dropped.
+    if (current.collections?.length) {
+      const slugs = new Set(current.collections.map((c) => c.slug));
+      p.collections = [
+        ...current.collections,
+        ...(p.collections ?? []).filter((c) => !slugs.has(c.slug)),
+      ];
+    }
     if (current.savedSections?.length) p.savedSections = current.savedSections;
+    if (current.app) p.app = current.app;
+    const kept = new Set((p.collections ?? []).map((c) => c.id));
+    if (
+      p.app?.tables.some((t) =>
+        t.fields.some((f) => f.collection && !kept.has(f.collection)),
+      )
+    )
+      delete p.app;
+    const forms = new Set((p.app?.forms ?? []).map((f) => f.id));
+    const keep = (s: Section) =>
+      !(s.type === "app" && !forms.has(s.appForm ?? "")) &&
+      !(s.type === "collection" && !kept.has(s.listing?.collection ?? ""));
+    p.pages = p.pages.map((pg) => ({
+      ...pg,
+      sections: pg.sections.filter(keep),
+    }));
     p.assets = [
       ...current.assets,
       ...p.assets.filter((a) => !current.assets.some((x) => x.url === a.url)),

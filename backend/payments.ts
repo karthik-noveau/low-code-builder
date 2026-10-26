@@ -237,11 +237,12 @@ export async function createCheckout(
       "line_items[0][price_data][unit_amount]": String(input.amount),
       "line_items[0][price_data][product_data][name]": input.description,
       client_reference_id: input.requestId,
-      customer_email: input.email,
       "metadata[forma_reference]": input.reference,
       success_url: input.returnUrl,
       cancel_url: input.returnUrl,
     });
+    // App forms may have no email field; Stripe refuses an empty one.
+    if (input.email) form.set("customer_email", input.email);
     const { ok, data } = await stripe<{
       id?: string;
       url?: string;
@@ -268,7 +269,9 @@ export async function createCheckout(
       currency: code,
       description: input.description,
       reference_id: input.reference,
-      customer: { name: input.name, email: input.email },
+      customer: input.email
+        ? { name: input.name, email: input.email }
+        : { name: input.name },
       notify: { email: false, sms: false },
       callback_url: input.returnUrl,
       callback_method: "get",

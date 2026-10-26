@@ -5,7 +5,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Modal } from "../studio/ui";
+import { Modal, type Notify } from "../studio/ui";
 import { Icon } from "../studio/Icon";
 import { useStudio } from "../studio/store";
 import { validateProject } from "../studio/model";
@@ -13,9 +13,27 @@ import { createProject } from "../studio/templates";
 import * as cloud from "./client";
 import "./cloud.css";
 
+/** A date people recognise instead of an internal version number. */
+const dated = (value: string) =>
+  new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
 export function CloudWorkspace({
   initialSiteId,
-}: { initialSiteId?: string } = {}) {
+  notify,
+  publishSignal = 0,
+}: {
+  initialSiteId?: string;
+  /** Shows the editor's notification, e.g. once the site is live. */
+  notify?: Notify;
+  /** Bumped by the editor (Review, command menu) to start publishing. */
+  publishSignal?: number;
+} = {}) {
   const project = useStudio((s) => s.project);
   const [config, setConfig] = useState<cloud.CloudConfig>({ enabled: false });
   const [account, setAccount] = useState<cloud.Account>();
@@ -27,6 +45,11 @@ export function CloudWorkspace({
   const [active, setActive] = useState<cloud.Site>();
   const [history, setHistory] = useState<cloud.Release[]>([]);
   const [pendingOpen, setPendingOpen] = useState<cloud.Site>();
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  /** A live-site change waiting for a yes: an older version, or going offline. */
+  const [pendingLive, setPendingLive] = useState<
+    { action: "rollback"; release: cloud.Release } | { action: "unpublish" }
+  >();
   const [busy, setBusy] = useState(false);
   const [openingProject, setOpeningProject] = useState(!!initialSiteId);
   const [error, setError] = useState("");
@@ -36,6 +59,8 @@ export function CloudWorkspace({
   const paused = useRef(false);
   const working = useRef(false);
   const generation = useRef(0);
+  /** What to tell the owner once the current publish settles. */
+  const announce = useRef("");
   const bind = useCallback((site?: cloud.Site) => {
     activeRef.current = site;
     setActive(site);
@@ -55,6 +80,24 @@ export function CloudWorkspace({
     if (error instanceof cloud.ApiError && [409, 401].includes(error.status))
       paused.current = true;
   }, []);
+  const settled = useCallback(
+    (site: cloud.Site) => {
+      const message = announce.current;
+      announce.current = "";
+      if (!message || site.error) return;
+      const url = site.url;
+      notify?.(
+        message,
+        url && site.publishedRelease
+          ? {
+              label: "Visit",
+              run: () => void window.open(url, "_blank", "noopener,noreferrer"),
+            }
+          : undefined,
+      );
+    },
+    [notify],
+  );
   useEffect(() => {
     let alive = true;
     cloud
@@ -237,6 +280,7 @@ export function CloudWorkspace({
         bind(result.site);
         if (!["queued", "publishing"].includes(result.site.status)) {
           if (result.site.error) setError(result.site.error);
+          settled(result.site);
           await refresh();
           return;
         }
@@ -258,7 +302,7 @@ export function CloudWorkspace({
       stopped = true;
       clearTimeout(timer);
     };
-  }, [activeId, activeStatus, bind, refresh, report]);
+  }, [activeId, activeStatus, bind, refresh, report, settled]);
   const authenticate = (event: FormEvent) => {
     event.preventDefault();
     void run(async () => {
@@ -313,9 +357,67 @@ export function CloudWorkspace({
     run(async () => {
       const site = action === "publish" ? await save() : activeRef.current;
       if (!site) throw new Error("Save this draft as a site first.");
-      bind((await cloud.publish(site, action, releaseId)).site);
+      const next = (await cloud.publish(site, action, releaseId)).site;
+      announce.current =
+        action === "publish"
+          ? "Your site is live"
+          : action === "rollback"
+            ? "That version is live"
+            : "Your site is offline";
+      bind(next);
+      setConfirmPublish(false);
+      setPendingLive(undefined);
+      if (!["queued", "publishing"].includes(next.status)) settled(next);
     });
+  /** The header's Publish: a short confirm for a saved site, the full dialog otherwise. */
+  const startPublish = useCallback(() => {
+    setError("");
+    if (account && activeRef.current) setConfirmPublish(true);
+    else setOpen(true);
+  }, [account]);
+  const lastSignal = useRef(publishSignal);
+  useEffect(() => {
+    if (publishSignal === lastSignal.current) return;
+    lastSignal.current = publishSignal;
+    startPublish();
+  }, [publishSignal, startPublish]);
   const publishing = active && ["queued", "publishing"].includes(active.status);
+  // The editor header shows the account save state while a workspace site is open.
+  useEffect(() => {
+    useStudio.setState({
+      cloud: active
+        ? {
+            sync,
+            live: !!active.publishedRelease,
+            failed: !!error || sync === "Edits kept in browser",
+          }
+        : undefined,
+    });
+  }, [active, sync, error]);
+  useEffect(() => () => useStudio.setState({ cloud: undefined }), []);
+  const liveConfirm = (pending: NonNullable<typeof pendingLive>) => (
+    <div className="cloud-confirm">
+      <p>
+        {pending.action === "unpublish"
+          ? "Take your site offline? Visitors will see nothing until you publish again."
+          : `Put the version from ${dated(pending.release.createdAt)} live? Visitors see it right away.`}
+      </p>
+      <button
+        className="primary-button"
+        disabled={busy || !!publishing}
+        onClick={() =>
+          void (pending.action === "unpublish"
+            ? publish("unpublish")
+            : publish("rollback", pending.release.id))
+        }
+      >
+        {pending.action === "unpublish" ? "Take offline" : "Put it live"}
+      </button>
+      <button disabled={busy} onClick={() => setPendingLive(undefined)}>
+        Cancel
+      </button>
+    </div>
+  );
   return (
     <>
       {openingProject && (
@@ -327,24 +429,72 @@ export function CloudWorkspace({
         className="preview-button workspace-trigger"
         onClick={() => setOpen(true)}
         title={sync}
-        aria-label="Open workspace"
+        aria-label="My sites"
       >
         <Icon name="globe" size={16} />
-        <span>Workspace</span>
+        <span>My sites</span>
         {active && <i className={error ? "has-error" : ""} />}
       </button>
       <button
         className="primary-button cloud-publish-trigger"
-        onClick={() => setOpen(true)}
+        onClick={startPublish}
       >
         <Icon name="arrowUpRight" size={15} />
         Publish
       </button>
+      {confirmPublish && active && (
+        <Modal
+          title={
+            active.publishedRelease
+              ? "Publish your changes?"
+              : "Publish your site?"
+          }
+          subtitle={
+            // A connected domain is worth naming; preview addresses aren't.
+            active.primaryDomain
+              ? `Your latest edits go live at ${active.primaryDomain}.`
+              : "Your latest edits go live for everyone to see."
+          }
+          onClose={() => {
+            if (!busy) setConfirmPublish(false);
+          }}
+        >
+          <div className="cloud-workspace">
+            {error && (
+              <div className="cloud-error" role="alert">
+                {error}
+              </div>
+            )}
+            <div className="cloud-actions">
+              <button
+                className="primary-button"
+                disabled={busy || !!publishing}
+                onClick={() => void publish("publish")}
+              >
+                {busy || publishing ? "Publishing…" : "Publish now"}
+              </button>
+              <button disabled={busy} onClick={() => setConfirmPublish(false)}>
+                Cancel
+              </button>
+              <button
+                className="cloud-text-button"
+                disabled={busy}
+                onClick={() => {
+                  setConfirmPublish(false);
+                  setOpen(true);
+                }}
+              >
+                Open My sites
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {open && (
         <Modal
-          title={account ? "Your workspace" : "A home for your websites"}
+          title={account ? "My sites" : "A home for your websites"}
           subtitle={
-            config.mode === "local"
+            config.mode === "local" && import.meta.env.DEV
               ? "Local development · Your data stays on this computer"
               : "Save your work. Publish when you’re ready."
           }
@@ -360,20 +510,30 @@ export function CloudWorkspace({
               </div>
             )}
             {!config.enabled ? (
-              <div className="cloud-empty">
-                <Icon name="globe" size={30} />
-                <h3>Connect your workspace</h3>
-                <p>
-                  Start the local workspace to save sites and publish previews
-                  on this computer.
-                </p>
-                <code>
-                  npm run local:setup
-                  <br />
-                  npm run dev:local
-                </code>
-                <p>Your current draft stays saved in this browser.</p>
-              </div>
+              import.meta.env.DEV ? (
+                <div className="cloud-empty">
+                  <Icon name="globe" size={30} />
+                  <h3>Connect your workspace</h3>
+                  <p>
+                    Start the local workspace to save sites and publish previews
+                    on this computer.
+                  </p>
+                  <code>
+                    npm run local:setup
+                    <br />
+                    npm run dev:local
+                  </code>
+                  <p>Your current draft stays saved in this browser.</p>
+                </div>
+              ) : (
+                <div className="cloud-empty">
+                  <Icon name="globe" size={30} />
+                  <p>
+                    Publishing isn’t available right now. Your draft is saved in
+                    this browser.
+                  </p>
+                </div>
+              )
             ) : !account ? (
               <form className="cloud-auth" onSubmit={authenticate}>
                 <h3>
@@ -483,8 +643,8 @@ export function CloudWorkspace({
                   <p aria-live="polite">
                     {sync}
                     {active
-                      ? ` · Version ${active.version}`
-                      : " · Not linked to a workspace site"}
+                      ? ` · Last saved ${dated(active.updatedAt)}`
+                      : " · Not saved to My sites yet"}
                   </p>
                   {active && (
                     <a
@@ -534,7 +694,7 @@ export function CloudWorkspace({
                         disabled={busy}
                         onClick={() => void create()}
                       >
-                        Save as a new site
+                        Save to my sites
                       </button>
                     )}
                     {active && (
@@ -542,7 +702,7 @@ export function CloudWorkspace({
                         disabled={busy || !!publishing}
                         onClick={() => void create()}
                       >
-                        Save as new site
+                        Save as a copy
                       </button>
                     )}
                     <button disabled={busy} onClick={() => void run(refresh)}>
@@ -559,8 +719,11 @@ export function CloudWorkspace({
                 {pendingOpen && (
                   <div className="cloud-confirm">
                     <p>
-                      Open “{pendingOpen.name}”? Your current draft will be kept
-                      as a browser recovery copy.
+                      {pendingOpen.id === active?.id
+                        ? `Discard edits since the last save and reload “${pendingOpen.name}”?`
+                        : `Open “${pendingOpen.name}”?`}{" "}
+                      Your current draft will be kept as a browser recovery
+                      copy.
                     </p>
                     <button
                       className="primary-button"
@@ -593,7 +756,7 @@ export function CloudWorkspace({
                           <div>
                             <strong>{site.name}</strong>
                             <small>
-                              Version {site.version} ·{" "}
+                              Edited {dated(site.updatedAt)} ·{" "}
                               {site.publishedRelease ? "Published" : "Draft"}
                             </small>
                           </div>
@@ -601,7 +764,9 @@ export function CloudWorkspace({
                             disabled={busy || !!publishing}
                             onClick={() => setPendingOpen(site)}
                           >
-                            {site.id === active?.id ? "Reload saved" : "Open"}
+                            {site.id === active?.id
+                              ? "Discard edits and reload"
+                              : "Open"}
                           </button>
                         </div>
                       ))}
@@ -611,20 +776,24 @@ export function CloudWorkspace({
                 {!!history.length && active && (
                   <section>
                     <div className="cloud-section-heading">
-                      <h3>Release history</h3>
-                      <span>Last 3 releases</span>
+                      <h3>Published versions</h3>
+                      <span>Last 3</span>
                     </div>
                     <p className="cloud-muted">
-                      Rollback changes the live website. Your editable draft
-                      stays as it is.
+                      Putting an older version live changes your website right
+                      away. Your draft stays as it is.
                     </p>
+                    {pendingLive?.action === "rollback" &&
+                      liveConfirm(pendingLive)}
                     <div className="cloud-release-list">
                       {history.map((release) => (
                         <div key={release.id}>
                           <div>
-                            <strong>Draft version {release.version}</strong>
+                            <strong>{dated(release.createdAt)}</strong>
                             <small>
-                              {new Date(release.createdAt).toLocaleString()}
+                              {release.id === active.publishedRelease
+                                ? "On your website now"
+                                : "Published earlier"}
                             </small>
                           </div>
                           {release.id === active.publishedRelease ? (
@@ -633,10 +802,10 @@ export function CloudWorkspace({
                             <button
                               disabled={busy || !!publishing}
                               onClick={() =>
-                                void publish("rollback", release.id)
+                                setPendingLive({ action: "rollback", release })
                               }
                             >
-                              Restore release
+                              Put this version live
                             </button>
                           )}
                         </div>
@@ -646,15 +815,21 @@ export function CloudWorkspace({
                       <details className="cloud-unpublish">
                         <summary>Take this website offline</summary>
                         <p>
-                          The live URL will stop serving pages. Your draft and
-                          retained releases remain available.
+                          Your website address will stop showing pages. Your
+                          draft and published versions stay saved.
                         </p>
-                        <button
-                          disabled={busy || !!publishing}
-                          onClick={() => void publish("unpublish")}
-                        >
-                          Unpublish website
-                        </button>
+                        {pendingLive?.action === "unpublish" ? (
+                          liveConfirm(pendingLive)
+                        ) : (
+                          <button
+                            disabled={busy || !!publishing}
+                            onClick={() =>
+                              setPendingLive({ action: "unpublish" })
+                            }
+                          >
+                            Unpublish website
+                          </button>
+                        )}
                       </details>
                     )}
                   </section>

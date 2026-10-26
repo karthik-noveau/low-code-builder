@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "../brand/useSession";
 import { request, signOut } from "../cloud/client";
 import { money, type Address, type Order } from "./types";
+import { orderNumber, returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
 import "./storefront.css";
 
@@ -15,7 +16,10 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
   const session = useSession();
   const [profile, setProfile] = useState<Profile>(),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState("");
+  // The saved address waiting on "Remove this address?" to be answered.
+  const [removing, setRemoving] = useState<number>();
   const endpoint = `/store/${siteId}/account`;
   const refresh = useCallback(
     () =>
@@ -27,18 +31,22 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
   useEffect(() => {
     if (session.account) void refresh();
   }, [session.account, refresh]);
-  const saveAddresses = async (addresses: Address[]) => {
-    if (!profile) return;
+  const saveAddresses = async (addresses: Address[], message: string) => {
+    if (!profile) return false;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await request(endpoint, {
         method: "POST",
         body: JSON.stringify({ revision: profile.revision, addresses }),
       });
       await refresh();
+      setNotice(message);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save addresses.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -69,6 +77,11 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
           {(error || session.error) && (
             <p className="commerce-notice error" role="alert">
               {error || session.error}
+            </p>
+          )}
+          {notice && (
+            <p className="commerce-notice" role="status">
+              {notice}
             </p>
           )}
           {session.loading ? (
@@ -107,8 +120,9 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                         style={{ marginTop: 18 }}
                       >
                         <summary>
-                          #{order.id.slice(0, 8)} ·{" "}
-                          {money(order.total, order.currency)} · {order.status}
+                          {orderNumber(order.id)} ·{" "}
+                          {money(order.total, order.currency)} ·{" "}
+                          {statusLabel(order.status)}
                         </summary>
                         <div className="commerce-order-lines">
                           {order.lines.map((line) => (
@@ -132,7 +146,7 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                         </p>
                         {order.returnRequest ? (
                           <p className="commerce-notice">
-                            Return {order.returnRequest.status}:{" "}
+                            {returnLabel(order.returnRequest.status)}:{" "}
                             {order.returnRequest.reason}
                           </p>
                         ) : (
@@ -143,6 +157,8 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                                 e.preventDefault();
                                 const fields = new FormData(e.currentTarget);
                                 setBusy(true);
+                                setError("");
+                                setNotice("");
                                 void request(
                                   `/store/${siteId}/account/orders/${order.id}/return`,
                                   {
@@ -153,6 +169,11 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                                   },
                                 )
                                   .then(refresh)
+                                  .then(() =>
+                                    setNotice(
+                                      "Return request sent. The store will email you.",
+                                    ),
+                                  )
                                   .catch((e) => setError(e.message))
                                   .finally(() => setBusy(false));
                               }}
@@ -198,17 +219,42 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                       {"\n"}
                       {address.city}, {address.postalCode} · {address.country}
                     </div>
-                    <button
-                      className="commerce-link"
-                      disabled={busy}
-                      onClick={() =>
-                        void saveAddresses(
-                          profile.addresses.filter((_, i) => i !== index),
-                        )
-                      }
-                    >
-                      Remove
-                    </button>
+                    {removing === index ? (
+                      <div
+                        className="commerce-confirm"
+                        role="group"
+                        aria-label="Remove address"
+                      >
+                        <span>Remove this address?</span>
+                        <button
+                          className="commerce-button danger"
+                          disabled={busy}
+                          onClick={() => {
+                            setRemoving(undefined);
+                            void saveAddresses(
+                              profile.addresses.filter((_, i) => i !== index),
+                              "Address removed.",
+                            );
+                          }}
+                        >
+                          Remove
+                        </button>
+                        <button
+                          className="commerce-button secondary"
+                          onClick={() => setRemoving(undefined)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="commerce-link"
+                        disabled={busy}
+                        onClick={() => setRemoving(index)}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))}
               </section>
@@ -224,7 +270,12 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                         (key) => [key, String(values.get(key))],
                       ),
                     ) as unknown as Address;
-                    void saveAddresses([...profile.addresses, address]);
+                    void saveAddresses(
+                      [...profile.addresses, address],
+                      "Address saved.",
+                    ).then((ok) => {
+                      if (ok) form.reset();
+                    });
                   }}
                 >
                   <h2>Add an address</h2>
@@ -244,7 +295,17 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                           maxLength={name === "country" ? 2 : 200}
                           pattern={name === "country" ? "[A-Z]{2}" : undefined}
                           placeholder={name === "country" ? "US" : undefined}
+                          onChange={
+                            name === "country"
+                              ? (e) => {
+                                  e.target.value = e.target.value.toUpperCase();
+                                }
+                              : undefined
+                          }
                         />
+                        {name === "country" && (
+                          <small>Two-letter code, e.g. US, GB, IN</small>
+                        )}
                       </label>
                     ))}
                   </div>

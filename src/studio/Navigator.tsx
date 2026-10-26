@@ -20,6 +20,7 @@ export function Navigator({
   onSaved,
   onData,
   onInbox,
+  onApp,
   onReview,
   issueCount,
   onClose,
@@ -39,6 +40,8 @@ export function Navigator({
   onSaved: () => void;
   onData: () => void;
   onInbox: () => void;
+  /** Opens the business app builder. */
+  onApp?: () => void;
   onReview: () => void;
   issueCount: number;
   onClose: () => void;
@@ -370,6 +373,13 @@ export function Navigator({
           <Icon name="mail" size={16} />
           <span>Inbox</span>
         </button>
+        {onApp && (
+          <button onClick={onApp}>
+            <Icon name="activity" size={16} />
+            <span>App</span>
+            <small>{project.app ? project.app.forms.length : "New"}</small>
+          </button>
+        )}
         <button onClick={onSaved}>
           <Icon name="folder" size={16} />
           <span>Saved sections</span>
@@ -380,7 +390,7 @@ export function Navigator({
             <Icon name="image" size={15} />
             Media
           </button>
-          <button onClick={onTemplates} aria-label="Explore starting points">
+          <button onClick={onTemplates}>
             <Icon name="grid" size={15} />
             Templates
           </button>

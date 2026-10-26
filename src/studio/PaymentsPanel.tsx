@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStudio } from "./store";
-import { Field } from "./ui";
+import { Field, InlineConfirm } from "./ui";
 import * as cloud from "../cloud/client";
 import {
   emptyPayments,
@@ -32,8 +32,9 @@ export function PaymentsPanel({ inData = false }: { inData?: boolean }) {
       {!inData && (
         <p className="muted-note">
           After an order, booking or RSVP, visitors see the total, a reference
-          and these options. Money goes straight to you: no fees, nothing to
-          connect. Mark requests paid in your Inbox.
+          and these options. UPI, bank transfer and in-person payments go
+          straight to you with nothing to connect; card payments need a Stripe
+          or Razorpay account. Mark requests paid in your Inbox.
         </p>
       )}
       <OnlinePayments />
@@ -91,7 +92,7 @@ export function PaymentsPanel({ inData = false }: { inData?: boolean }) {
         <p className="muted-note">
           {asking.length
             ? `Asking for payment: ${asking.map((c) => c.name).join(", ")}.`
-            : "Turn on “Ask visitors to pay” in Data → a collection → Settings."}
+            : "Turn on “Ask visitors to pay” in Data: choose a collection, then Settings."}
         </p>
       )}
     </div>
@@ -118,6 +119,9 @@ function OnlinePayments() {
   const siteId = activeSiteId();
   const [connection, setConnection] = useState<Connection | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [confirming, setConfirming] = useState(false);
   const [provider, setProvider] = useState<Connection["provider"]>("stripe");
   const [keyId, setKeyId] = useState("");
   const [secret, setSecret] = useState("");
@@ -136,13 +140,19 @@ function OnlinePayments() {
       .then(({ connection }) => {
         if (!active) return;
         setConnection(connection);
+        setCheckFailed(false);
         setLoaded(true);
       })
-      .catch(() => active && setLoaded(true));
+      // Not knowing isn't the same as not connected: don't offer to connect again.
+      .catch(() => {
+        if (!active) return;
+        setCheckFailed(true);
+        setLoaded(true);
+      });
     return () => {
       active = false;
     };
-  }, [siteId]);
+  }, [siteId, attempt]);
   const save = async (path: string, body?: object) => {
     setBusy(true);
     setError("");
@@ -155,6 +165,7 @@ function OnlinePayments() {
       remember(result.connection?.provider ?? "");
       setSecret("");
       setKeyId("");
+      setConfirming(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "That didn’t work. Try again.");
     } finally {
@@ -166,11 +177,26 @@ function OnlinePayments() {
       <strong>Card payments</strong>
       {!siteId ? (
         <small>
-          Save this site to your Forma account (Workspace) to take card payments
+          Save this site to your Forma account (My sites) to take card payments
           through your own Stripe or Razorpay account.
         </small>
       ) : !loaded ? (
         <small>Checking…</small>
+      ) : checkFailed ? (
+        <>
+          <small className="online-payments-error" role="alert">
+            Couldn’t check your payment connection.
+          </small>
+          <button
+            className="subtle-button"
+            onClick={() => {
+              setLoaded(false);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Retry
+          </button>
+        </>
       ) : connection ? (
         <>
           <small>
@@ -179,13 +205,28 @@ function OnlinePayments() {
             {connection.hint}. Visitors pay the exact total and requests are
             marked paid automatically.
           </small>
-          <button
-            className="subtle-button"
-            disabled={busy}
-            onClick={() => void save("payments/disconnect")}
-          >
-            Disconnect {PROVIDERS[connection.provider]}
-          </button>
+          {error && (
+            <small className="online-payments-error" role="alert">
+              {error}
+            </small>
+          )}
+          {confirming ? (
+            <InlineConfirm
+              message={`Disconnect ${PROVIDERS[connection.provider]}? Visitors won’t be able to pay by card.`}
+              confirmLabel={busy ? "Disconnecting…" : "Disconnect"}
+              busy={busy}
+              onConfirm={() => void save("payments/disconnect")}
+              onCancel={() => setConfirming(false)}
+            />
+          ) : (
+            <button
+              className="subtle-button"
+              disabled={busy}
+              onClick={() => setConfirming(true)}
+            >
+              Disconnect {PROVIDERS[connection.provider]}
+            </button>
+          )}
         </>
       ) : (
         <form

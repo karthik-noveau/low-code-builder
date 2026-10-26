@@ -31,6 +31,8 @@ export interface Site {
   defaultUrl?: string;
   url?: string;
   error?: string;
+  /** Owned by another account that added you to its team. */
+  shared?: boolean;
 }
 export interface Release {
   id: string;
@@ -39,9 +41,12 @@ export interface Release {
 }
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** The input field the error is about, when the server names one. */
+  field?: string;
+  constructor(status: number, message: string, field?: string) {
     super(message);
     this.status = status;
+    this.field = field;
   }
 }
 let config: CloudConfig = { enabled: false };
@@ -50,8 +55,7 @@ let manager: UserManager | undefined;
 const sessionKey = "forma-local-session";
 let localToken = "";
 let initialization:
-  | Promise<{ config: CloudConfig; account?: Account }>
-  | undefined;
+  Promise<{ config: CloudConfig; account?: Account }> | undefined;
 export function initializeCloud() {
   return (initialization ??= initialize());
 }
@@ -95,9 +99,8 @@ async function initialize(): Promise<{
     !config.authDomain?.startsWith("https://")
   )
     throw new Error("Invalid cloud configuration.");
-  const { UserManager: OidcManager, WebStorageStateStore } = await import(
-    "oidc-client-ts"
-  );
+  const { UserManager: OidcManager, WebStorageStateStore } =
+    await import("oidc-client-ts");
   manager = new OidcManager({
     authority: config.issuer,
     client_id: config.clientId,
@@ -184,10 +187,13 @@ async function fetchApi(path: string, options: RequestInit = {}) {
   if (!response.ok) {
     const error = (await response.json().catch(() => ({}))) as {
       error?: string;
+      message?: string;
+      field?: string;
     };
     throw new ApiError(
       response.status,
-      error.error || `Request failed (${response.status}).`,
+      error.error || error.message || `Request failed (${response.status}).`,
+      typeof error.field === "string" ? error.field : undefined,
     );
   }
   return response;
@@ -206,6 +212,12 @@ export const markNotificationsSeen = (seenAt: string) =>
   request<{ seenAt: string }>("/account/notifications", {
     method: "POST",
     body: JSON.stringify({ seenAt }),
+  });
+/** Removes one Inbox request for good. POST, since browsers' CORS rules here allow only GET, POST and PUT. */
+export const deleteInboxRequest = (siteId: string, requestId: string) =>
+  request<{ ok: true }>(`/sites/${siteId}/inbox/${requestId}/delete`, {
+    method: "POST",
+    body: "{}",
   });
 export const createSite = (name: string) =>
   request<{ site: Site }>("/sites", {

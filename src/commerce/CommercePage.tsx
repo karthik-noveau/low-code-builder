@@ -14,6 +14,7 @@ import { listSites, request, type Site } from "../cloud/client";
 import { commerceRequest, download, loadCommerce } from "./client";
 import {
   money,
+  type AuditEvent,
   type CommerceOverview,
   type ContentEntry,
   type Discount,
@@ -23,6 +24,7 @@ import {
 import { ProductEditor } from "./ProductEditor";
 import { MarketsEditor } from "./MarketsEditor";
 import { parseCsv, toCsv } from "./csv";
+import { activityLabel, orderNumber, returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
 
 const sections = [
@@ -49,10 +51,30 @@ const descriptions: Record<Section, string> = {
   Inbox: "Read form submissions and preview store emails.",
   Markets: "Choose where you sell, and how you price and deliver.",
   Team: "Give collaborators the access they need.",
-  Integrations: "Connect local tools to signed commerce events.",
-  "Usage & activity":
-    "Review activity, export your records, and track local usage.",
+  Integrations: "Send order and product updates to other tools you use.",
+  "Usage & activity": "Review activity, export your records, and see usage.",
 };
+/**
+ * The section named by `?section=` (any case; one word of a longer name is
+ * enough, e.g. `usage` for "Usage & activity"), so other pages can link here.
+ */
+function linkedSection(): Section {
+  const wanted = new URLSearchParams(location.search)
+    .get("section")
+    ?.trim()
+    .toLowerCase();
+  if (!wanted) return "Overview";
+  return (
+    sections.find((s) => s.toLowerCase() === wanted) ||
+    sections.find((s) =>
+      s
+        .toLowerCase()
+        .split(/[^a-z]+/)
+        .includes(wanted),
+    ) ||
+    "Overview"
+  );
+}
 const date = (value: string) =>
   new Date(value).toLocaleDateString(undefined, {
     month: "short",
@@ -229,11 +251,97 @@ function Totals({
   );
 }
 
+const INTEGRATION_EVENTS = [
+  ["order.paid", "Order paid"],
+  ["order.fulfilled", "Order shipped"],
+  ["order.refunded", "Order refunded"],
+  ["product.updated", "Product updated"],
+] as const;
+const eventLabel = (key: string) =>
+  INTEGRATION_EVENTS.find(([value]) => value === key)?.[1] ||
+  activityLabel(key);
+/** Expected product CSV columns, in order; export and import share them. */
+const PRODUCT_COLUMNS = [
+  "title",
+  "description",
+  "collection",
+  "image",
+  "status",
+  "variant",
+  "sku",
+  "price",
+  "stock",
+];
+/** Order list filters: which statuses each chip shows. */
+const ORDER_FILTERS = [
+  ["All", []],
+  ["Awaiting payment", ["pending"]],
+  ["To ship", ["paid"]],
+  ["Refunded", ["refunded"]],
+] as const;
+type OrderFilter = (typeof ORDER_FILTERS)[number][0];
+/**
+ * A button for an action that can't be undone. Pressing it shows the question
+ * with a final button and a way back, in place of the button.
+ */
+function ConfirmButton({
+  label,
+  question,
+  confirm,
+  dismiss = "Cancel",
+  disabled,
+  className = "commerce-button secondary",
+  onConfirm,
+}: {
+  label: string;
+  question: string;
+  confirm: string;
+  dismiss?: string;
+  disabled?: boolean;
+  className?: string;
+  onConfirm: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+  if (!asking)
+    return (
+      <button
+        type="button"
+        className={className}
+        disabled={disabled}
+        onClick={() => setAsking(true)}
+      >
+        {label}
+      </button>
+    );
+  return (
+    <div className="commerce-confirm" role="group" aria-label={label}>
+      <span>{question}</span>
+      <button
+        type="button"
+        className="commerce-button danger"
+        disabled={disabled}
+        onClick={() => {
+          setAsking(false);
+          onConfirm();
+        }}
+      >
+        {confirm}
+      </button>
+      <button
+        type="button"
+        className="commerce-button secondary"
+        onClick={() => setAsking(false)}
+      >
+        {dismiss}
+      </button>
+    </div>
+  );
+}
 export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   const session = useSession();
   const [siteId, setSiteId] = useState(initialSiteId),
     [sites, setSites] = useState<Site[]>([]);
-  const [section, setSection] = useState<Section>("Overview"),
+  const [section, setSection] = useState<Section>(linkedSection),
     [data, setData] = useState<CommerceOverview>();
   const [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
@@ -245,7 +353,17 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   const [selectedOrder, setSelectedOrder] = useState<string>(),
     [tracking, setTracking] = useState(""),
     [restock, setRestock] = useState(true);
-  const [integrationPreview, setIntegrationPreview] = useState("");
+  const [orderFilter, setOrderFilter] = useState<OrderFilter>("All");
+  const [campaignPreview, setCampaignPreview] = useState<{
+    subject: string;
+    body: string;
+    count: number;
+  }>();
+  const [integrationSecret, setIntegrationSecret] = useState(""),
+    [integrationEvents, setIntegrationEvents] = useState<{
+      name: string;
+      events: AuditEvent[];
+    }>();
   const loadGeneration = useRef(0);
   const refresh = useCallback(async () => {
     if (!siteId) return;
@@ -333,17 +451,46 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         .includes(search.toLowerCase()),
     ) || [];
   const selected = data?.orders.find((order) => order.id === selectedOrder);
+  const filterStatuses: readonly string[] =
+    ORDER_FILTERS.find(([name]) => name === orderFilter)?.[1] || [];
   const filteredOrders =
-    data?.orders.filter((o) =>
-      `${o.id} ${o.email} ${o.address.name}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+    data?.orders.filter(
+      (o) =>
+        (!filterStatuses.length || filterStatuses.includes(o.status)) &&
+        `${o.id} ${o.email} ${o.address.name}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    ) || [];
+  const filteredCustomers =
+    data?.customers.filter((c) =>
+      `${c.name} ${c.email}`.toLowerCase().includes(search.toLowerCase()),
     ) || [];
   const productSelection = useSelection(filteredProducts.map((p) => p.id));
   const orderSelection = useSelection(filteredOrders.map((o) => o.id));
-  const customerSelection = useSelection(
-    data?.customers.map((c) => c.id) || [],
-  );
+  const customerSelection = useSelection(filteredCustomers.map((c) => c.id));
+  /** Who did something in the activity list: you, a collaborator, or a shopper. */
+  const actorName = (actor: string) =>
+    actor === session.account?.id
+      ? "You"
+      : actor === "shopper"
+        ? "Shopper"
+        : data?.members.find((m) => m.id === actor)?.email || "Team member";
+  /** What an activity record is about, by name where the store still has it. */
+  const targetName = (event: AuditEvent) => {
+    const order = data?.orders.find((o) => o.id === event.target);
+    if (order) return `Order ${orderNumber(order.id)}`;
+    const product = data?.products.find((p) => p.id === event.target);
+    if (product) return product.title;
+    const article = data?.content.find((c) => c.id === event.target);
+    if (article) return article.title;
+    const member = data?.members.find((m) => m.id === event.target);
+    if (member) return member.email;
+    const integration = data?.integrations.find((i) => i.id === event.target);
+    if (integration) return integration.name;
+    if (event.action.startsWith("settings.")) return "Store settings";
+    if (event.action.startsWith("discount.")) return event.target;
+    return event.target.slice(0, 8);
+  };
   /**
    * Runs one request per selected row, then reports what worked. Rows that
    * failed stay selected so they can be retried.
@@ -403,7 +550,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
     );
     const items = chosen.filter((o) => o.status === "paid");
     if (!items.length) {
-      setError("Only paid orders can be fulfilled.");
+      setError("Only paid orders can be marked shipped.");
       return;
     }
     void bulk(
@@ -414,7 +561,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           revision: o.revision,
         }),
       (n) =>
-        `${n} order${n === 1 ? "" : "s"} marked fulfilled.` +
+        `${n} order${n === 1 ? "" : "s"} marked shipped.` +
         (chosen.length > items.length
           ? ` ${chosen.length - items.length} skipped (not paid).`
           : ""),
@@ -453,17 +600,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       download(
         "products.csv",
         toCsv([
-          [
-            "title",
-            "description",
-            "collection",
-            "image",
-            "status",
-            "variant",
-            "sku",
-            "price",
-            "stock",
-          ],
+          PRODUCT_COLUMNS,
           ...data.products
             .filter((p) => !only || only.includes(p.id))
             .flatMap((p) =>
@@ -491,17 +628,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       if (file.size > 1024 * 1024)
         throw new Error("CSV files must be under 1 MB.");
       const [headings, ...rows] = parseCsv(await file.text());
-      const expected = [
-        "title",
-        "description",
-        "collection",
-        "image",
-        "status",
-        "variant",
-        "sku",
-        "price",
-        "stock",
-      ];
+      const expected = PRODUCT_COLUMNS;
       if (
         !headings ||
         expected.some((h, i) => headings[i] !== h) ||
@@ -605,7 +732,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   data.settings.currency,
                 )}
               </strong>
-              <small>Paid orders, excluding refunds</small>
+              <small>
+                Paid {data.settings.currency} orders, excluding refunds
+              </small>
             </div>
             <div className="commerce-stat">
               <span>Paid orders</span>
@@ -652,8 +781,8 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   action: "Open storefront",
                 },
                 {
-                  title: "Complete a sandbox order",
-                  note: "Test payment, fulfillment, and refund behavior.",
+                  title: "Place a test order",
+                  note: "Try payment, shipping, and refunds. No money is taken.",
                   done: !!data.orders.length,
                   to: "Orders" as Section,
                   action: "View orders",
@@ -664,10 +793,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             <section className="commerce-panel">
               <h2>Buying journey</h2>
               <p className="commerce-muted">
-                Recorded server events from this local store.
+                How shoppers moved through your store.
               </p>
               <ul className="admin-metric-list">
                 {[
+                  ["Store visits", "store.visit"],
                   ["Carts created", "cart.created"],
                   ["Checkouts started", "checkout.started"],
                   ["Payments completed", "order.paid"],
@@ -681,12 +811,15 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 ))}
               </ul>
               <p className="commerce-footer-note">
-                Payments and notification emails use the local sandbox. No money
-                is collected and no emails leave this computer.
+                Payments and notification emails are tests. No money is taken
+                and no emails leave this computer.
               </p>
             </section>
           </div>
-          {Object.entries(data.usage.currencyTotals).length > 1 && (
+          {/* Sales outside the base currency aren't in Net sales, so list them. */}
+          {Object.keys(data.usage.currencyTotals).some(
+            (code) => code !== data.settings.currency,
+          ) && (
             <section className="commerce-panel">
               <h2>Sales by currency</h2>
               {Object.entries(data.usage.currencyTotals).map(
@@ -729,8 +862,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 Export CSV
               </button>
               {canEdit && (
-                <label className="commerce-button secondary commerce-import">
-                  Import CSV
+                <label
+                  className="commerce-button secondary commerce-import"
+                  aria-disabled={busy || undefined}
+                >
+                  {busy ? "Importing…" : "Import CSV"}
                   <input
                     aria-label="Import products CSV"
                     type="file"
@@ -753,6 +889,12 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               )}
             </div>
           </div>
+          {canEdit && (
+            <p className="commerce-hint commerce-import-hint">
+              Import columns, in order: {PRODUCT_COLUMNS.join(", ")}. One row
+              per variant. Tip: export first to get a template.
+            </p>
+          )}
           {!data.products.length ? (
             <Empty icon="store" title="Your catalog starts here">
               <p>
@@ -802,13 +944,13 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                         >
                           Set draft
                         </button>
-                        <button
-                          className="commerce-button secondary"
+                        <ConfirmButton
+                          label="Archive"
+                          question={`Archive ${productSelection.selected.length} product${productSelection.selected.length === 1 ? "" : "s"}? Shoppers won’t see ${productSelection.selected.length === 1 ? "it" : "them"}.`}
+                          confirm="Archive"
                           disabled={busy}
-                          onClick={() => setProductStatus("archived")}
-                        >
-                          Archive
-                        </button>
+                          onConfirm={() => setProductStatus("archived")}
+                        />
                       </>
                     )}
                     <button
@@ -840,7 +982,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                       <span
                         className={`commerce-badge ${p.status === "active" ? "" : "neutral"}`}
                       >
-                        {p.status}
+                        {statusLabel(p.status)}
                       </span>
                     </td>
                     <td>
@@ -881,11 +1023,13 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-columns" style={{ marginTop: 18 }}>
             <div className="commerce-panel">
               <div className="commerce-toolbar">
-                <h2>Order {selected.id.slice(0, 8)}</h2>
-                <span className="commerce-badge">{selected.status}</span>
+                <h2>Order {orderNumber(selected.id)}</h2>
+                <span className="commerce-badge">
+                  {statusLabel(selected.status)}
+                </span>
               </div>
               <p className="commerce-muted">
-                {date(selected.createdAt)} · Local sandbox payment
+                {date(selected.createdAt)} · Test payment, no money taken
               </p>
               <div className="commerce-order-lines">
                 {selected.lines.map((line) => (
@@ -921,7 +1065,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 <div className="commerce-form">
                   {selected.returnRequest && (
                     <div className="commerce-notice">
-                      <strong>Return {selected.returnRequest.status}</strong>
+                      <strong>
+                        {returnLabel(selected.returnRequest.status)}
+                      </strong>
                       <p>{selected.returnRequest.reason}</p>
                       {selected.returnRequest.status === "requested" && (
                         <div className="commerce-actions">
@@ -982,28 +1128,29 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                               action: "fulfill",
                               tracking,
                             },
-                            "Order fulfilled.",
+                            "Order marked shipped.",
                           )
                         }
                       >
-                        Mark fulfilled
+                        Mark shipped
                       </button>
                     </>
                   )}
                   {selected.status === "pending" && (
-                    <button
-                      className="commerce-button secondary"
+                    <ConfirmButton
+                      label="Cancel order"
+                      question={`Cancel order ${orderNumber(selected.id)} for ${selected.email}? This can’t be undone.`}
+                      confirm="Cancel order"
+                      dismiss="Keep order"
                       disabled={busy}
-                      onClick={() =>
+                      onConfirm={() =>
                         void perform(
                           `orders/${selected.id}`,
                           { revision: selected.revision, action: "cancel" },
-                          "Pending order cancelled.",
+                          "Order cancelled.",
                         )
                       }
-                    >
-                      Cancel pending order
-                    </button>
+                    />
                   )}
                   {["paid", "fulfilled"].includes(selected.status) && (
                     <>
@@ -1015,10 +1162,12 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                         />{" "}
                         Return items to inventory
                       </label>
-                      <button
-                        className="commerce-button secondary"
+                      <ConfirmButton
+                        label="Refund full order (test)"
+                        question={`Refund ${money(selected.total, selected.currency)} to ${selected.email}? This can’t be undone.`}
+                        confirm="Refund"
                         disabled={busy}
-                        onClick={() =>
+                        onConfirm={() =>
                           void perform(
                             `orders/${selected.id}`,
                             {
@@ -1026,12 +1175,10 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                               action: "refund",
                               restock,
                             },
-                            "Sandbox refund recorded.",
+                            "Refund recorded. This was a test, so no money moved.",
                           )
                         }
-                      >
-                        Refund full order · sandbox
-                      </button>
+                      />
                     </>
                   )}
                 </div>
@@ -1074,9 +1221,26 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 value={search}
                 onChange={setSearch}
               />
+              <div
+                className="commerce-chips"
+                role="group"
+                aria-label="Show orders"
+              >
+                {ORDER_FILTERS.map(([name]) => (
+                  <button
+                    key={name}
+                    aria-pressed={orderFilter === name}
+                    onClick={() => setOrderFilter(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
               {!filteredOrders.length && (
                 <p className="commerce-index-empty">
-                  No orders match “{search}”.
+                  {search
+                    ? `No orders match “${search}”.`
+                    : "No orders in this view."}
                 </p>
               )}
               <Table
@@ -1090,7 +1254,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                         disabled={busy}
                         onClick={fulfillOrders}
                       >
-                        Mark fulfilled
+                        Mark shipped
                       </button>
                     )}
                     <button
@@ -1110,9 +1274,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               >
                 {filteredOrders.map((o) => (
                   <tr key={o.id}>
-                    {orderSelection.cell(o.id, `order ${o.id.slice(0, 8)}`)}
+                    {orderSelection.cell(o.id, `order ${orderNumber(o.id)}`)}
                     <td>
-                      <strong>#{o.id.slice(0, 8)}</strong>
+                      <strong>{orderNumber(o.id)}</strong>
                       <small>{date(o.createdAt)}</small>
                     </td>
                     <td>
@@ -1120,7 +1284,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                       <small>{o.email}</small>
                     </td>
                     <td>
-                      <span className="commerce-badge">{o.status}</span>
+                      <span className="commerce-badge">
+                        {statusLabel(o.status)}
+                      </span>
                     </td>
                     <td>{money(o.total, o.currency)}</td>
                     <td>
@@ -1147,7 +1313,18 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <p>Customer records are created after a successful payment.</p>
         </Empty>
       ) : (
-        <div className="commerce-panel">
+        <div className="commerce-panel commerce-index">
+          <SearchRow
+            label="Search customers"
+            placeholder="Search by name or email"
+            value={search}
+            onChange={setSearch}
+          />
+          {!filteredCustomers.length && (
+            <p className="commerce-index-empty">
+              No customers match “{search}”.
+            </p>
+          )}
           <Table
             headings={["Customer", "Orders", "Net spend", "Last purchase"]}
             selection={customerSelection}
@@ -1160,7 +1337,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </button>
             }
           >
-            {data.customers.map((c) => (
+            {filteredCustomers.map((c) => (
               <tr key={c.id}>
                 {customerSelection.cell(c.id, c.name || c.email)}
                 <td>
@@ -1206,19 +1383,28 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   </td>
                   <td>{d.expiresAt ? date(d.expiresAt) : "No expiry"}</td>
                   <td>
-                    <button
-                      className="commerce-link"
-                      disabled={busy || !canManage}
-                      onClick={() =>
-                        void perform(
-                          "discounts",
-                          { ...d, active: !d.active },
-                          d.active ? "Discount paused." : "Discount activated.",
-                        )
-                      }
-                    >
-                      {d.active ? "Pause" : "Activate"}
-                    </button>
+                    <div className="commerce-actions">
+                      <span
+                        className={`commerce-badge ${d.active ? "" : "neutral"}`}
+                      >
+                        {d.active ? "Active" : "Paused"}
+                      </span>
+                      <button
+                        className="commerce-link"
+                        disabled={busy || !canManage}
+                        onClick={() =>
+                          void perform(
+                            "discounts",
+                            { ...d, active: !d.active },
+                            d.active
+                              ? "Discount paused."
+                              : "Discount activated.",
+                          )
+                        }
+                      >
+                        {d.active ? "Pause" : "Activate"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1253,16 +1439,31 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             )}
           </div>
           <div className="commerce-panel">
-            <Table headings={["Article", "URL", "Status", ""]}>
+            <Table headings={["Article", "Link", "Status", ""]}>
               {data.content.map((entry) => (
                 <tr key={entry.id}>
                   <td>
                     <strong>{entry.title}</strong>
                     <small>{date(entry.updatedAt)}</small>
                   </td>
-                  <td>{entry.slug}</td>
                   <td>
-                    <span className="commerce-badge">{entry.status}</span>
+                    {entry.status === "published" ? (
+                      <a
+                        className="commerce-link"
+                        href={`/store?site=${siteId}&story=${entry.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {entry.slug}
+                      </a>
+                    ) : (
+                      entry.slug
+                    )}
+                  </td>
+                  <td>
+                    <span className="commerce-badge">
+                      {statusLabel(entry.status)}
+                    </span>
                   </td>
                   <td>
                     {canEdit && (
@@ -1290,16 +1491,31 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         <>
           <section className="commerce-panel">
             <h2>Form submissions</h2>
-            <Table headings={["From", "Type", "Message", "Received"]}>
+            <Table headings={["From", "Type", "Message", "Received", ""]}>
               {data.submissions.map((s) => (
                 <tr key={s.id}>
                   <td>
                     <strong>{s.name || s.email}</strong>
                     <small>{s.email}</small>
                   </td>
-                  <td>{s.kind}</td>
-                  <td>{s.message || "Subscribed with consent"}</td>
+                  <td>{statusLabel(s.kind)}</td>
+                  <td>
+                    {s.message ||
+                      (s.consent ? "Subscribed with consent" : "Unsubscribed")}
+                  </td>
                   <td>{date(s.createdAt)}</td>
+                  <td>
+                    <a
+                      className="commerce-link"
+                      href={`mailto:${s.email}?subject=${encodeURIComponent(
+                        s.kind === "contact"
+                          ? `Re: your message to ${data.settings.name}`
+                          : data.settings.name,
+                      )}`}
+                    >
+                      Reply
+                    </a>
+                  </td>
                 </tr>
               ))}
             </Table>
@@ -1318,26 +1534,38 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   "campaign-preview",
                   input,
                 );
-                setIntegrationPreview(JSON.stringify(result, null, 2));
+                setCampaignPreview(
+                  result as { subject: string; body: string; count: number },
+                );
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Preview failed.");
               }
             }}
           />
-          {integrationPreview && (
-            <pre className="commerce-code">{integrationPreview}</pre>
+          {campaignPreview && (
+            <section className="commerce-panel" aria-label="Campaign preview">
+              <p className="commerce-muted">
+                Would go to {campaignPreview.count} subscriber
+                {campaignPreview.count === 1 ? "" : "s"} who opted in. Nothing
+                has been sent.
+              </p>
+              <h2>{campaignPreview.subject}</h2>
+              <p className="commerce-article">{campaignPreview.body}</p>
+            </section>
           )}
           <section className="commerce-panel">
             <h2>Email previews</h2>
             <p className="commerce-muted">
-              Order and team notifications are captured locally. These messages
-              have not been sent.
+              Order and team emails are kept here as previews. They have not
+              been sent.
             </p>
             {data.outbox.map((mail) => (
               <details key={mail.id} className="commerce-step">
                 <summary>
                   {mail.subject}{" "}
-                  <span className="commerce-muted">· {mail.to}</span>
+                  <span className="commerce-muted">
+                    · {mail.to} · {date(mail.createdAt)}
+                  </span>
                 </summary>
                 <p className="commerce-article">{mail.body}</p>
               </details>
@@ -1366,7 +1594,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-notice">
             Owner: all actions. Manager: commerce settings, orders, and
             publishing. Editor: products, content, and website drafts. Viewer:
-            read-only access. Local collaborators need an existing account.
+            read-only access. Collaborators need an account first.
           </div>
           {data.role === "owner" && (
             <form
@@ -1408,22 +1636,23 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               {data.members.map((m) => (
                 <tr key={m.id}>
                   <td>{m.email}</td>
-                  <td>{m.role}</td>
+                  <td>{statusLabel(m.role)}</td>
                   <td>
                     {data.role === "owner" && (
-                      <button
+                      <ConfirmButton
                         className="commerce-link"
+                        label="Revoke access"
+                        question={`Remove ${m.email}’s access to this store?`}
+                        confirm="Revoke access"
                         disabled={busy}
-                        onClick={() =>
+                        onConfirm={() =>
                           void perform(
                             `members/${m.id}/remove`,
                             {},
                             "Access revoked.",
                           )
                         }
-                      >
-                        Revoke access
-                      </button>
+                      />
                     )}
                   </td>
                 </tr>
@@ -1441,9 +1670,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       return (
         <>
           <div className="commerce-notice">
-            Local event feeds are signed with HMAC-SHA256. This workspace does
-            not send outbound webhooks or connect to external sales channels
-            yet.
+            Integrations let another tool you run, like an inventory app,
+            receive a record of orders and product changes. Nothing is sent
+            outside this computer yet.
           </div>
           {data.role === "owner" && (
             <form
@@ -1453,26 +1682,22 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 const form = e.currentTarget;
                 const fields = new FormData(form);
                 setBusy(true);
+                setError("");
+                setNotice("");
                 void commerceRequest<{ secret: string }>(
                   siteId,
                   "integrations",
                   {
                     name: fields.get("name"),
-                    events: [
-                      "order.paid",
-                      "order.fulfilled",
-                      "order.refunded",
-                      "product.updated",
-                    ],
+                    events: fields.getAll("events"),
                     enabled: true,
                   },
                 )
                   .then(async (result) => {
-                    setIntegrationPreview(
-                      `Signing secret (shown only now): ${result.secret}\nKeep this secret private.`,
-                    );
+                    setIntegrationSecret(result.secret);
                     await refresh();
                     form.reset();
+                    setNotice("Integration created.");
                   })
                   .catch((e) => setError(e.message))
                   .finally(() => setBusy(false));
@@ -1483,14 +1708,42 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 <input
                   required
                   name="name"
-                  placeholder="Warehouse sandbox"
+                  placeholder="Inventory app"
                   maxLength={80}
                 />
               </label>
+              <fieldset className="commerce-field">
+                <legend>Events</legend>
+                {INTEGRATION_EVENTS.map(([value, label]) => (
+                  <label className="commerce-check" key={value}>
+                    <input
+                      type="checkbox"
+                      name="events"
+                      value={value}
+                      defaultChecked
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
               <button className="commerce-button" disabled={busy}>
-                Create local event feed
+                Create integration
               </button>
             </form>
+          )}
+          {integrationSecret && (
+            <div className="commerce-notice" role="status">
+              <button
+                aria-label="Dismiss secret key"
+                onClick={() => setIntegrationSecret("")}
+              >
+                ×
+              </button>
+              <strong>Secret key, shown only once:</strong>
+              <pre className="commerce-code">{integrationSecret}</pre>
+              Copy it into the other tool now. It proves that records really
+              came from your store, so don’t share it with anyone else.
+            </div>
           )}
           <div className="commerce-panel">
             {data.integrations.map((item) => (
@@ -1498,21 +1751,58 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 <div>
                   <strong>{item.name}</strong>
                   <span className="commerce-muted">
-                    {item.events.join(", ")}
+                    {item.enabled ? "" : "Paused · "}
+                    {item.events.map(eventLabel).join(", ")}
                   </span>
                 </div>
                 {data.role === "owner" && (
                   <button
                     className="commerce-link"
+                    disabled={busy}
                     onClick={() => {
-                      void commerceRequest(
-                        siteId,
-                        `integrations/${item.id}/events`,
-                      )
+                      setBusy(true);
+                      setError("");
+                      setNotice("");
+                      void commerceRequest(siteId, "integrations", {
+                        id: item.id,
+                        revision: item.revision,
+                        name: item.name,
+                        events: item.events,
+                        enabled: !item.enabled,
+                      })
+                        .then(() => refresh())
+                        .then(() => {
+                          if (item.enabled)
+                            setIntegrationEvents((current) =>
+                              current?.name === item.name ? undefined : current,
+                            );
+                          setNotice(
+                            item.enabled
+                              ? `${item.name} paused.`
+                              : `${item.name} resumed.`,
+                          );
+                        })
+                        .catch((e) => setError(e.message))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {item.enabled ? "Pause" : "Resume"}
+                  </button>
+                )}
+                {data.role === "owner" && item.enabled && (
+                  <button
+                    className="commerce-link"
+                    onClick={() => {
+                      void commerceRequest<{
+                        events: { payload: string }[];
+                      }>(siteId, `integrations/${item.id}/events`)
                         .then((result) =>
-                          setIntegrationPreview(
-                            JSON.stringify(result, null, 2),
-                          ),
+                          setIntegrationEvents({
+                            name: item.name,
+                            events: result.events
+                              .map((e) => JSON.parse(e.payload) as AuditEvent)
+                              .reverse(),
+                          }),
                         )
                         .catch((e) => setError(e.message));
                     }}
@@ -1523,11 +1813,39 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </div>
             ))}
             {!data.integrations.length && (
-              <p className="commerce-muted">No integrations connected.</p>
+              <p className="commerce-muted">No integrations yet.</p>
             )}
           </div>
-          {integrationPreview && (
-            <pre className="commerce-code">{integrationPreview}</pre>
+          {integrationEvents && (
+            <section className="commerce-panel">
+              <div className="commerce-toolbar">
+                <h2>What {integrationEvents.name} would receive</h2>
+                <button
+                  className="commerce-link"
+                  onClick={() => setIntegrationEvents(undefined)}
+                >
+                  Close
+                </button>
+              </div>
+              {integrationEvents.events.length ? (
+                <ul className="commerce-record-list">
+                  {integrationEvents.events.map((event) => (
+                    <li key={event.id}>
+                      <span className="commerce-muted">
+                        {new Date(event.createdAt).toLocaleString()}
+                      </span>
+                      <strong>{eventLabel(event.action)}</strong>
+                      <span>{targetName(event)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="commerce-muted">
+                  Nothing yet. Records appear here as orders and products
+                  change.
+                </p>
+              )}
+            </section>
           )}
         </>
       );
@@ -1537,7 +1855,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-stat">
             <span>Products</span>
             <strong>{data.usage.products}</strong>
-            <small>500 product local limit</small>
+            <small>Up to 500 products</small>
           </div>
           <div className="commerce-stat">
             <span>Order records</span>
@@ -1556,18 +1874,22 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           </div>
         </div>
         <div className="commerce-panel">
-          <h2>Local usage, without a bill</h2>
+          <h2>Usage</h2>
           <p className="commerce-muted">
-            These are measured local record counts. Customer billing and live
-            cloud cost metering are not enabled. No estimated price is presented
-            as an actual invoice.
+            What your store holds. This is a count, not a bill.
           </p>
           {data.role === "owner" && (
             <button
               className="commerce-button secondary"
               onClick={() => {
+                setError("");
                 void commerceRequest(siteId, "export")
-                  .then((value) => download(`commerce-${siteId}.json`, value))
+                  .then((value) => {
+                    download(`commerce-${siteId}.json`, value);
+                    setNotice(
+                      "Commerce records exported. Check your downloads folder.",
+                    );
+                  })
                   .catch((e) => setError(e.message));
               }}
             >
@@ -1577,7 +1899,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         </div>
         {data.role === "owner" && (
           <details className="commerce-panel">
-            <summary>Delete local website and store</summary>
+            <summary>Delete website and store</summary>
             <form
               className="commerce-form"
               style={{ marginTop: 20 }}
@@ -1601,8 +1923,8 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               <p className="commerce-muted">
                 Unpublish the website and remove its domain connections first.
                 This permanently deletes its drafts, releases, catalog, orders,
-                customer records, and submissions from this local workspace.
-                Export anything you want to keep.
+                customer records, and submissions from this workspace. Export
+                anything you want to keep.
               </p>
               <label className="commerce-field">
                 Type DELETE{" "}
@@ -1610,7 +1932,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 <input name="confirmation" required autoComplete="off" />
               </label>
               <button className="commerce-button danger" disabled={busy}>
-                Permanently delete local website
+                Delete website and store
               </button>
             </form>
           </details>
@@ -1620,9 +1942,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <Table headings={["Action", "Actor", "Target", "Time"]}>
             {data.audit.map((a) => (
               <tr key={a.id}>
-                <td>{a.action}</td>
-                <td>{a.actor === session.account?.id ? "You" : a.actor}</td>
-                <td>{a.target.slice(0, 36)}</td>
+                <td>{activityLabel(a.action)}</td>
+                <td>{actorName(a.actor)}</td>
+                <td>{targetName(a)}</td>
                 <td>{new Date(a.createdAt).toLocaleString()}</td>
               </tr>
             ))}
@@ -1670,7 +1992,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         ...(data?.products || []).map((p) => ({
           id: `product-${p.id}`,
           label: p.title,
-          hint: `Product · ${p.status}`,
+          hint: `Product · ${statusLabel(p.status)}`,
           group: "Products",
           icon: "edit",
           run: () => {
@@ -1680,8 +2002,8 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         })),
         ...(data?.orders || []).map((o) => ({
           id: `order-${o.id}`,
-          label: `Order #${o.id.slice(0, 8)} · ${o.address.name}`,
-          hint: `${o.status} · ${money(o.total, o.currency)}`,
+          label: `Order ${orderNumber(o.id)} · ${o.address.name}`,
+          hint: `${statusLabel(o.status)} · ${money(o.total, o.currency)}`,
           group: "Orders",
           icon: "checklist",
           run: () => {
@@ -1719,7 +2041,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           </select>
         )
       }
-      subnav={<nav aria-label="Store sections">{sectionButtons(false)}</nav>}
+      storeSection={section}
+      onStoreSection={(next) => {
+        const match = sections.find((item) => item === next);
+        if (match) go(match);
+      }}
     >
       <div className="commerce-app commerce-embedded">
         <nav className="commerce-tabs" aria-label="Store sections">
@@ -1733,7 +2059,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             siteId && (
               <div className="commerce-actions">
                 {data && (
-                  <span className="commerce-badge neutral">{data.role}</span>
+                  <span className="commerce-badge neutral">
+                    {statusLabel(data.role)}
+                  </span>
                 )}
                 <a
                   className="commerce-button secondary"
@@ -1811,7 +2139,10 @@ function DiscountForm({
       await onSave({
         code: data.get("code"),
         kind,
-        value: Number(data.get("value")) * (kind === "fixed" ? 100 : 1),
+        value:
+          kind === "fixed"
+            ? Math.round(Number(data.get("value")) * 100)
+            : Number(data.get("value")),
         currency,
         minimum: Math.round(Number(data.get("minimum")) * 100),
         maxUses: Number(data.get("uses")),
@@ -1879,6 +2210,7 @@ function DiscountForm({
         <label className="commerce-field">
           Expires
           <input name="expires" type="datetime-local" />
+          <small>Leave blank for no expiry.</small>
         </label>
       </div>
       <button className="commerce-button" disabled={disabled}>
@@ -1887,6 +2219,14 @@ function DiscountForm({
     </form>
   );
 }
+/** "Our Story!" → "our-story": lowercase words joined by hyphens. */
+const slugify = (value: string) =>
+  value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 function ContentForm({
   entry,
   busy,
@@ -1907,6 +2247,8 @@ function ContentForm({
         status: "draft" as ContentEntry["status"],
       },
   );
+  // A new article's address follows its title until the address is edited by hand.
+  const [slugEdited, setSlugEdited] = useState(!!entry);
   return (
     <form
       className="commerce-panel commerce-form"
@@ -1923,18 +2265,28 @@ function ContentForm({
           required
           value={draft.title}
           maxLength={160}
-          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          onChange={(e) =>
+            setDraft({
+              ...draft,
+              title: e.target.value,
+              ...(slugEdited ? {} : { slug: slugify(e.target.value) }),
+            })
+          }
         />
       </label>
       <label className="commerce-field">
-        URL slug
+        Web address
         <input
           required
           value={draft.slug}
           pattern="[a-z0-9]+(-[a-z0-9]+)*"
-          onChange={(e) => setDraft({ ...draft, slug: e.target.value })}
+          onChange={(e) => {
+            setSlugEdited(true);
+            setDraft({ ...draft, slug: e.target.value });
+          }}
           placeholder="our-story"
         />
+        <small>Lowercase words joined by hyphens, e.g. our-story.</small>
       </label>
       <label className="commerce-field">
         Article
@@ -2038,7 +2390,7 @@ function SetupGuide({
         <p className="commerce-muted">
           {done === steps.length
             ? "Your store is set up. Everything below can be revisited any time."
-            : "Complete the buying journey locally before connecting live services."}
+            : "Try the whole buying journey with test payments before you open for real."}
         </p>
         <div className="admin-setup-progress">
           <span

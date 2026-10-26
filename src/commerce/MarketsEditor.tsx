@@ -1,5 +1,21 @@
 import { useState, type FormEvent } from "react";
-import type { StoreSettings } from "./types";
+import type { Market, StoreSettings } from "./types";
+
+/**
+ * A market ID made from its name ("Europe & UK" → "europe-uk"), kept unique
+ * among the store's other markets. Orders refer to markets by ID.
+ */
+function marketId(name: string, others: Market[]) {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32) || "market";
+  let id = base;
+  for (let n = 2; others.some((m) => m.id === id); n++) id = `${base}-${n}`;
+  return id;
+}
 
 export function MarketsEditor({
   settings,
@@ -13,6 +29,10 @@ export function MarketsEditor({
   onSave: (input: unknown) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState(settings);
+  // The market waiting on "Remove market?" to be answered.
+  const [removing, setRemoving] = useState<number>();
+  // Saved markets keep their ID; new ones take theirs from the name.
+  const saved = new Set(settings.markets.map((m) => m.id));
   const submit = (e: FormEvent) => {
     e.preventDefault();
     void onSave(draft);
@@ -52,6 +72,9 @@ export function MarketsEditor({
               setDraft({ ...draft, contactEmail: e.target.value })
             }
           />
+          <small>
+            Shown on your store’s contact page and notified of new messages.
+          </small>
         </label>
         <label className="commerce-check">
           <input
@@ -59,7 +82,7 @@ export function MarketsEditor({
             checked={draft.enabled}
             onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
           />{" "}
-          Open the local storefront
+          Open the storefront
         </label>
         <label className="commerce-check wide">
           <input
@@ -89,31 +112,66 @@ export function MarketsEditor({
         </p>
       </div>
       {draft.markets.map((market, index) => {
+        const isNew = !saved.has(market.id);
         const change = (key: string, value: unknown) =>
           setDraft((d) => ({
             ...d,
-            markets: d.markets.map((m, i) =>
-              i === index ? { ...m, [key]: value } : m,
-            ),
+            markets: d.markets.map((m, i) => {
+              if (i !== index) return m;
+              const next = { ...m, [key]: value };
+              if (key === "name" && isNew)
+                next.id = marketId(
+                  String(value),
+                  d.markets.filter((_, j) => j !== index),
+                );
+              return next;
+            }),
           }));
         return (
           <section key={index} className="commerce-panel commerce-form">
             <div className="commerce-toolbar">
               <h2>{market.name || `Market ${index + 1}`}</h2>
-              {draft.markets.length > 1 && (
-                <button
-                  type="button"
-                  className="commerce-link"
-                  onClick={() =>
-                    setDraft({
-                      ...draft,
-                      markets: draft.markets.filter((_, i) => i !== index),
-                    })
-                  }
-                >
-                  Remove market
-                </button>
-              )}
+              {draft.markets.length > 1 &&
+                (removing === index ? (
+                  <div
+                    className="commerce-confirm"
+                    role="group"
+                    aria-label="Remove market"
+                  >
+                    <span>
+                      Remove {market.name || "this market"}? Shoppers in its
+                      countries can’t check out once you save.
+                    </span>
+                    <button
+                      type="button"
+                      className="commerce-button danger"
+                      onClick={() => {
+                        setRemoving(undefined);
+                        setDraft({
+                          ...draft,
+                          markets: draft.markets.filter((_, i) => i !== index),
+                        });
+                      }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      className="commerce-button secondary"
+                      onClick={() => setRemoving(undefined)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="commerce-link"
+                    onClick={() => setRemoving(index)}
+                  >
+                    Remove market
+                  </button>
+                ))}
             </div>
             <div className="commerce-form-grid">
               <label className="commerce-field">
@@ -126,12 +184,12 @@ export function MarketsEditor({
               </label>
               <label className="commerce-field">
                 Market ID
-                <input
-                  required
-                  pattern="[a-z0-9-]+"
-                  value={market.id}
-                  onChange={(e) => change("id", e.target.value)}
-                />
+                <input readOnly value={market.id} />
+                <small>
+                  {isNew
+                    ? "Made from the market name."
+                    : "Orders refer to this, so it stays the same."}
+                </small>
               </label>
               <label className="commerce-field">
                 Currency
@@ -152,6 +210,7 @@ export function MarketsEditor({
                   value={market.language}
                   onChange={(e) => change("language", e.target.value)}
                 />
+                <small>Two-letter code, e.g. en, fr, de</small>
               </label>
               <label className="commerce-field">
                 Delivery countries
@@ -168,7 +227,9 @@ export function MarketsEditor({
                   }
                   placeholder="US, CA"
                 />
-                <small>Comma-separated two-letter country codes.</small>
+                <small>
+                  Two-letter codes separated by commas, e.g. US, GB, IN
+                </small>
               </label>
               <label className="commerce-field">
                 Shipping price ({market.currency})
@@ -217,8 +278,8 @@ export function MarketsEditor({
                   }
                 />
                 <small>
-                  Applied to discounted items plus shipping. This is a local
-                  test rule, not an automated tax service.
+                  Applied to discounted items plus shipping. You set this rate
+                  yourself; it isn’t calculated for you.
                 </small>
               </label>
             </div>
@@ -236,7 +297,7 @@ export function MarketsEditor({
               markets: [
                 ...draft.markets,
                 {
-                  id: `market-${draft.markets.length + 1}`,
+                  id: marketId("New market", draft.markets),
                   name: "New market",
                   currency: draft.currency,
                   language: "en",

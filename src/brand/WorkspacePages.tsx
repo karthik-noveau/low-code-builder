@@ -10,7 +10,8 @@ import { SiteThumbnail } from "./SiteThumbnail";
 import { collections } from "./content";
 import { useSession } from "./useSession";
 import * as cloud from "../cloud/client";
-import { createProject } from "../studio/templates";
+import { createProject, storeSeed } from "../studio/templates";
+import { commerceRequest, loadCommerce } from "../commerce/client";
 import { Website } from "../studio/Website";
 import { slugify, type TemplateId, type Project } from "../studio/model";
 import "./brand.css";
@@ -32,9 +33,15 @@ export function AuthPage({
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const next = safeDestination(
-    new URLSearchParams(location.search).get("next"),
-  );
+  const params = new URLSearchParams(location.search);
+  const next = safeDestination(params.get("next"));
+  // Pages that sign you out on purpose say why, so it doesn't look like a crash.
+  const notice =
+    {
+      "password-changed": "Password updated. Log in with your new password.",
+      "signed-out": "You’ve been signed out everywhere. Log in to continue.",
+      "account-deleted": "Your account and its data were deleted.",
+    }[params.get("notice") || ""] || "";
   useEffect(() => {
     if (session.account) location.replace(next);
   }, [session.account, next]);
@@ -114,6 +121,11 @@ export function AuthPage({
               {error || session.error}
             </div>
           )}
+          {notice && !error && (
+            <div className="pub-notice" role="status">
+              {notice}
+            </div>
+          )}
           {session.loading ||
           (callback && !!session.account && !session.error) ? (
             <div className="pub-loading" role="status">
@@ -178,6 +190,9 @@ export function AuthPage({
                         }
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
+                        aria-describedby={
+                          signup ? "workspace-password-hint" : undefined
+                        }
                       />
                       <button
                         type="button"
@@ -189,10 +204,18 @@ export function AuthPage({
                         {showPassword ? "Hide" : "Show"}
                       </button>
                     </span>
+                    {signup && (
+                      <small
+                        id="workspace-password-hint"
+                        className="pub-field-hint"
+                      >
+                        At least 10 characters.
+                      </small>
+                    )}
                   </div>
                   <p className="pub-auth-note">
                     <i />
-                    Local workspace · Saved on this computer
+                    Your websites are saved on this computer
                   </p>
                 </>
               ) : (
@@ -249,6 +272,11 @@ export function Dashboard() {
     setError("");
     try {
       setSites((await cloud.listSites()).sites);
+      // Recent activity follows the same refresh.
+      if (session.account)
+        void loadNotices()
+          .then(setNotices)
+          .catch(() => {});
     } catch (error) {
       setError(
         error instanceof Error
@@ -298,6 +326,8 @@ export function Dashboard() {
         : b.updatedAt.localeCompare(a.updatedAt),
     );
   const published = sites.filter((site) => !!site.publishedRelease).length;
+  // Only your own websites use your 10 spaces.
+  const owned = sites.filter((site) => !site.shared).length;
   const [notices, setNotices] = useState<Notice[] | null>(null);
   useEffect(() => {
     if (!session.account) return;
@@ -421,7 +451,11 @@ export function Dashboard() {
                   </select>
                   <button
                     className="dashboard-refresh"
-                    aria-label="Refresh websites"
+                    aria-label={
+                      refreshing ? "Refreshing websites" : "Refresh websites"
+                    }
+                    title={refreshing ? "Refreshing…" : "Refresh websites"}
+                    aria-busy={refreshing}
                     disabled={refreshing}
                     onClick={() => void refresh()}
                   >
@@ -517,8 +551,13 @@ export function Dashboard() {
                             {new Date(site.updatedAt).toLocaleDateString(
                               undefined,
                               { month: "short", day: "numeric" },
-                            )}{" "}
-                            <span>·</span> Version {site.version}
+                            )}
+                            {site.shared && (
+                              <>
+                                {" "}
+                                <span>·</span> Shared with you
+                              </>
+                            )}
                           </p>
                           <div className="dashboard-site-actions">
                             <a
@@ -558,17 +597,30 @@ export function Dashboard() {
                                 <span>Visit</span>
                               </a>
                             )}
+                            {!site.shared && (
+                              <a
+                                className="ws-icon-action"
+                                href={`/commerce?site=${site.id}&section=usage`}
+                                aria-label={`Delete ${site.name}`}
+                                title="Delete website"
+                              >
+                                <Icon name="trash" size={15} />
+                                <span>Delete</span>
+                              </a>
+                            )}
                           </div>
                           {site.error && (
                             <small className="dashboard-site-error">
-                              Last publish needs attention. Open the editor to
-                              review it.
+                              The last publish didn’t finish.{" "}
+                              <a href={`/domains?site=${site.id}`}>
+                                See what went wrong
+                              </a>
                             </small>
                           )}
                         </div>
                       </article>
                     ))}
-                    {view === "grid" && sites.length < 10 && !search && (
+                    {view === "grid" && owned < 10 && !search && (
                       <a className="ws-new-tile" href="/new">
                         <span className="ws-new-icon" aria-hidden="true">
                           <Icon name="plus" size={20} />
@@ -586,8 +638,8 @@ export function Dashboard() {
                 </>
               )}
               <p className="dashboard-quota">
-                {sites.length} of 10 website spaces used <span>·</span> Changes
-                stay in your draft until you publish.
+                {owned} of 10 website spaces used <span>·</span> Changes stay in
+                your draft until you publish.
               </p>
               <TemplateRow />
             </>
@@ -628,7 +680,7 @@ function WorkspaceStats({
     {
       label: "Websites",
       value: sites.length,
-      note: `${Math.max(0, 10 - sites.length)} of 10 spaces left`,
+      note: `${Math.max(0, 10 - sites.filter((site) => !site.shared).length)} of 10 spaces left`,
       icon: "grid",
     },
     {
@@ -707,28 +759,31 @@ function WorkspaceSide({
   sites: cloud.Site[];
   notices: Notice[] | null;
 }) {
-  const latest = [...sites].sort((a, b) =>
+  // Setup is about your own websites, not ones you were invited to.
+  const yours = sites.filter((site) => !site.shared);
+  const latest = [...yours].sort((a, b) =>
     b.updatedAt.localeCompare(a.updatedAt),
   )[0];
   const steps = [
     {
       label: "Create your first website",
-      done: sites.length > 0,
+      done: yours.length > 0,
       href: "/new",
     },
     {
       label: "Make it yours in the editor",
-      done: sites.some((site) => site.version > 0),
+      // Creating a site saves version 1; anything later is an edit.
+      done: yours.some((site) => site.version > 1),
       href: latest ? `/editor?site=${latest.id}` : "/new",
     },
     {
       label: "Publish it",
-      done: sites.some((site) => !!site.publishedRelease),
+      done: yours.some((site) => !!site.publishedRelease),
       href: latest ? `/domains?site=${latest.id}` : "/new",
     },
     {
       label: "Connect your own domain",
-      done: sites.some((site) => !!site.primaryDomain),
+      done: yours.some((site) => !!site.primaryDomain),
       href: latest ? `/domains?site=${latest.id}` : "/new",
     },
   ];
@@ -852,11 +907,8 @@ export function NewWebsite() {
     try {
       const key = JSON.stringify([template, name.trim()]);
       if (prepared.current?.key !== key) {
-        const project = createProject(template);
-        project.name = name.trim();
-        project.pages.forEach((page) => {
-          page.title = `${page.name} — ${project.name}`;
-        });
+        // The business name goes in the header, footer, page titles and app.
+        const project = createProject(template, name.trim());
         prepared.current = { key, project };
       }
       const project = prepared.current.project;
@@ -870,6 +922,7 @@ export function NewWebsite() {
           created.current = (await cloud.createSite(project.name)).site;
         const saved = await cloud.saveDraft(created.current, project);
         created.current = saved.site;
+        await seedStore(saved.site.id, template);
         location.assign(`/editor?site=${saved.site.id}`);
       } else location.assign("/editor");
     } catch (error) {
@@ -986,8 +1039,12 @@ export function NewWebsite() {
             </button>
             <p className="ns-note">
               {session.account
-                ? "Saved to your workspace."
-                : "Starts in your browser. You can connect a workspace later."}{" "}
+                ? storeSeed(template)
+                  ? "Saved to your workspace, with its online store and products ready in Store management."
+                  : "Saved to your workspace."
+                : storeSeed(template)
+                  ? "Starts in your browser. The online store (checkout, orders, accounts) needs a workspace: sign in to get it."
+                  : "Starts in your browser. You can connect a workspace later."}{" "}
               Your current browser draft is kept as a recovery copy.
             </p>
           </div>
@@ -1012,6 +1069,69 @@ export function NewWebsite() {
       </div>
     </AppShell>
   );
+}
+
+/**
+ * Stocks the online store of a site made from a store template (Botanical):
+ * its products, and the settings that show the Shop button and catalogue on
+ * the published site. Runs once per new site and never blocks the editor:
+ * products are added only while the catalogue is empty, settings only when
+ * they're off, and any failure leaves the store to set up in Store management.
+ */
+async function seedStore(siteId: string, template: TemplateId) {
+  const seed = storeSeed(template);
+  if (!seed) return;
+  const work = (async () => {
+    const overview = await loadCommerce(siteId);
+    if (!overview.products.length)
+      await Promise.all(
+        seed.products.map((product) =>
+          commerceRequest(siteId, "products", product),
+        ),
+      );
+    const current = overview.settings;
+    if (
+      current.enabled &&
+      current.linkFromWebsite &&
+      current.useCatalogOnWebsite
+    )
+      return;
+    // A brand-new store starts in US dollars; the seeded prices are rupees.
+    const untouched =
+      current.currency === "USD" &&
+      current.markets.length === 1 &&
+      current.markets[0].id === "default";
+    await commerceRequest(
+      siteId,
+      "settings",
+      {
+        ...current,
+        ...seed.settings,
+        ...(untouched
+          ? {
+              currency: "INR",
+              markets: [
+                {
+                  id: "default",
+                  name: "India",
+                  currency: "INR",
+                  language: "en",
+                  countries: ["IN"],
+                  shipping: 9900,
+                  freeShippingFrom: 99900,
+                  taxBasisPoints: 0,
+                },
+              ],
+            }
+          : {}),
+      },
+      "PUT",
+    );
+  })();
+  await Promise.race([
+    work.catch(() => undefined),
+    new Promise((done) => setTimeout(done, 15000)),
+  ]);
 }
 
 /**

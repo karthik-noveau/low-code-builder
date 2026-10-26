@@ -29,6 +29,8 @@ const KIND_WORD: Record<string, string> = {
   rsvp: "RSVP",
   enquire: "enquiry",
   apply: "application",
+  contact: "message",
+  newsletter: "signup",
 };
 function noticesFor(site: cloud.Site, requests: InboxRequest[]): Notice[] {
   const inbox = `/editor?site=${site.id}&open=inbox`;
@@ -42,7 +44,7 @@ function noticesFor(site: cloud.Site, requests: InboxRequest[]): Notice[] {
     if (r.payment?.status === "paid" && r.payment.paidAt)
       list.push({
         id: `${r.id}-paid`,
-        title: `Payment received from ${r.name}`,
+        title: `Payment received from ${r.name || r.email}`,
         detail: `${site.name} · ${r.itemTitle || r.collectionName}${amount}`,
         at: r.payment.paidAt,
         href: inbox,
@@ -51,7 +53,7 @@ function noticesFor(site: cloud.Site, requests: InboxRequest[]): Notice[] {
       });
     list.push({
       id: r.id,
-      title: `New ${word} from ${r.name}`,
+      title: `New ${word} from ${r.name || r.email}`,
       detail: `${site.name} · ${r.itemTitle || r.collectionName}${amount}${
         r.payment?.status === "unpaid" ? " · awaiting payment" : ""
       }`,
@@ -73,6 +75,8 @@ function noticesFor(site: cloud.Site, requests: InboxRequest[]): Notice[] {
   return list;
 }
 export async function loadNotices(): Promise<Notice[]> {
+  // Notices are polled, so read the sites again: publish problems change.
+  sitesOnce = undefined;
   const sites = await loadSites();
   const perSite = await Promise.all(
     sites.slice(0, 12).map(async (site) => {

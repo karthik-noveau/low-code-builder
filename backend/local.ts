@@ -7,7 +7,7 @@ import {
   putItem,
   deleteItem,
 } from "./database";
-import { api, jsonResponse, type ApiResponse } from "./api";
+import { api, isPublicAppPath, jsonResponse, type ApiResponse } from "./api";
 import {
   localAuthenticate,
   localSession,
@@ -109,12 +109,15 @@ const server = createServer(async (req, res) => {
     // Visitor action forms post from published sites (any origin); they never read the response.
     const publicForm =
       req.method === "POST" && /^\/inbox\/[^/?]+(?:\?|$)/.test(req.url || "");
-    if (origin && !allowedOrigins.has(origin) && !publicForm)
+    // App forms and lookups on published sites read the response, so they get open CORS (no credentials).
+    const publicApp = isPublicAppPath((req.url || "").split("?")[0]);
+    if (publicApp) res.setHeader("access-control-allow-origin", "*");
+    if (origin && !allowedOrigins.has(origin) && !publicForm && !publicApp)
       throw new HttpError(403, "Origin is not allowed.");
     const host = req.headers.host?.split(":")[0];
     if (host !== "127.0.0.1" && host !== "localhost")
       throw new HttpError(403, "Host is not allowed.");
-    if (origin && allowedOrigins.has(origin)) {
+    if (origin && allowedOrigins.has(origin) && !publicApp) {
       res.setHeader("access-control-allow-origin", origin);
       res.setHeader("vary", "Origin");
     }
@@ -132,7 +135,8 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://localhost");
     if (
       (url.pathname.startsWith("/store/") ||
-        url.pathname.startsWith("/inbox/")) &&
+        url.pathname.startsWith("/inbox/") ||
+        url.pathname.startsWith("/apps/")) &&
       req.method === "POST"
     ) {
       const id = `store:${req.socket.remoteAddress || "local"}`;
@@ -222,6 +226,8 @@ const server = createServer(async (req, res) => {
         response = await api({
           method: req.method || "GET",
           path: url.pathname,
+          query: url.search.slice(1),
+          ip: req.socket.remoteAddress || "local",
           owner: session?.owner,
           email: session?.email,
           body: await bodyOf(req),
@@ -256,6 +262,9 @@ const contentTypes: Record<string, string> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
+  js: "text/javascript; charset=utf-8",
+  webmanifest: "application/manifest+json",
+  svg: "image/svg+xml",
 };
 const sitesServer = createServer(async (req, res) => {
   try {
@@ -305,7 +314,7 @@ const sitesServer = createServer(async (req, res) => {
     const file = (explicit ? explicit[2] : tail) || "index.html";
     if (
       !idPattern.test(release) ||
-      !/^(?:(?:[a-z0-9-]+\/)?[a-z0-9-]+\.html|styles\.css|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
+      !/^(?:(?:[a-z0-9-]+\/)?[a-z0-9-]+\.html|styles\.css|app\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
         file,
       )
     )
@@ -322,7 +331,9 @@ const sitesServer = createServer(async (req, res) => {
         : "no-store",
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin",
-      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; form-action 'self' https: ${config.apiOrigin}; base-uri 'self'; frame-ancestors 'none'`,
+      // Scripts are only Forma's own app.js and sw.js; they talk to the API and,
+      // for the offline cache, the site itself.
+      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${config.apiOrigin}; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; base-uri 'self'; frame-ancestors 'none'`,
     });
     res.end(req.method === "HEAD" ? undefined : bytes);
   } catch {

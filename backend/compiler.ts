@@ -1,10 +1,14 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { deflateSync } from "node:zlib";
 import {
+  liveAppForms,
   renderItemPage,
   renderPage,
   renderThanksPage,
 } from "../src/studio/export";
+import { APP_SCRIPT } from "../src/apps/widget";
+import { SITE_SCRIPT, needsSiteScript } from "../src/studio/siteScript";
 import {
   collectionImages,
   itemHref,
@@ -20,7 +24,7 @@ import {
 } from "../src/studio/model";
 import websiteCss from "../src/studio/website.css?raw";
 import { digest } from "./project";
-import { insist } from "./config";
+import { config, insist } from "./config";
 import type { CommerceBinding } from "./commerce-publishing";
 
 export interface Artifact {
@@ -39,6 +43,25 @@ const starterNames = new Set([
   "architecture.jpg",
   "restaurant.jpg",
   "garden.jpg",
+  // Flat illustrations for the business templates.
+  "ac-service.jpg",
+  "breads.jpg",
+  "ceiling-fan.jpg",
+  "classroom.jpg",
+  "dairy.jpg",
+  "dessert.jpg",
+  "drinks.jpg",
+  "electrical-shop.jpg",
+  "fruits.jpg",
+  "groceries.jpg",
+  "gym.jpg",
+  "home-tools.jpg",
+  "led-bulb.jpg",
+  "salon.jpg",
+  "staples.jpg",
+  "switches.jpg",
+  "vegetables.jpg",
+  "wires.jpg",
 ]);
 export async function compileSite(
   input: Project,
@@ -46,8 +69,16 @@ export async function compileSite(
   commerce?: CommerceBinding,
   /** Endpoint for visitor action forms; without it item pages show no form. */
   inbox?: string,
+  /** The public app API for this site; without it app sections show no form. */
+  appApi?: string,
 ): Promise<Artifact[]> {
   const project = structuredClone(input);
+  // OWNER_LINK ("{owner}") opens the owner's branded app for this site. The
+  // site id is the one in the release path: /sites/<id>/releases/<release>.
+  const siteId = /^\/sites\/([^/]+)\/releases\//.exec(releaseBase)?.[1];
+  const owner = siteId
+    ? `${config.editorOrigin}/owner?site=${encodeURIComponent(siteId)}`
+    : undefined;
   if (commerce?.shopUrl)
     for (const section of project.header)
       if (section.type === "header") {
@@ -88,9 +119,17 @@ export async function compileSite(
       }
   }
   const replacements = new Map<string, string>();
+  // The header's logo mark may be an uploaded image; "bolt" is drawn, not stored.
+  const logo =
+    project.theme.logo && project.theme.logo !== "bolt"
+      ? safeImage(project.theme.logo)
+      : "";
+  if (project.theme.logo && project.theme.logo !== "bolt" && !logo)
+    delete project.theme.logo;
   const sources = new Set([
     ...sections.flatMap(sectionImages),
     ...collectionImages(project.collections),
+    ...(logo ? [logo] : []),
   ]);
   // Remote HTTPS images stay linked; only images we store count toward the limit.
   insist(
@@ -152,12 +191,14 @@ export async function compileSite(
     project.collections,
     (src) => replacements.get(src) || undefined,
   );
+  if (logo && replacements.has(logo))
+    project.theme.logo = replacements.get(logo);
   for (const page of project.pages)
     add({
       name: pageHref(page.slug),
       type: "text/html; charset=utf-8",
       body: Buffer.from(
-        renderPage(project, page).replace(
+        renderPage(project, page, { inbox, appApi, owner }).replace(
           'href="styles.css"',
           `href="${releaseBase}/styles.css"`,
         ),
@@ -168,16 +209,22 @@ export async function compileSite(
       name: itemHref(collection, item),
       type: "text/html; charset=utf-8",
       body: Buffer.from(
-        renderItemPage(project, collection, item, { inbox }).replace(
-          'href="styles.css"',
-          `href="${releaseBase}/styles.css"`,
-        ),
+        renderItemPage(project, collection, item, {
+          inbox,
+          appApi,
+          owner,
+        }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
       ),
     });
   // A page of the site's own called "thanks" wins; visitors land there instead.
   if (
     inbox &&
-    project.collections?.some((c) => c.request) &&
+    (project.collections?.some((c) => c.request) ||
+      sections.some(
+        (s) =>
+          (s.type === "contact" || s.type === "newsletter") &&
+          !/^https?:\/\//i.test(s.formAction),
+      )) &&
     !project.pages.some((p) => p.slug === "thanks")
   )
     add({
@@ -197,6 +244,20 @@ export async function compileSite(
       `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}`,
     ),
   });
+  const files = appApi ? appFiles(project, releaseBase) : [];
+  // The theme switch and moving backgrounds share app.js with app forms.
+  if (needsSiteScript(project)) {
+    const script = files.find((f) => f.name === "app.js");
+    if (script)
+      script.body = Buffer.concat([script.body, Buffer.from(SITE_SCRIPT)]);
+    else
+      files.unshift({
+        name: "app.js",
+        type: "text/javascript; charset=utf-8",
+        body: Buffer.from(SITE_SCRIPT),
+      });
+  }
+  for (const file of files) add(file);
   insist(
     artifacts.reduce((sum, file) => sum + file.body.length, 0) <=
       30 * 1024 * 1024,
@@ -204,4 +265,236 @@ export async function compileSite(
     "The published site exceeds 30 MB.",
   );
   return artifacts;
+}
+
+/**
+ * app.js for app forms, and when the app installs: a manifest, icons, a
+ * service worker and its offline page. They're served from the site's live
+ * root (not the release folder) because a service worker only controls pages
+ * at or below its own path.
+ */
+function appFiles(project: Project, releaseBase: string): Artifact[] {
+  const app = project.app;
+  if (!app) return [];
+  const install = app.install.enabled;
+  if (!install && !liveAppForms(project).length) return [];
+  const register =
+    "\n;if('serviceWorker' in navigator)addEventListener('load',function(){navigator.serviceWorker.register(new URL('sw.js',document.baseURI)).catch(function(){});});\n";
+  const files: Artifact[] = [
+    {
+      name: "app.js",
+      type: "text/javascript; charset=utf-8",
+      body: Buffer.from(APP_SCRIPT + (install ? register : "")),
+    },
+  ];
+  if (!install) return files;
+  const accent = /^#[\da-f]{6}$/i.test(project.theme.accent)
+    ? project.theme.accent
+    : "#1c1c1c";
+  const background = /^#[\da-f]{6}$/i.test(project.theme.background)
+    ? project.theme.background
+    : "#ffffff";
+  const name = (app.install.name || project.name).slice(0, 60);
+  const shortName = (app.install.shortName || name).slice(0, 20);
+  const initial =
+    /[a-z0-9]/i.exec(shortName)?.[0].toUpperCase() ??
+    /[a-z0-9]/i.exec(project.name)?.[0].toUpperCase() ??
+    "";
+  const ink = luminance(accent) > 0.6 ? "#1c1c1c" : "#ffffff";
+  const escape = (v: string) =>
+    v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const pages = project.pages.map((p) => pageHref(p.slug));
+  const precache = [
+    ".",
+    ...pages,
+    "offline.html",
+    `${releaseBase}/styles.css`,
+    "icon.svg",
+  ];
+  const version = digest(releaseBase + pages.join()).slice(0, 12);
+  files.push(
+    {
+      name: "manifest.webmanifest",
+      type: "application/manifest+json",
+      body: Buffer.from(
+        JSON.stringify({
+          name,
+          short_name: shortName,
+          start_url: ".",
+          scope: ".",
+          display: "standalone",
+          theme_color: accent,
+          background_color: background,
+          icons: [
+            { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+            {
+              src: "icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
+            { src: "icon.svg", sizes: "any", type: "image/svg+xml" },
+          ],
+        }),
+      ),
+    },
+    {
+      name: "icon.svg",
+      type: "image/svg+xml",
+      body: Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="${accent}"/><text x="256" y="256" dy=".35em" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="280" font-weight="700" fill="${ink}">${escape(initial)}</text></svg>`,
+      ),
+    },
+    {
+      name: "icon-192.png",
+      type: "image/png",
+      body: iconPng(192, accent, ink, initial),
+    },
+    {
+      name: "icon-512.png",
+      type: "image/png",
+      body: iconPng(512, accent, ink, initial),
+    },
+    {
+      name: "sw.js",
+      type: "text/javascript; charset=utf-8",
+      // Caches are per origin and published sites can share one, so names carry the scope.
+      body: Buffer.from(`const PREFIX = "forma:" + self.registration.scope + ":";
+const CACHE = PREFIX + ${JSON.stringify(version)};
+const PRECACHE = ${JSON.stringify(precache)};
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => {}))))
+      .then(() => self.skipWaiting()),
+  );
+});
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+// Network first, so visitors always see the live site; the cache is for when they're offline.
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.open(CACHE).then((cache) =>
+          cache.match(request).then((hit) =>
+            hit || (request.mode === "navigate" ? cache.match(new URL("offline.html", self.registration.scope)) : Response.error()),
+          ),
+        ),
+      ),
+  );
+});
+`),
+    },
+  );
+  if (!project.pages.some((p) => p.slug === "offline"))
+    files.push({
+      name: "offline.html",
+      type: "text/html; charset=utf-8",
+      body: Buffer.from(
+        `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Offline — ${escape(project.name)}</title><meta name="theme-color" content="${accent}"><link rel="stylesheet" href="${releaseBase}/styles.css"></head><body style="background:${background};color:${/^#[\da-f]{6}$/i.test(project.theme.color) ? project.theme.color : "#1c1c1c"}"><main style="max-width:32rem;margin:20vh auto;padding:0 1.5rem;font:16px/1.5 system-ui,-apple-system,sans-serif"><h1 style="font-size:1.6rem;margin:0 0 .5rem">You’re offline</h1><p>${escape(project.name)} will load again when you’re back online. Pages you’ve opened before still work.</p><p><a href="./" style="color:${accent};font-weight:600">Try again</a></p></main></body></html>`,
+      ),
+    });
+  return files;
+}
+function luminance(hex: string) {
+  const [r, g, b] = [1, 3, 5].map(
+    (i) => parseInt(hex.slice(i, i + 2), 16) / 255,
+  );
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+/** 5×7 pixel letters for PNG icons (rows as hex), so installing needs no image library. */
+const GLYPHS = Object.fromEntries(
+  "A0e11111f111111 B1e11111e11111e C0e11101010110e D1e11111111111e E1f10101e10101f F1f10101e101010 G0e11101711110f H1111111f111111 I0e04040404040e J0702020202120c K11121418141211 L1010101010101f M111b1515111111 N11111915131111 O0e11111111110e P1e11111e101010 Q0e11111115120d R1e11111e141211 S0f10100e01011e T1f040404040404 U1111111111110e V11111111110a04 W1111111515150a X11110a040a1111 Y11110a04040404 Z1f01020408101f 00e11131519110e 1040c040404040e 20e11010204081f 31f02040201110e 402060a121f0202 51f101e0101110e 60608101e11110e 71f010204080808 80e11110e11110e 90e11110f01020c"
+    .split(" ")
+    .map((g) => [
+      g[0],
+      g
+        .slice(1)
+        .match(/../g)!
+        .map((r) => parseInt(r, 16)),
+    ]),
+) as Record<string, number[]>;
+const crcTable = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+function crc32(bytes: Buffer) {
+  let c = 0xffffffff;
+  for (const byte of bytes) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function chunk(type: string, data: Buffer) {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(body));
+  return Buffer.concat([length, body, crc]);
+}
+/** A square PNG in the accent colour with the site's initial, full-bleed so it also works as a maskable icon. */
+export function iconPng(
+  size: number,
+  background: string,
+  ink: string,
+  letter: string,
+) {
+  const rgb = (hex: string) =>
+    [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const bg = rgb(background),
+    fg = rgb(ink);
+  const glyph = GLYPHS[letter];
+  // The letter fills about 40% of the height: inside the maskable safe zone.
+  const cell = Math.floor((size * 0.4) / 7);
+  const left = Math.floor((size - cell * 5) / 2),
+    top = Math.floor((size - cell * 7) / 2);
+  const raw = Buffer.alloc((size * 3 + 1) * size);
+  for (let y = 0; y < size; y++) {
+    const row = y * (size * 3 + 1);
+    raw[row] = 0;
+    const gy = Math.floor((y - top) / cell);
+    for (let x = 0; x < size; x++) {
+      const gx = Math.floor((x - left) / cell);
+      const on =
+        glyph &&
+        gy >= 0 &&
+        gy < 7 &&
+        gx >= 0 &&
+        gx < 5 &&
+        x >= left &&
+        y >= top &&
+        (glyph[gy] >> (4 - gx)) & 1;
+      const color = on ? fg : bg;
+      raw.set(color, row + 1 + x * 3);
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header[8] = 8; // bit depth
+  header[9] = 2; // truecolour RGB
+  return Buffer.concat([
+    Buffer.from("89504e470d0a1a0a", "hex"),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
 }

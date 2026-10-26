@@ -82,11 +82,11 @@ describe("domain workspace", () => {
       screen.getByRole("link", { name: /Your websites/ }).getAttribute("href"),
     ).toBe("/workspace");
     expect(cloud.domainAction).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText("Local DNS simulator"));
+    fireEvent.click(screen.getByText("Practice: add these records for me"));
     fireEvent.click(
-      screen.getByRole("button", { name: "Apply displayed records locally" }),
+      screen.getByRole("button", { name: "Pretend I’ve added these records" }),
     );
-    await screen.findByText(/Records saved in the local DNS simulator/);
+    await screen.findByText(/Records added/);
     expect(cloud.saveLocalDns).toHaveBeenCalledWith(
       "site",
       "domain",
@@ -100,7 +100,7 @@ describe("domain workspace", () => {
       ).toBe(false),
     );
     fireEvent.click(screen.getByRole("button", { name: "Check connection" }));
-    await screen.findByText("Set up HTTPS");
+    await screen.findByText("Securing (HTTPS)");
     expect(cloud.domainAction).toHaveBeenCalledWith("site", "domain", "check");
   });
   it("preserves the entered hostname on an API failure and supports a retry", async () => {

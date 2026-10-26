@@ -323,8 +323,8 @@ html body .admin-ui .dashboard-sidebar-bottom > a {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
-  height: 36px;
+  min-height: 32px;
+  height: 32px;
   padding: 0 8px;
   border-radius: var(--a-radius-control);
   background: transparent;
@@ -374,6 +374,59 @@ html body .admin-ui .dashboard-nav-count {
   font-weight: 600;
   line-height: 20px;
   text-align: center;
+}
+/* Groups are always expanded: a small label, then compact rows. */
+html body .admin-ui .dashboard-nav-label {
+  margin: 14px 8px 4px;
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+html body .admin-ui .dashboard-nav-label:first-child {
+  margin-top: 2px;
+}
+html body .admin-ui .dashboard-nav-sites {
+  display: grid;
+  gap: 1px;
+  margin: 0 0 4px 17px;
+  padding-left: 10px;
+  border-left: 1px solid var(--fx-border-strong);
+}
+html body .admin-ui .dashboard-nav-sites a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--a-radius-control);
+  color: var(--a-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html body .admin-ui .dashboard-nav-sites a:hover {
+  background: var(--a-hover);
+  color: var(--a-ink);
+}
+html body .admin-ui .dashboard-nav-sites a[aria-current] {
+  color: var(--a-ink);
+  font-weight: 650;
+}
+html body .admin-ui .dashboard-nav-sites i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fx-border-strong);
+}
+html body .admin-ui .dashboard-nav-sites i.is-live {
+  background: var(--fx-success);
 }
 html body .admin-ui .dashboard-subnav {
   display: block;

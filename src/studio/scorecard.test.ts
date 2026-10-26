@@ -36,9 +36,7 @@ describe("search and speed scorecard", () => {
   });
   it("asks for one main heading per page", () => {
     const project = createProject("blank");
-    expect(failing(project)).toContain(
-      `seo-heading-${project.pages[0].id}`,
-    );
+    expect(failing(project)).toContain(`seo-heading-${project.pages[0].id}`);
   });
   it("finds oversized uploaded images and too many animations", () => {
     const project = createProject("botanical");

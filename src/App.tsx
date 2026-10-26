@@ -1,10 +1,27 @@
-import { lazy, Suspense, useEffect } from "react";
+import {
+  Fragment,
+  lazy,
+  startTransition,
+  Suspense,
+  useEffect,
+  useState,
+} from "react";
 import { PublicSite } from "./brand/PublicSite";
-import { metadataFor } from "./brand/navigation";
+import { metadataFor, navigate, opensInApp } from "./brand/navigation";
 
 const CommercePage = lazy(() =>
   import("./commerce/CommercePage").then((module) => ({
     default: module.CommercePage,
+  })),
+);
+const AppPage = lazy(() =>
+  import("./apps/AppPage").then((module) => ({
+    default: module.AppPage,
+  })),
+);
+const OwnerApp = lazy(() =>
+  import("./owner/OwnerApp").then((module) => ({
+    default: module.OwnerApp,
   })),
 );
 const Storefront = lazy(() =>
@@ -57,7 +74,57 @@ const TemplatePreview = lazy(() =>
   })),
 );
 
+/**
+ * Follows plain clicks on in-app links without reloading the page. Links that
+ * open elsewhere, in a new tab, or are handled by their own click keep the
+ * browser's behaviour.
+ */
+function followLink(e: MouseEvent) {
+  if (
+    e.defaultPrevented ||
+    e.button !== 0 ||
+    e.metaKey ||
+    e.ctrlKey ||
+    e.shiftKey ||
+    e.altKey
+  )
+    return;
+  const link = (e.target as Element | null)?.closest?.("a[href]");
+  if (
+    !(link instanceof HTMLAnchorElement) ||
+    (link.target && link.target !== "_self") ||
+    link.hasAttribute("download")
+  )
+    return;
+  const url = new URL(link.href);
+  // Same page with a #fragment: let the browser scroll to it.
+  if (
+    url.hash &&
+    url.pathname === location.pathname &&
+    url.search === location.search
+  )
+    return;
+  if (!opensInApp(url)) return;
+  e.preventDefault();
+  navigate(url.href);
+}
+
 export default function App() {
+  // Re-render on in-app navigation and the back/forward buttons.
+  const [address, setAddress] = useState(location.pathname + location.search);
+  useEffect(() => {
+    const changed = () => {
+      // A transition keeps the current page up while the next one's code loads.
+      startTransition(() => setAddress(location.pathname + location.search));
+      if (!location.hash) window.scrollTo(0, 0);
+    };
+    window.addEventListener("popstate", changed);
+    document.addEventListener("click", followLink);
+    return () => {
+      window.removeEventListener("popstate", changed);
+      document.removeEventListener("click", followLink);
+    };
+  }, []);
   const path = location.pathname.replace(/\/+$/, "") || "/";
   const query = new URLSearchParams(location.search);
   const callback =
@@ -78,6 +145,10 @@ export default function App() {
   else if (path === "/workspace/templates") page = <WorkspaceTemplates />;
   else if (path === "/commerce")
     page = <CommercePage initialSiteId={query.get("site") || ""} />;
+  else if (path === "/apps")
+    page = <AppPage siteId={query.get("site") || ""} />;
+  else if (path === "/owner")
+    page = <OwnerApp siteId={query.get("site") || ""} />;
   else if (path === "/store")
     page = <Storefront siteId={query.get("site") || ""} />;
   else if (path === "/customer")
@@ -99,7 +170,8 @@ export default function App() {
         </div>
       }
     >
-      {page}
+      {/* Each address starts its page fresh, as a full load did. */}
+      <Fragment key={address}>{page}</Fragment>
     </Suspense>
   );
 }

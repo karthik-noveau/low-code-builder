@@ -1116,7 +1116,7 @@ export async function submitForm(
   siteId: string,
   input: Record<string, unknown>,
 ) {
-  await storefrontEnabled(siteId);
+  const store = await storefrontEnabled(siteId);
   insist(
     input.kind === "contact" || input.kind === "newsletter",
     422,
@@ -1162,6 +1162,16 @@ export async function submitForm(
     ),
     event(siteId, "form.submitted"),
   ];
+  // The store's contact email hears about new messages.
+  if (input.kind === "contact" && store.contactEmail)
+    writes.push(
+      message(
+        siteId,
+        store.contactEmail,
+        `New message from ${item.name || item.email}`,
+        `${item.message}\n\nReply to ${item.email}.`,
+      ),
+    );
   if (input.kind === "newsletter") {
     const token = randomBytes(32).toString("hex");
     writes.push(

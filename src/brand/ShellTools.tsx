@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, loadNotices, loadSites, type Notice } from "./activity";
 import { Icon } from "../studio/Icon";
+import { navigate } from "./navigation";
 import * as cloud from "../cloud/client";
 
 /** Something the search can jump to: a link or an action on the current page. */
@@ -126,6 +127,7 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [sites, setSites] = useState<cloud.Site[]>([]);
+  const [sitesFailed, setSitesFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -144,6 +146,7 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
   const show = () => {
     setQuery("");
     setActive(0);
+    setSitesFailed(false);
     setOpen(true);
   };
   useEffect(() => {
@@ -152,7 +155,8 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
     let live = true;
     loadSites()
       .then((list) => live && setSites(list))
-      .catch(() => {});
+      // Pages and actions still search; say why websites are missing.
+      .catch(() => live && setSitesFailed(true));
     return () => {
       live = false;
     };
@@ -176,7 +180,7 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
     else if (item.href) {
       if (/^https?:/.test(item.href))
         window.open(item.href, "_blank", "noopener,noreferrer");
-      else location.assign(item.href);
+      else navigate(item.href);
     }
   };
   let lastGroup = "";
@@ -241,6 +245,12 @@ export function GlobalSearch({ extra = [] }: { extra?: SearchItem[] }) {
               <kbd>Esc</kbd>
             </div>
             <ul id="admin-palette-results" role="listbox" aria-label="Results">
+              {sitesFailed && (
+                <li className="admin-palette-empty">
+                  Couldn’t load your websites. Close and reopen search to try
+                  again.
+                </li>
+              )}
               {!results.length && (
                 <li className="admin-palette-empty">
                   Nothing matches “{query}”.
@@ -377,8 +387,7 @@ export function Notifications({ account }: { account: string }) {
       onBlur={(event) => {
         // Tabbing out of the panel closes it, like any menu.
         const next = event.relatedTarget as Node | null;
-        if (open && next && !root.current?.contains(next))
-          setOpen(false);
+        if (open && next && !root.current?.contains(next)) setOpen(false);
       }}
     >
       <button

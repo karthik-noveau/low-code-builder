@@ -6,11 +6,13 @@ import {
   type ChangeEvent,
 } from "react";
 import { Icon } from "./Icon";
-import { IconButton, Modal, Field } from "./ui";
+import { IconButton, Modal, Field, type NotifyAction } from "./ui";
 import { Website } from "./Website";
 import { Inspector, type MediaTarget } from "./Inspector";
 import { DataManager } from "./DataManager";
 import { Inbox } from "./Inbox";
+import { AppBuilder } from "../apps/AppBuilder";
+import type { AppTarget } from "../apps/issues";
 import { Sidebar, type Panel } from "./Sidebar";
 import { flushSave, UNREADABLE_KEY, useStudio } from "./store";
 import { templateOptions } from "./templates";
@@ -61,6 +63,7 @@ type Dialog =
   | "review"
   | "data"
   | "inbox"
+  | "app"
   | null;
 const starterAssets: Asset[] = [
   { id: "botanical", name: "Fern & foliage", url: "/images/botanical.jpg" },
@@ -111,17 +114,20 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const { project } = store;
   const page = project.pages.find((p) => p.id === store.activePage)!;
   const [panel, setPanel] = useState<Panel>("sections");
-  // Notifications link to /editor?site=…&open=inbox.
-  const [dialog, setDialog] = useState<Dialog>(() =>
-    new URLSearchParams(location.search).get("open") === "inbox"
-      ? "inbox"
-      : null,
-  );
+  // Notifications link to /editor?site=…&open=inbox; the app page to …&open=app.
+  const [dialog, setDialog] = useState<Dialog>(() => {
+    const open = new URLSearchParams(location.search).get("open");
+    return open === "inbox" || open === "app" ? open : null;
+  });
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">(
     "desktop",
   );
   const [zoom, setZoom] = useState(100);
   const [dataCollection, setDataCollection] = useState<string | undefined>();
+  const [dataTab, setDataTab] = useState<"items" | "settings">("items");
+  const [appTarget, setAppTarget] = useState<AppTarget | undefined>();
+  /** Bumped to ask the workspace button to start publishing. */
+  const [publishSignal, setPublishSignal] = useState(0);
   const [itemView, setItemView] = useState<{
     collection: string;
     item: string;
@@ -151,13 +157,17 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const [mediaTarget, setMediaTarget] = useState<MediaTarget | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<{
+    text: string;
+    action?: NotifyAction;
+  } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canvasScroll = useRef<HTMLDivElement>(null);
-  const notify = useCallback((text: string) => {
-    setToast(text);
+  const notify = useCallback((text: string, action?: NotifyAction) => {
+    setToast({ text, action });
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(""), 4000);
+    // A notification with a button (e.g. Undo) stays a little longer to reach it.
+    timer.current = setTimeout(() => setToast(null), action ? 8000 : 4000);
   }, []);
   useEffect(
     () => () => {
@@ -287,9 +297,12 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
+        const { saveError, cloud } = useStudio.getState();
         notify(
-          useStudio.getState().saveError ||
-            "All changes are saved in this browser",
+          saveError ||
+            (cloud
+              ? "Changes save to your workspace automatically"
+              : "All changes are saved in this browser"),
         );
       }
       if (e.key === "Escape") {
@@ -428,6 +441,29 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     setPanel("sections");
     setInspectorOpen(true);
   };
+  const openData = (
+    collection?: string,
+    tab: "items" | "settings" = "items",
+  ) => {
+    setDataCollection(collection);
+    setDataTab(tab);
+    setDialog("data");
+  };
+  const openApp = (target?: AppTarget) => {
+    setAppTarget(target);
+    setDialog("app");
+  };
+  // The owner's app page (records, approvals) exists for workspace sites only.
+  const cloudSite = store.cloud
+    ? new URLSearchParams(location.search).get("site")
+    : null;
+  const recordsUrl = cloudSite
+    ? `/apps?site=${encodeURIComponent(cloudSite)}`
+    : undefined;
+  const startPublish = () => {
+    setDialog(null);
+    setPublishSignal((n) => n + 1);
+  };
   const openSavedSections = () => {
     setInsertAfter(undefined);
     setSearch("");
@@ -459,9 +495,69 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     {
       id: "review",
       title: "Review your website",
-      description: "Find missing links, descriptions, and form connections",
+      description: "Find missing links, descriptions, and payment setup",
       icon: "checklist",
       run: () => setDialog("review"),
+    },
+    {
+      id: "publish",
+      title: "Publish your site",
+      description: "Put your latest edits live",
+      icon: "arrowUpRight",
+      run: startPublish,
+    },
+    {
+      id: "export",
+      title: "Export site",
+      description: "Download your website as a ZIP to host anywhere",
+      icon: "export",
+      run: () => setDialog("export"),
+    },
+    {
+      id: "inbox",
+      title: "Open Inbox",
+      description: "Messages, bookings and orders from your published site",
+      icon: "mail",
+      run: () => setDialog("inbox"),
+    },
+    {
+      id: "app",
+      title: project.app ? "Open App" : "Build a business app",
+      description: project.app
+        ? "Tables, steps, forms and dashboard of your business app"
+        : "Rewards, loyalty cards, service requests, warranties and more",
+      icon: "activity",
+      run: () => openApp(),
+    },
+    ...(project.app
+      ? [
+          {
+            id: "app-forms",
+            title: "Edit app forms",
+            description: "What visitors fill in or look up on your site",
+            icon: "send",
+            run: () => openApp({ tab: "forms" }),
+          },
+        ]
+      : []),
+    ...(project.app && recordsUrl
+      ? [
+          {
+            id: "app-records",
+            title: "Open app records",
+            description:
+              "Approve, reject and add records from your published site",
+            icon: "arrowUpRight",
+            run: () => window.location.assign(recordsUrl),
+          },
+        ]
+      : []),
+    {
+      id: "data",
+      title: "Manage content (Data)",
+      description: "Services, products, menus and other lists your site shows",
+      icon: "layers",
+      run: () => openData(),
     },
     {
       id: "page",
@@ -508,8 +604,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     },
     {
       id: "templates",
-      title: "Explore starting points",
-      description: "Choose a website template",
+      title: "Templates",
+      description: "Choose a different website template",
       icon: "grid",
       run: () => {
         setTemplate(project.template);
@@ -587,9 +683,15 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             </button>
             <span
               className="project-local-badge"
-              title="This project is saved in your browser"
+              title={
+                store.cloud
+                  ? store.cloud.live
+                    ? "Published. Edits stay in your draft until you publish again."
+                    : "Saved to your workspace. Not published yet."
+                  : "This project is saved in your browser"
+              }
             >
-              Draft
+              {store.cloud?.live ? "Live" : "Draft"}
             </span>
           </div>
         </div>
@@ -660,15 +762,28 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         )}
         <div className="header-actions">
           <span
-            className={`save-indicator ${store.saveError ? "error" : ""}`}
+            className={`save-indicator ${store.saveError || store.cloud?.failed ? "error" : ""}`}
             role="status"
             title={
               store.saveError ||
-              `Saved locally at ${new Date(store.savedAt).toLocaleTimeString()}`
+              (store.cloud
+                ? `${store.cloud.sync}. A browser copy was kept at ${new Date(store.savedAt).toLocaleTimeString()}.`
+                : `Saved locally at ${new Date(store.savedAt).toLocaleTimeString()}`)
             }
           >
-            <Icon name={store.saveError ? "help" : "check"} size={14} />
-            <span>{store.saveError ? "Not saved" : "Saved"}</span>
+            <Icon
+              name={store.saveError || store.cloud?.failed ? "help" : "check"}
+              size={14}
+            />
+            <span>
+              {store.saveError
+                ? "Not saved"
+                : store.cloud?.failed
+                  ? "Not synced"
+                  : store.cloud?.sync === "Saving…"
+                    ? "Saving…"
+                    : "Saved"}
+            </span>
           </span>
           <IconButton
             icon="search"
@@ -692,7 +807,11 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             <Icon name={preview ? "edit" : "eye"} size={16} />
             <span>{preview ? "Back to editor" : "Preview"}</span>
           </button>
-          <CloudWorkspace initialSiteId={initialSiteId} />
+          <CloudWorkspace
+            initialSiteId={initialSiteId}
+            notify={notify}
+            publishSignal={publishSignal}
+          />
         </div>
       </header>
       <div
@@ -720,11 +839,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               setDialog("templates");
             }}
             onSaved={openSavedSections}
-            onData={() => {
-              setDataCollection(undefined);
-              setDialog("data");
-            }}
+            onData={() => openData()}
             onInbox={() => setDialog("inbox")}
+            onApp={() => openApp()}
             notify={notify}
             onReview={() => setDialog("review")}
             issueCount={reviewItems.length}
@@ -813,6 +930,11 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               <Website
                 project={project}
                 page={page}
+                ownerHref={
+                  cloudSite
+                    ? `/owner?site=${encodeURIComponent(cloudSite)}`
+                    : undefined
+                }
                 selected={store.selected}
                 selectedBlock={store.selectedBlock}
                 onSelect={selectCanvasSection}
@@ -883,6 +1005,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 setDataCollection(id);
                 setDialog("data");
               }}
+              onOpenApp={(form) =>
+                openApp(form ? { tab: "forms", id: form } : undefined)
+              }
             />
           </div>
         )}
@@ -920,11 +1045,24 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       {dialog === "data" && (
         <DataManager
           initial={dataCollection}
+          initialTab={dataTab}
           onClose={closeDialog}
           notify={notify}
         />
       )}
       {dialog === "inbox" && <Inbox onClose={closeDialog} />}
+      {dialog === "app" && (
+        <AppBuilder
+          initial={appTarget}
+          onClose={closeDialog}
+          notify={notify}
+          recordsUrl={recordsUrl}
+          onShowSection={(id) => {
+            setDialog(null);
+            focusSection(id);
+          }}
+        />
+      )}
       {dialog === "review" && (
         <Modal
           title="Review your website"
@@ -966,11 +1104,29 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                     openLibrary("start");
                     return;
                   }
+                  if (item.target === "payments") {
+                    setDialog(null);
+                    openUtility("settings");
+                    requestAnimationFrame(() =>
+                      document
+                        .getElementById("get-paid")
+                        ?.scrollIntoView({ block: "start" }),
+                    );
+                    return;
+                  }
+                  if (item.target && "app" in item.target) {
+                    openApp(item.target.app);
+                    return;
+                  }
+                  if (item.target) {
+                    openData(item.target.collection, "settings");
+                    return;
+                  }
                   openIssue(
                     item.page,
                     item.section,
                     item.kind === "forms"
-                      ? "Form endpoint"
+                      ? undefined
                       : item.kind === "images"
                         ? "Image description"
                         : item.kind === "links"
@@ -1003,17 +1159,20 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             {!reviewItems.length && (
               <p className="review-clear">
                 Take a look on mobile, check your copy, and you’re ready to
-                export.
+                publish.
               </p>
             )}
           </div>
-          <div className="modal-footer">
-            <p>You can export anytime. Unconnected forms stay disabled.</p>
+          <div className="modal-footer review-footer">
+            <p>Forms send messages to your Inbox once published.</p>
             <button
-              className="primary-button"
+              className="subtle-button"
               onClick={() => setDialog("export")}
             >
-              Continue to export
+              Export
+            </button>
+            <button className="primary-button" onClick={startPublish}>
+              Continue to publish
               <Icon name="arrow" size={15} />
             </button>
           </div>
@@ -1024,11 +1183,22 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           <span>
             <Icon name="check" size={16} />
           </span>
-          {toast}
+          {toast.text}
+          {toast.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                toast.action?.run();
+                setToast(null);
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
           <IconButton
             icon="x"
             label="Dismiss notification"
-            onClick={() => setToast("")}
+            onClick={() => setToast(null)}
           />
         </div>
       )}
@@ -1225,7 +1395,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       {dialog === "templates" && (
         <Modal
           wide
-          title="Choose a starting point"
+          title="Templates"
           subtitle="Start with a template, then make it your own."
           onClose={closeDialog}
         >
@@ -1518,7 +1688,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 <h3>See the big picture</h3>
                 <p>
                   Preview every screen size, then export a website you can host
-                  anywhere. Your work saves in this browser.
+                  anywhere. Your work saves in this browser, and to your
+                  workspace when you open a saved site.
                 </p>
               </div>
             </div>

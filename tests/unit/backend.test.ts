@@ -7,6 +7,8 @@ import { compileSite } from "../../backend/compiler";
 import { objectPath } from "../../backend/objects";
 import { api } from "../../backend/api";
 import { inboxConfig } from "../../backend/inbox";
+import { appConfig } from "../../backend/apps";
+import { APP_TEMPLATES } from "../../src/apps/templates";
 
 describe("backend validation and static compilation", () => {
   it.each(["botanical", "folio", "studio", "table", "blank"] as const)(
@@ -195,5 +197,54 @@ describe("backend validation and static compilation", () => {
       body: Buffer.alloc(0),
     });
     expect(result.status).toBe(401);
+  });
+  it("publishes only placed app forms, and install files only when publishing", async () => {
+    const project = createProject();
+    project.app = APP_TEMPLATES.find((t) => t.id === "rewards")!.build("Shop");
+    const [submit, lookup] = project.app.forms;
+    project.pages[0].sections.push(
+      createSection("app", { appForm: submit.id }),
+      createSection("app", { appForm: lookup.id, hidden: true }),
+    );
+    expect(appConfig(project)!.app.forms.map((f) => f.id)).toEqual([submit.id]);
+    const exported = await compileSite(project, "https://sites.example/r");
+    expect(exported.some((f) => f.name === "app.js")).toBe(false);
+    const files = await compileSite(
+      project,
+      "https://sites.example/r",
+      undefined,
+      undefined,
+      "https://api.example/apps/site-1",
+    );
+    const names = files.map((f) => f.name);
+    for (const name of [
+      "app.js",
+      "sw.js",
+      "offline.html",
+      "manifest.webmanifest",
+      "icon.svg",
+      "icon-192.png",
+      "icon-512.png",
+    ])
+      expect(names).toContain(name);
+    const home = files.find((f) => f.name === "index.html")!.body.toString();
+    expect(home).toContain('<script src="app.js" defer></script>');
+    expect(home).toContain('href="manifest.webmanifest"');
+    const icon = files.find((f) => f.name === "icon-512.png")!.body;
+    expect(icon.readUInt32BE(16)).toBe(512);
+    // Without install, only the script for the forms is published.
+    project.app.install.enabled = false;
+    const plain = await compileSite(
+      project,
+      "https://sites.example/r",
+      undefined,
+      undefined,
+      "https://api.example/apps/site-1",
+    );
+    expect(
+      plain
+        .filter((f) => /\.(js|webmanifest)$/.test(f.name))
+        .map((f) => f.name),
+    ).toEqual(["app.js"]);
   });
 });

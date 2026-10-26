@@ -18,7 +18,11 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
   const response = await api({
     method: event.requestContext.http.method,
     path: event.rawPath,
+    query: event.rawQueryString,
+    ip: event.requestContext.http.sourceIp,
     owner,
+    // Shown in app record history; access tokens carry no email, so it falls back to "Owner".
+    email: typeof claims?.email === "string" ? claims.email : undefined,
     body: Buffer.from(
       event.body || "",
       event.isBase64Encoded ? "base64" : "utf8",

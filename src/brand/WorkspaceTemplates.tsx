@@ -23,7 +23,7 @@ export function WorkspaceTemplates() {
   const shown = collections.filter(
     (item) =>
       (category === "All" || item.category === category) &&
-      `${item.name} ${item.category} ${item.subtitle}`
+      `${item.name} ${item.category} ${item.subtitle} ${item.works.join(" ")}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
   );
@@ -37,7 +37,7 @@ export function WorkspaceTemplates() {
     >
       <PageHeading
         title="Templates"
-        description="Every template is a complete website: pages, sections and sample content you can change."
+        description="Every template is a working business: pages, a catalogue and an app that takes orders, bookings or sign-ups. Change anything."
         action={
           <a
             className="brand-button brand-button-outline"
@@ -103,6 +103,9 @@ export function WorkspaceTemplates() {
                   <span className="tp-tag">{item.category}</span>
                 </div>
                 <p>{item.subtitle}</p>
+                <p className="tp-works">
+                  <Icon name="check" size={13} /> {item.works.join(" · ")}
+                </p>
                 <div className="tp-foot">
                   <span className="tp-palette" aria-hidden="true">
                     {item.palette.map((color) => (
@@ -164,12 +167,20 @@ function TemplatePreviewPanel({
     [item.id],
   );
   const [pageId, setPageId] = useState(project.pages[0].id);
+  const [opened, setOpened] = useState<{ c: string; i: string } | null>(null);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const frame = useRef<HTMLDivElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   useFocusTrap(panel);
   const page = project.pages.find((p) => p.id === pageId) ?? project.pages[0];
+  // Collection cards open their item page (a dish, a service, an event).
+  const openedCollection = project.collections?.find((c) => c.id === opened?.c);
+  const openedItem = openedCollection?.items.find((i) => i.id === opened?.i);
+  const shownItem =
+    openedCollection && openedItem
+      ? { collection: openedCollection, item: openedItem }
+      : undefined;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     close.current?.focus();
@@ -205,9 +216,10 @@ function TemplatePreviewPanel({
             {project.pages.map((p) => (
               <button
                 key={p.id}
-                aria-pressed={p.id === page.id}
+                aria-pressed={p.id === page.id && !shownItem}
                 onClick={() => {
                   setPageId(p.id);
+                  setOpened(null);
                   frame.current?.scrollTo({ top: 0 });
                 }}
               >
@@ -253,8 +265,14 @@ function TemplatePreviewPanel({
               project={project}
               page={page}
               preview
+              item={shownItem}
+              onOpenItem={(c, i) => {
+                setOpened({ c, i });
+                frame.current?.scrollTo({ top: 0 });
+              }}
               onNavigate={(id) => {
                 setPageId(id);
+                setOpened(null);
                 frame.current?.scrollTo({ top: 0 });
               }}
             />

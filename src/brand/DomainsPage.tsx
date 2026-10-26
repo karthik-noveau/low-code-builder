@@ -8,9 +8,9 @@ import "./domains.css";
 
 const labels: Record<cloud.DomainConnection["status"], string> = {
   ownership: "Verify ownership",
-  certificate: "Set up HTTPS",
-  deploying: "Preparing delivery",
-  dns: "Point your DNS",
+  certificate: "Securing (HTTPS)",
+  deploying: "Getting your domain ready",
+  dns: "Point your domain here",
   connected: "Connected",
   disconnected: "Disconnected",
   failed: "Needs attention",
@@ -21,7 +21,7 @@ const steps = [
   "Add domain",
   "Verify ownership",
   "Secure with HTTPS",
-  "Connect DNS",
+  "Point your domain",
   "Publish",
 ];
 
@@ -140,6 +140,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
       await refresh();
       setConfirm("");
     } catch (error) {
+      setNotice("");
       setError(error instanceof Error ? error.message : "Please try again.");
     } finally {
       working.current = false;
@@ -149,7 +150,13 @@ export function DomainsPage({ siteId }: { siteId: string }) {
   const add = (event: FormEvent) => {
     event.preventDefault();
     void run("add", async () => {
-      await cloud.addDomain(siteId, hostname);
+      // People paste whole addresses; keep just the hostname.
+      const clean = hostname
+        .trim()
+        .replace(/^https?:\/\//i, "")
+        .replace(/\/.*$/, "")
+        .toLowerCase();
+      await cloud.addDomain(siteId, clean);
       setHostname("");
     });
   };
@@ -284,11 +291,11 @@ export function DomainsPage({ siteId }: { siteId: string }) {
           <>
             {session.config.mode === "local" && (
               <aside className="domain-local-banner">
-                <strong>Local development</strong>
+                <strong>Practice mode</strong>
                 <p>
-                  DNS and HTTPS are simulated here. No public DNS records,
-                  certificates, or AWS resources are changed. The live
-                  deployment uses real ownership checks and HTTPS certificates.
+                  This is a safe rehearsal. Nothing changes on the real
+                  internet and your domain provider isn’t contacted. Follow the
+                  steps to see exactly how connecting a domain works.
                 </p>
               </aside>
             )}
@@ -302,8 +309,8 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     <span>{domains.length} of 2 domains</span>
                   </div>
                   <p>
-                    Use your root domain or a subdomain such as www. Add each
-                    hostname separately if you want both.
+                    Use your main domain (mybakery.com) or a subdomain such as
+                    www.mybakery.com. Add each one separately if you want both.
                   </p>
                   <form onSubmit={add} className="domain-add">
                     <label className="brand-field">
@@ -319,6 +326,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                         value={hostname}
                         onChange={(event) => setHostname(event.target.value)}
                         disabled={!!busy || domains.length >= 2}
+                        aria-describedby="domain-hint"
                       />
                     </label>
                     <button
@@ -329,6 +337,10 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                       <Arrow />
                     </button>
                   </form>
+                  <p id="domain-hint" className="domain-small">
+                    Just the address, like www.mybakery.com. No https:// or
+                    slash needed.
+                  </p>
                   <p className="domain-small">
                     Keep DNS with your existing provider. Domain registration
                     and renewal are separate from hosting.
@@ -363,10 +375,12 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                               {record.purpose === "ownership"
                                 ? "1. Prove you own this domain"
                                 : record.purpose === "certificate"
-                                  ? "2. Enable HTTPS and automatic renewal"
-                                  : "3. Route visitors to your website"}
+                                  ? "2. Secure your site with HTTPS"
+                                  : "3. Send visitors to your website"}
                             </strong>
-                            <span>{record.type}</span>
+                            <span title="Choose this in your domain provider’s record type menu">
+                              Type: {record.type}
+                            </span>
                           </header>
                           <dl>
                             <div>
@@ -395,18 +409,29 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                             </div>
                           </dl>
                           {record.type === "ALIAS" && (
-                            <p>
-                              For the root domain, use an ALIAS A/AAAA record in
-                              Route 53 (CloudFront zone ID{" "}
-                              <code>Z2FDTNDATAQYW2</code>) or your provider’s
-                              CNAME flattening. Use www if your provider cannot
-                              flatten root records.
-                            </p>
+                            <>
+                              <p>
+                                Your main domain (without www) needs an ALIAS
+                                record. Some providers call it ANAME or “CNAME
+                                flattening”. If yours doesn’t offer it, connect
+                                www.yourdomain.com instead.
+                              </p>
+                              <details>
+                                <summary>Using Amazon Route 53?</summary>
+                                <p>
+                                  Create an A and an AAAA alias record pointing
+                                  to the value above, with hosted zone ID{" "}
+                                  <code>Z2FDTNDATAQYW2</code>.
+                                </p>
+                              </details>
+                            </>
                           )}
                           {record.purpose === "certificate" && (
                             <p>
-                              Keep this CNAME in place for certificate renewal.
-                              Use DNS-only mode for verification records.
+                              Leave this record in place: it keeps your HTTPS
+                              certificate renewing automatically. If your
+                              provider has a proxy option (an orange cloud on
+                              Cloudflare), turn it off for this record.
                             </p>
                           )}
                         </div>
@@ -414,11 +439,11 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     </div>
                     {domain.local && (
                       <details className="domain-simulator">
-                        <summary>Local DNS simulator</summary>
+                        <summary>Practice: add these records for me</summary>
                         <p>
-                          Add the records shown above to the local simulator,
-                          then check the connection. Repeat when the certificate
-                          and routing records appear.
+                          In practice mode, this stands in for adding the
+                          records at your domain provider. Then choose Check
+                          connection. Repeat when new records appear.
                         </p>
                         <button
                           className="brand-button brand-button-outline"
@@ -431,12 +456,12 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                                 domain.records,
                               );
                               setNotice(
-                                "Records saved in the local DNS simulator. Check the connection to continue.",
+                                "Records added. Choose Check connection to continue.",
                               );
                             })
                           }
                         >
-                          Apply displayed records locally
+                          Pretend I’ve added these records
                         </button>
                         <button
                           className="brand-text-link"
@@ -444,11 +469,11 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                           onClick={() =>
                             void run(domain.id, async () => {
                               await cloud.saveLocalDns(siteId, domain.id, []);
-                              setNotice("Local DNS records cleared.");
+                              setNotice("Practice records removed.");
                             })
                           }
                         >
-                          Clear simulated records
+                          Remove practice records
                         </button>
                       </details>
                     )}
@@ -466,7 +491,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                         {busy === domain.id
                           ? "Checking…"
                           : domain.status === "failed"
-                            ? "Retry provisioning"
+                            ? "Try again"
                             : domain.status === "disconnected"
                               ? "Reconnect domain"
                               : "Check connection"}
@@ -493,7 +518,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                               rel="noopener noreferrer"
                             >
                               {domain.local
-                                ? "Open local domain preview"
+                                ? "Preview on this domain"
                                 : "Visit website"}{" "}
                               <Arrow diagonal />
                             </a>
@@ -515,9 +540,9 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     {confirm === `disconnect:${domain.id}` && (
                       <div className="domain-confirm">
                         <p>
-                          This pauses delivery on {domain.hostname}. Your draft
-                          and published release stay available at the default
-                          address.
+                          Visitors to {domain.hostname} won’t see your website
+                          until you reconnect it. Your website stays live at
+                          its default address.
                         </p>
                         <button
                           className="brand-button"
@@ -535,27 +560,27 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                       </div>
                     )}
                     <details className="domain-remove">
-                      <summary>Remove this domain connection</summary>
+                      <summary>Remove this domain</summary>
                       <p>
-                        This removes its HTTPS hosting resources after
-                        disconnecting the domain. Your website, draft, and
-                        releases remain saved. Remove the DNS routing record
-                        from your provider when finished.
+                        Removes {domain.hostname} from this website for good
+                        (Disconnect only pauses it). Your website and its
+                        published versions stay saved. Afterwards, delete the
+                        records you added at your domain provider.
                       </p>
                       <button
                         className="brand-button brand-button-outline"
                         disabled={!!busy}
                         onClick={() => void action(domain, "remove")}
                       >
-                        Remove connection
+                        Remove {domain.hostname}
                       </button>
                     </details>
                     {domain.checkedAt && (
                       <p className="domain-small">
                         Last checked{" "}
-                        {new Date(domain.checkedAt).toLocaleString()}. DNS and
-                        HTTPS changes can take time. Checks run when you request
-                        them.
+                        {new Date(domain.checkedAt).toLocaleString()}. Changes
+                        at your domain provider can take from a few minutes to
+                        a few hours to show up. Check again any time.
                       </p>
                     )}
                   </section>
@@ -587,8 +612,8 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     </span>
                   </div>
                   <p>
-                    Publishing uses saved draft version {site.version}. Save
-                    recent editor changes before publishing here.
+                    Publishing puts your last saved changes live. Edits the
+                    editor hasn’t saved yet won’t be included.
                   </p>
                   <dl className="domain-publish-facts">
                     <div>
@@ -596,7 +621,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                       <dd>
                         {site.primaryDomain ||
                           (session.config.mode === "local"
-                            ? "Local preview"
+                            ? "Preview on this computer"
                             : "Default hosting address")}
                       </dd>
                     </div>
@@ -634,7 +659,11 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                   <button
                     className="brand-text-link"
                     disabled={!!busy}
-                    onClick={() => void run("refresh", async () => {})}
+                    onClick={() =>
+                      void run("refresh", async () =>
+                        setNotice("Status is up to date."),
+                      )
+                    }
                   >
                     Refresh publish status
                   </button>
@@ -646,16 +675,16 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                 </section>
                 {releases.length > 0 && (
                   <section className="domain-panel">
-                    <h2>Release history</h2>
+                    <h2>Published versions</h2>
                     <p>
-                      Restore a release to change the live website. Your
-                      editable draft stays as it is.
+                      Put an earlier version back live if something went wrong.
+                      Your draft in the editor isn’t changed.
                     </p>
                     <div className="domain-releases">
                       {releases.map((release) => (
                         <div key={release.id}>
                           <span>
-                            <strong>Version {release.version}</strong>
+                            <strong>Published version {release.version}</strong>
                             <small>
                               {new Date(release.createdAt).toLocaleString()}
                             </small>
@@ -672,7 +701,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                                 setConfirm(`rollback:${release.id}`)
                               }
                             >
-                              Restore
+                              Put back live
                             </button>
                           )}
                         </div>
@@ -681,7 +710,12 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                     {confirm.startsWith("rollback:") && (
                       <div className="domain-confirm">
                         <p>
-                          Replace the live website with this retained release?
+                          Replace your live website with the version published{" "}
+                          {new Date(
+                            releases.find((r) => r.id === confirm.slice(9))
+                              ?.createdAt ?? "",
+                          ).toLocaleString()}
+                          ? Your draft isn’t changed.
                         </p>
                         <button
                           className="brand-button"
@@ -690,7 +724,7 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                             void publish("rollback", confirm.slice(9))
                           }
                         >
-                          Restore release
+                          Put this version live
                         </button>
                         <button
                           className="brand-text-link"
@@ -704,16 +738,16 @@ export function DomainsPage({ siteId }: { siteId: string }) {
                       <details>
                         <summary>Take website offline</summary>
                         <p>
-                          All connected domains and the default address stop
-                          serving the website. Your draft and retained releases
-                          stay saved.
+                          Visitors will see nothing at any of your addresses
+                          until you publish again. Your draft and published
+                          versions stay saved.
                         </p>
                         <button
                           className="brand-button brand-button-outline"
                           disabled={!!busy || publishing}
                           onClick={() => void publish("unpublish")}
                         >
-                          Unpublish website
+                          Take it offline now
                         </button>
                       </details>
                     )}

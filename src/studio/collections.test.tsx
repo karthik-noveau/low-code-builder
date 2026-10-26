@@ -179,7 +179,8 @@ describe("publishing collections", () => {
 
 describe("data manager", () => {
   it("creates a collection from a blueprint and adds an item", () => {
-    load(createProject("table"));
+    // A blank site has no collections yet (business templates bring theirs).
+    load(createProject("blank"));
     render(<Studio />);
     fireEvent.click(screen.getByRole("button", { name: /^Data/ }));
     const dialog = screen.getByRole("dialog");
@@ -281,7 +282,7 @@ describe("visitor actions", () => {
     expect(renderItemPage(project, c, c.items[0])).not.toContain(
       "site-request",
     );
-    expect(renderThanksPage(project)).toContain("your request was sent");
+    expect(renderThanksPage(project)).toContain("it’s on its way");
   });
   it("flags actions that can't be shown", () => {
     const project = createProject();

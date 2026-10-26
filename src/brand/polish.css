@@ -48,7 +48,7 @@ html body .admin-ui .dashboard-heading .brand-kicker {
 /* ---------- Sidebar ---------- */
 html body .admin-ui .dashboard-sidebar > nav > a,
 html body .admin-ui .dashboard-sidebar-bottom > a {
-  height: 34px;
+  height: 32px;
   border-radius: 8px;
   font-weight: 500;
   color: var(--fx-text-2);

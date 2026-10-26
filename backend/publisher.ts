@@ -13,6 +13,7 @@ import { decodeProject } from "./project";
 import { compileSite } from "./compiler";
 import { publicationCommerce } from "./commerce-publishing";
 import { activateInbox, inboxConfig, writeInboxConfig } from "./inbox";
+import { activateApp, appConfig, writeAppConfig } from "./apps";
 import type { Job, Release } from "./types";
 
 const kvs = new CloudFrontKeyValueStoreClient({ region: config.region });
@@ -64,6 +65,7 @@ export async function recoverPublishedJob(job: Job) {
         : undefined;
   if ((await liveRelease(job.siteId)) !== target) return false;
   await activateInbox(job.owner, job.siteId, target);
+  await activateApp(job.owner, job.siteId, target);
   await completeJob(job, target);
   return true;
 }
@@ -145,11 +147,13 @@ export async function publishJob(job: Job) {
       const prefix = `sites/${job.siteId}/releases/${releaseId}`;
       const commerce = await publicationCommerce(job.siteId);
       await writeInboxConfig(job.siteId, releaseId, inboxConfig(project));
+      await writeAppConfig(job.siteId, releaseId, appConfig(project));
       const files = await compileSite(
         project,
         `/${prefix}`,
         commerce,
         `${config.apiOrigin}/inbox/${job.siteId}`,
+        `${config.apiOrigin}/apps/${job.siteId}`,
       );
       // Bounded uploads; promote only after every artifact and its manifest are durable.
       for (let i = 0; i < files.length; i += 4)
@@ -206,6 +210,11 @@ export async function publishJob(job: Job) {
       job.siteId,
       job.action === "unpublish" ? undefined : releaseId,
     );
+    await activateApp(
+      job.owner,
+      job.siteId,
+      job.action === "unpublish" ? undefined : releaseId,
+    );
     await completeJob(job, releaseId);
     // Retain the live release plus the newest alternatives. Cleanup never breaks a successful publish.
     try {
@@ -220,6 +229,7 @@ export async function publishJob(job: Job) {
       for (const old of releases.filter((r) => !keep.has(r.id))) {
         for (const file of old.files) await deleteObject("sites", file);
         await deleteObject("drafts", `inbox/${job.siteId}/${old.id}.json`);
+        await deleteObject("drafts", `apps/${job.siteId}/${old.id}.json`);
         await deleteItem(old.pk, old.sk);
       }
     } catch {

@@ -84,8 +84,48 @@ describe("cost and deployment invariants", () => {
     expect((await route(root)).uri).toBe(`${root}releases/${live}/index.html`);
     expect((await route(root + "project.forma.json")).statusCode).toBe(404);
     expect((await route(root + "%2e%2e/secret")).statusCode).toBe(404);
+    // Installable app files are served from the live root, like pages.
+    for (const file of [
+      "app.js",
+      "sw.js",
+      "manifest.webmanifest",
+      "icon.svg",
+      "icon-192.png",
+    ])
+      expect((await route(root + file)).uri).toBe(
+        `${root}releases/${live}/${file}`,
+      );
+    expect((await route(root + "other.js")).statusCode).toBe(404);
     const explicit = `${root}releases/${live}/index.html`;
     live = "";
     expect((await route(explicit)).statusCode).toBe(404);
+  });
+  it("lets published sites run Forma's app script and reach the public app API", () => {
+    const csp =
+      resources.SiteHeaders.Properties.ResponseHeadersPolicyConfig
+        .SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy[
+        "Fn::Sub"
+      ];
+    for (const part of [
+      "script-src 'self'",
+      "connect-src 'self' ${Api.ApiEndpoint}",
+      "manifest-src 'self'",
+      "worker-src 'self'",
+      "default-src 'none'",
+    ])
+      expect(csp).toContain(part);
+    for (const name of [
+      "AppFindRoute",
+      "AppSubmitRoute",
+      "AppAvailabilityRoute",
+      "AppPayRoute",
+      "AppCheckoutRoute",
+      "PushKeyRoute",
+    ])
+      expect(resources[name].Properties.AuthorizationType).toBe("NONE");
+    const routes = Object.entries(resources)
+      .filter(([name]) => /^Route\d+$/.test(name))
+      .map(([, r]) => r.Properties.RouteKey);
+    expect(routes).toContain("POST /sites/{id}/app/{proxy+}");
   });
 });

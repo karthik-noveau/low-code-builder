@@ -13,7 +13,8 @@ export function AccountPage() {
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
-  const submit = async (path: string, input: unknown, logout = false) => {
+  /** `logout` names the notice the login page shows after signing out. */
+  const submit = async (path: string, input: unknown, logout = "") => {
     setBusy(true);
     setError("");
     setNotice("");
@@ -24,7 +25,7 @@ export function AccountPage() {
       });
       if (logout) {
         sessionStorage.removeItem("forma-local-session");
-        location.assign("/login");
+        location.assign(`/login?notice=${logout}`);
       } else setNotice(result.message || "Your account was updated.");
     } catch (e) {
       setError(
@@ -53,10 +54,10 @@ export function AccountPage() {
       ) : session.config.mode !== "local" ? (
         <div className="commerce-panel">
           <p>
-            Account security is managed through your configured identity
-            provider.
+            Your password and sign-in are managed by your organisation’s sign-in
+            service. Change them there.
           </p>
-          <a href="/login">Open sign-in</a>
+          <a href="/workspace">Back to your websites</a>
         </div>
       ) : reset ? (
         <form
@@ -80,6 +81,7 @@ export function AccountPage() {
               maxLength={128}
               required
             />
+            <small>At least 10 characters.</small>
           </label>
           <button className="commerce-button" disabled={busy}>
             Reset password
@@ -96,15 +98,16 @@ export function AccountPage() {
           }}
         >
           <p className="commerce-muted">
-            The local environment captures recovery emails in a private mail
-            directory. It does not send email.
+            We’ll create a link to reset your password. On this computer no
+            email is sent: the link is saved privately in Forma’s mail folder
+            (.local/data/mail) for you to open.
           </p>
           <label className="commerce-field">
             Account email
             <input type="email" name="email" autoComplete="email" required />
           </label>
           <button className="commerce-button" disabled={busy}>
-            Create recovery email preview
+            Get reset link
           </button>
           <a href="/login">Back to sign in</a>
         </form>
@@ -134,7 +137,7 @@ export function AccountPage() {
                     currentPassword: fields.get("current"),
                     password: fields.get("password"),
                   },
-                  true,
+                  "password-changed",
                 );
               }}
             >
@@ -177,7 +180,7 @@ export function AccountPage() {
                 void submit(
                   "/account/logout-all",
                   { currentPassword: fields.get("current") },
-                  true,
+                  "signed-out",
                 );
               }}
             >
@@ -199,11 +202,11 @@ export function AccountPage() {
           </SettingsSection>
           <SettingsSection
             title="Delete account"
-            description="Delete your owned websites first from Store management → Usage & activity, and export any records you want to keep."
+            description="First delete your websites (Your websites → Delete on each website), and export any records you want to keep."
             danger
           >
             <details className="commerce-panel settings-danger">
-              <summary>Delete local account</summary>
+              <summary>Delete my account</summary>
               <form
                 className="commerce-form"
                 onSubmit={(e) => {
@@ -215,7 +218,7 @@ export function AccountPage() {
                       currentPassword: fields.get("current"),
                       confirmation: fields.get("confirmation"),
                     },
-                    true,
+                    "account-deleted",
                   );
                 }}
               >

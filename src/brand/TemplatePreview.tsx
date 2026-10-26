@@ -12,8 +12,12 @@ export function TemplatePreview({ id }: { id: string }) {
   const item = collections.find((item) => item.id === id);
   const [project] = useState(() => createProject(item?.id || "blank"));
   const [pageId, setPageId] = useState(project.pages[0].id);
+  const [opened, setOpened] = useState<{ c: string; i: string } | null>(null);
   const [device, setDevice] = useState("desktop");
   const page = project.pages.find((page) => page.id === pageId)!;
+  // Collection cards open their item page (a dish, a service, an event).
+  const openedCollection = project.collections?.find((c) => c.id === opened?.c);
+  const openedItem = openedCollection?.items.find((i) => i.id === opened?.i);
   if (!item) return <PublicSite path="/404" />;
   return (
     <div
@@ -56,8 +60,8 @@ export function TemplatePreview({ id }: { id: string }) {
       </header>
       <div className="pub-preview-info">
         <span>
-          Starting-point preview · Replace sample text and testimonials before
-          publishing.
+          A working business · {item.works.join(" · ")} · Replace sample text
+          and testimonials before publishing.
         </span>
         <span>Fully editable in Forma</span>
       </div>
@@ -70,7 +74,17 @@ export function TemplatePreview({ id }: { id: string }) {
             project={project}
             page={page}
             preview
+            item={
+              openedCollection && openedItem
+                ? { collection: openedCollection, item: openedItem }
+                : undefined
+            }
+            onOpenItem={(c, i) => {
+              setOpened({ c, i });
+              scrollArea.current?.scrollTo({ top: 0 });
+            }}
             onNavigate={(id) => {
+              setOpened(null);
               setPageId(id);
               scrollArea.current?.scrollTo({ top: 0 });
             }}

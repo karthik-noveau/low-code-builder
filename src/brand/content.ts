@@ -20,7 +20,7 @@ export const pageMeta: Record<string, { title: string; description: string }> =
     "/templates": {
       title: "Website templates — Forma",
       description:
-        "Explore original starting points for portfolios, independent businesses, restaurants, and collections.",
+        "Working business templates: an online store, restaurant ordering, grocery delivery, salon bookings, home services, tuition, events, a gym and a studio.",
     },
     "/pricing": {
       title: "Pricing & hosting — Forma",
@@ -73,45 +73,162 @@ export const pageMeta: Record<string, { title: string; description: string }> =
       description: "Design, edit, preview, and publish your website.",
     },
   };
+/**
+ * The template gallery. Every template is a working business, not a mock-up:
+ * `works` says what a visitor can do on it the day it's published.
+ */
 export const collections: {
   id: TemplateId;
   name: string;
   category: string;
   subtitle: string;
+  /** What works out of the box, shown on cards and previews. */
+  works: string[];
   image: string;
   palette: string[];
 }[] = [
   {
     id: "botanical",
     name: "Botanical",
-    category: "Storefront",
-    subtitle: "A fresh perspective on everyday things.",
+    category: "Shop",
+    subtitle: "An online plant shop with cart, checkout and order tracking.",
+    works: [
+      "Products with stock",
+      "Cart & checkout",
+      "Customer accounts",
+      "Order tracking",
+    ],
     image: "/images/botanical.jpg",
     palette: ["#294b3b", "#f4f3e7", "#c4cfb3"],
+  },
+  {
+    id: "table",
+    name: "Sunday Table",
+    category: "Food",
+    subtitle:
+      "Takes orders and payments from your menu, tracks deliveries and books tables.",
+    works: [
+      "Order from the menu",
+      "Pay online",
+      "Track order",
+      "Reserve a table",
+    ],
+    image: "/images/restaurant.jpg",
+    palette: ["#843d2b", "#faf0df", "#c39070"],
+  },
+  {
+    id: "freshbasket",
+    name: "Fresh Basket",
+    category: "Food",
+    subtitle:
+      "Grocery delivery with a cart, delivery slots that fill up and payment.",
+    works: [
+      "Cart from your products",
+      "Delivery slots",
+      "Pay online",
+      "Track order",
+    ],
+    image: "/images/groceries.jpg",
+    palette: ["#2f9e44", "#f8fbf5", "#b9dcb0"],
+  },
+  {
+    id: "volt",
+    name: "Volt Electricals",
+    category: "Shop",
+    subtitle:
+      "A shop catalogue with a phone-number rewards club and warranty register.",
+    works: [
+      "Join rewards",
+      "Record a purchase",
+      "My rewards",
+      "Register warranty",
+    ],
+    image: "/images/electrical-shop.jpg",
+    palette: ["#e8730c", "#26292e", "#fff1e3"],
+  },
+  {
+    id: "dhanlaxmi",
+    name: "Dhanlaxmi Electricals",
+    category: "Shop",
+    subtitle:
+      "Buy from us. Earn rewards. Purchases recorded by phone, approved by the owner.",
+    works: [
+      "Add a purchase",
+      "Owner approval with reward",
+      "My rewards",
+      "Installs as an app",
+    ],
+    image: "/images/electrical-shop.jpg",
+    palette: ["#e07400", "#22262b", "#fff8f0"],
+  },
+  {
+    id: "glow",
+    name: "Glow Studio",
+    category: "Services",
+    subtitle: "A salon or clinic that books services into free time slots.",
+    works: [
+      "Service menu",
+      "Book a free slot",
+      "Email confirmations",
+      "My bookings",
+    ],
+    image: "/images/salon.jpg",
+    palette: ["#b5655a", "#fdf8f6", "#e8c4ba"],
+  },
+  {
+    id: "fixright",
+    name: "FixRight",
+    category: "Services",
+    subtitle:
+      "Home services that take visit requests, schedule technicians and track jobs.",
+    works: [
+      "Request a visit",
+      "Technician scheduling",
+      "Charges recorded",
+      "Track request",
+    ],
+    image: "/images/home-tools.jpg",
+    palette: ["#1f6feb", "#f7f9fc", "#b8cdf2"],
+  },
+  {
+    id: "brightminds",
+    name: "Bright Minds",
+    category: "Education",
+    subtitle:
+      "A tuition centre with admissions by seats left and a fee record for parents.",
+    works: ["Courses & fees", "Admissions until full", "Students", "My fees"],
+    image: "/images/classroom.jpg",
+    palette: ["#2d5bd3", "#fffdf7", "#c4d1f4"],
+  },
+  {
+    id: "studio",
+    name: "Common Ground",
+    category: "Events",
+    subtitle:
+      "Workshops and events that sell seats until they’re full, plus careers.",
+    works: ["Book seats", "Sold-out limits", "My tickets", "Apply for a role"],
+    image: "/images/interior.jpg",
+    palette: ["#68533d", "#f3eee4", "#c4baaa"],
+  },
+  {
+    id: "pulse",
+    name: "Pulse Fitness",
+    category: "Fitness",
+    subtitle:
+      "A gym that sells plans online and rewards every check-in with points.",
+    works: ["Join & pay online", "Members", "Check in for points", "My card"],
+    image: "/images/gym.jpg",
+    palette: ["#e5484d", "#151a25", "#eef0f6"],
   },
   {
     id: "folio",
     name: "Forma Studio",
     category: "Portfolio",
-    subtitle: "Let the work do the talking.",
+    subtitle:
+      "Case studies with their own pages and a project enquiry pipeline with quotes.",
+    works: ["Case study pages", "Project enquiries", "Quotes", "Track enquiry"],
     image: "/images/architecture.jpg",
     palette: ["#2f3439", "#ece9e1", "#b2afa5"],
-  },
-  {
-    id: "studio",
-    name: "Common Ground",
-    category: "Business",
-    subtitle: "A thoughtful first impression.",
-    image: "/images/interior.jpg",
-    palette: ["#68533d", "#f3eee4", "#c4baaa"],
-  },
-  {
-    id: "table",
-    name: "Sunday Table",
-    category: "Restaurant",
-    subtitle: "A warm welcome, before the first visit.",
-    image: "/images/restaurant.jpg",
-    palette: ["#843d2b", "#faf0df", "#c39070"],
   },
 ];
 export const guides = [
@@ -123,23 +240,23 @@ export const guides = [
     steps: [
       [
         "Start with a saved website",
-        "Create or save your site in a workspace. Open Domains & publish from Your websites or from the editor’s Workspace panel. Add your hostname without https:// or a path. Root and www addresses are separate connections.",
+        "Save your website to your workspace, then open Domains on its card in Your websites. Type just the address, like www.mybakery.com. Your main domain (mybakery.com) and www.mybakery.com are added separately.",
       ],
       [
         "Prove ownership and secure the address",
-        "Add the TXT ownership record to your DNS provider and choose Check connection. Once verified, Forma prepares an HTTPS certificate and displays its CNAME validation record. Keep that certificate CNAME in place for automatic renewal.",
+        "Forma shows a record to add where you bought your domain (your domain provider). Copy its name and value into a new record of the type shown, then choose Check connection. Next, Forma shows a second record that secures your site with HTTPS. Add it the same way and leave it in place so the security certificate keeps renewing.",
       ],
       [
-        "Point your DNS",
-        "After HTTPS is ready, point your hostname to the CloudFront target shown in the workspace. For a root domain use ALIAS or CNAME flattening; for a subdomain use CNAME. Do not replace email records. Check connection verifies valid HTTPS and the identity of your site before connecting it.",
+        "Point your domain to Forma",
+        "The last record sends visitors to your website. For www and other subdomains it is a CNAME. A main domain needs an ALIAS record (some providers call it ANAME); if yours doesn’t offer one, use www instead. Don’t change your email records. Check connection confirms everything works before your domain goes live.",
       ],
       [
         "Publish, then keep improving",
-        "Make the connected domain primary and publish the saved draft. New edits remain private until the next publish. Restore a release to roll back the live website; unpublish takes all its addresses offline. Disconnect pauses only that domain.",
+        "Make the domain your primary address and publish. New edits stay private until you publish again. If something goes wrong, put an earlier published version back live. Take it offline hides the website everywhere; Disconnect pauses just that one domain.",
       ],
       [
-        "Practice locally first",
-        "In local mode, expand Local DNS simulator, apply the displayed records, and check the connection. Repeat for the HTTPS and routing steps. The preview stays on this computer: real public DNS and certificates are created only in a configured AWS deployment.",
+        "Practice first",
+        "In practice mode, open “Practice: add these records for me”, choose “Pretend I’ve added these records”, then Check connection. Repeat for each step. Nothing changes on the real internet, so you can rehearse safely.",
       ],
     ],
   },
@@ -259,10 +376,10 @@ export const faqs = [
   ],
   [
     "Can I sell products?",
-    "Store management includes a local catalog, inventory, cart, sandbox checkout, orders and refunds. Enable catalog links in Markets to connect your published website. Live payment processing is not connected.",
+    "Yes. Store management has products, stock, a cart, checkout, orders and refunds. Turn on catalog links in Markets to show your products on your published website. Checkout currently uses test payments, so no real money is taken yet.",
   ],
   [
     "What happens if I make a mistake?",
-    "Use undo in the editor, restore a browser recovery copy after switching sites, or roll back the live website to a retained release.",
+    "Use Undo in the editor, recover the copy your browser keeps when you switch websites, or put an earlier published version of your website back live.",
   ],
 ];

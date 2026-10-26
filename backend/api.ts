@@ -20,9 +20,15 @@ import {
 } from "./sites";
 import { publicSite } from "./types";
 import { commerceApi } from "./commerce-api";
-import { inboxPublic, listRequests, updateRequest } from "./inbox";
+import {
+  deleteRequest,
+  inboxPublic,
+  listRequests,
+  updateRequest,
+} from "./inbox";
 import { connect, disconnect, getConnection } from "./payments";
-import { allow, sharedSites, siteAccess } from "./access";
+import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
+import { appOwnerApi, appsPublic } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
 import { getItem, putItem } from "./database";
 
@@ -31,6 +37,10 @@ export interface ApiRequest {
   path: string;
   owner?: string;
   email?: string;
+  /** The raw query string, without "?". */
+  query?: string;
+  /** The visitor's address, for per-IP limits on public routes. */
+  ip?: string;
   body: Buffer;
   headers: Record<string, string | undefined>;
 }
@@ -48,6 +58,11 @@ export const jsonResponse = (value: unknown, status = 200): ApiResponse => ({
   },
   body: Buffer.from(JSON.stringify(value)),
 });
+/** Public routes published sites call from any origin (no credentials). */
+export const isPublicAppPath = (path: string) =>
+  path === "/push/key" ||
+  /^\/apps\/[^/]+\/forms\/[^/]+(?:\/find|\/availability)?$/.test(path) ||
+  /^\/apps\/[^/]+\/records\/[^/]+\/(?:pay|checkout)$/.test(path);
 export async function api(request: ApiRequest): Promise<ApiResponse> {
   try {
     const { method, path, body, headers } = request;
@@ -56,6 +71,8 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
       return jsonResponse({ ok: true });
     const inbox = await inboxPublic(request);
     if (inbox) return inbox;
+    const apps = await appsPublic(request);
+    if (apps) return apps;
     const commerce = await commerceApi(request);
     if (commerce) return jsonResponse(commerce.value, commerce.status || 200);
     insist(
@@ -64,12 +81,13 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
       "Sign in to continue.",
     );
     const scoped = /^\/sites\/([^/]+)/.exec(path);
+    let access: SiteAccess | undefined;
     if (scoped) {
-      const access = await siteAccess(owner, scoped[1]);
+      access = await siteAccess(owner, scoped[1]);
       allow(
         access,
-        // The inbox holds visitors' contact details, so viewers can't open it.
-        /^\/sites\/[^/]+\/inbox(\/|$)/.test(path)
+        // The inbox and app records hold visitors' contact details, so viewers can't open them.
+        /^\/sites\/[^/]+\/(?:inbox|app)(\/|$)/.test(path)
           ? "edit"
           : method === "GET"
             ? "read"
@@ -116,12 +134,19 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
       }
       throw new HttpError(405, "Method not allowed.");
     }
-    const inboxMatch = /^\/sites\/([^/]+)\/inbox(?:\/([^/]+))?$/.exec(path);
+    const appMatch = /^\/sites\/[^/]+\/app(\/.*)?$/.exec(path);
+    if (appMatch && access)
+      return await appOwnerApi(request, access.site, appMatch[1] ?? "", data);
+    const inboxMatch =
+      /^\/sites\/([^/]+)\/inbox(?:\/([^/]+)(\/delete)?)?$/.exec(path);
     if (inboxMatch) {
-      const [, siteId, requestId] = inboxMatch;
+      const [, siteId, requestId, remove] = inboxMatch;
       insist(idPattern.test(siteId), 404, "Not found.");
       if (!requestId && method === "GET")
         return jsonResponse({ requests: await listRequests(siteId) });
+      // POST …/delete does the same for browsers, whose CORS rules allow only GET, POST and PUT.
+      if (requestId && (method === "DELETE" || (remove && method === "POST")))
+        return jsonResponse(await deleteRequest(siteId, requestId));
       if (requestId && method === "POST")
         return jsonResponse({
           request: await updateRequest(siteId, requestId, data()),
@@ -150,9 +175,14 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     }
     if (path === "/sites" && method === "GET")
       return jsonResponse({
-        sites: [...(await listSites(owner)), ...(await sharedSites(owner))].map(
-          show,
-        ),
+        sites: [
+          ...(await listSites(owner)).map(show),
+          // Shared sites count toward their owner's spaces, not this account's.
+          ...(await sharedSites(owner)).map((site) => ({
+            ...show(site),
+            shared: true,
+          })),
+        ],
       });
     if (path === "/sites" && method === "POST")
       return jsonResponse(

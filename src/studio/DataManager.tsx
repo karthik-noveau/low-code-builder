@@ -1,11 +1,12 @@
 import { useState, type ChangeEvent } from "react";
 import { Icon } from "./Icon";
-import { Field, IconButton, Modal } from "./ui";
+import { Field, IconButton, InlineConfirm, Modal, type Notify } from "./ui";
 import { MAX_COLLECTIONS, useStudio } from "./store";
 import { safeImage } from "./model";
 import { REQUEST_KINDS, type RequestKind } from "./requests";
 import { canCollect, usablePayments } from "./payments";
 import { PaymentsPanel } from "./PaymentsPanel";
+import { collectionUsedBy } from "../apps/edit";
 import {
   blueprints,
   createField,
@@ -165,9 +166,18 @@ function ValueInput({
   );
 }
 
-function ItemsTab({ collection: c }: { collection: Collection }) {
+const undo = { label: "Undo", run: () => useStudio.getState().undo() };
+
+function ItemsTab({
+  collection: c,
+  notify,
+}: {
+  collection: Collection;
+  notify: Notify;
+}) {
   const store = useStudio();
   const [open, setOpen] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const update = (fn: (c: Collection) => Collection) =>
     store.updateCollection(c.id, fn);
@@ -314,18 +324,41 @@ function ItemsTab({ collection: c }: { collection: Collection }) {
                     </label>
                     <button
                       className="danger-text"
-                      onClick={() => {
-                        update((c) => ({
-                          ...c,
-                          items: c.items.filter((i) => i.id !== item.id),
-                        }));
-                        setOpen(null);
-                      }}
+                      onClick={() => setDeleting(item.id)}
                     >
                       <Icon name="trash" size={13} />
                       Delete {c.singular.toLowerCase()}
                     </button>
                   </div>
+                  {deleting === item.id && (
+                    <InlineConfirm
+                      message={`Delete ${itemTitle(c, item) || `this ${c.singular.toLowerCase()}`}?`}
+                      confirmLabel="Delete"
+                      onCancel={() => setDeleting(null)}
+                      onConfirm={() => {
+                        // Its own history step, so Undo brings back only this item.
+                        store.commit((p) => ({
+                          ...p,
+                          collections: (p.collections ?? []).map((x) =>
+                            x.id === c.id
+                              ? {
+                                  ...x,
+                                  items: x.items.filter(
+                                    (i) => i.id !== item.id,
+                                  ),
+                                }
+                              : x,
+                          ),
+                        }));
+                        setDeleting(null);
+                        setOpen(null);
+                        notify(
+                          `${itemTitle(c, item) || `The ${c.singular.toLowerCase()}`} deleted.`,
+                          undo,
+                        );
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -454,16 +487,20 @@ function FieldsTab({ collection: c }: { collection: Collection }) {
 function SettingsTab({
   collection: c,
   onDeleted,
+  notify,
 }: {
   collection: Collection;
   onDeleted: () => void;
+  notify: Notify;
 }) {
   const store = useStudio();
+  const [confirming, setConfirming] = useState(false);
   const update = (fn: (c: Collection) => Collection) =>
     store.updateCollection(c.id, fn);
   const taken = (store.project.collections ?? [])
     .filter((x) => x.id !== c.id)
     .map((x) => x.slug);
+  const appUses = collectionUsedBy(store.project.app, c.id);
   const used = store.project.pages.some((p) =>
     p.sections.some((s) => s.listing?.collection === c.id),
   );
@@ -650,16 +687,32 @@ function SettingsTab({
         )}
       </div>
       <div className="data-settings-group">
-        <button
-          className="danger-text"
-          onClick={() => {
-            store.removeCollection(c.id);
-            onDeleted();
-          }}
-        >
-          <Icon name="trash" size={13} />
-          Delete {c.name.toLowerCase()}
-        </button>
+        {confirming ? (
+          <InlineConfirm
+            message={`Delete ${c.name}${c.items.length ? ` and its ${c.items.length} ${c.items.length === 1 ? "item" : "items"}` : ""}?`}
+            confirmLabel="Delete"
+            onCancel={() => setConfirming(false)}
+            onConfirm={() => {
+              setConfirming(false);
+              if (!store.removeCollection(c.id))
+                return notify(
+                  `${c.name} is used by your app, so it wasn’t deleted.`,
+                );
+              onDeleted();
+              notify(`${c.name} deleted.`, undo);
+            }}
+          />
+        ) : (
+          <button
+            className="danger-text"
+            disabled={appUses.length > 0}
+            onClick={() => setConfirming(true)}
+          >
+            <Icon name="trash" size={13} />
+            Delete {c.name.toLowerCase()}
+          </button>
+        )}
+        {appUses.length > 0 && <small>{appUses.join(" ")}</small>}
         {used && (
           <small>
             Sections showing it will ask you to choose another collection.
@@ -672,19 +725,22 @@ function SettingsTab({
 
 export function DataManager({
   initial,
+  initialTab = "items",
   onClose,
   notify,
 }: {
   initial?: string;
+  /** Where to start, e.g. Settings when a review item points at a collection. */
+  initialTab?: "items" | "fields" | "settings";
   onClose: () => void;
-  notify: (text: string) => void;
+  notify: Notify;
 }) {
   const store = useStudio();
   const collections = store.project.collections ?? [];
   const [active, setActive] = useState<string | null>(
     initial ?? collections[0]?.id ?? null,
   );
-  const [tab, setTab] = useState<"items" | "fields" | "settings">("items");
+  const [tab, setTab] = useState(initialTab);
   const current = collections.find((c) => c.id === active);
   const choosing = !current;
   const full = collections.length >= MAX_COLLECTIONS;
@@ -758,8 +814,8 @@ export function DataManager({
             <div className="data-blueprints">
               <h3>What do you want to show?</h3>
               <p className="data-note">
-                Start from a blueprint. Each comes with the right fields and a
-                few examples you can edit or remove.
+                Start from a ready-made list. Each comes with the right fields
+                and a few examples you can edit or remove.
               </p>
               <div className="data-blueprint-grid">
                 {(Object.keys(blueprints) as Blueprint[]).map((b) => (
@@ -814,12 +870,16 @@ export function DataManager({
                   ))}
                 </div>
               </div>
-              {tab === "items" && <ItemsTab collection={current} />}
+              {tab === "items" && (
+                <ItemsTab collection={current} notify={notify} />
+              )}
               {tab === "fields" && <FieldsTab collection={current} />}
               {tab === "settings" && (
                 <SettingsTab
+                  key={current.id}
                   collection={current}
                   onDeleted={() => setActive(null)}
+                  notify={notify}
                 />
               )}
             </>

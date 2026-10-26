@@ -9,6 +9,9 @@ import {
   findBlock,
   sectionMeta,
   uid,
+  FEATURE_ICONS,
+  OWNER_LINK,
+  SECTION_VARIANTS,
   safeImage,
   slugify,
   type Animation,
@@ -25,6 +28,23 @@ const animations: { id: Animation; label: string }[] = [
   { id: "rise", label: "Rise up" },
   { id: "zoom", label: "Zoom in" },
 ];
+/** Plain names for each section look (SECTION_VARIANTS). */
+const variantNames: Record<string, string> = {
+  brand: "Logo, pill links and dark switch",
+  badge: "Centred, with a badge",
+  cards: "Numbered cards",
+  notice: "Information box",
+  centered: "Centred links",
+};
+const iconName = (name: string) => name[0].toUpperCase() + name.slice(1);
+const blankItem = () => ({
+  id: uid(),
+  title: "",
+  body: "",
+  image: "",
+  price: "",
+  url: "",
+});
 export function Inspector({
   pickMedia,
   notify,
@@ -35,8 +55,11 @@ export function Inspector({
   device = "desktop",
   onDevice,
   onManageData,
+  onOpenApp,
 }: {
   onManageData?: (collection?: string) => void;
+  /** Opens the App builder, at a form when given. */
+  onOpenApp?: (form?: string) => void;
   device?: Device;
   onDevice?: (device: Device) => void;
   pickMedia: (target: MediaTarget) => void;
@@ -104,11 +127,13 @@ export function Inspector({
             <Field
               label="Page name"
               value={page.name}
+              hint="Shown in your menu."
               onChange={(name) => store.updatePage(page.id, { name })}
             />
             <Field
               label="Page title"
               value={page.title}
+              hint="Shown in the browser tab and search results."
               onChange={(title) => store.updatePage(page.id, { title })}
             />
             <div className="field">
@@ -221,21 +246,56 @@ export function Inspector({
     device !== "desktop" &&
     Object.keys(s.responsive?.[device] ?? {}).length > 0;
   const hasMedia = ["hero", "imageText"].includes(s.type);
-  const hasButton = [
-    "hero",
-    "imageText",
-    "products",
-    "cta",
-    "text",
-    "header",
-  ].includes(s.type);
-  const hasItems = [
-    "products",
-    "gallery",
-    "features",
-    "testimonials",
-    "faq",
-  ].includes(s.type);
+  const hasButton =
+    ["hero", "imageText", "products", "cta", "text", "header"].includes(
+      s.type,
+    ) ||
+    (s.type === "footer" && s.variant === "centered");
+  const brandHeader = s.type === "header" && s.variant === "brand";
+  const hasItems =
+    ["products", "gallery", "features", "testimonials", "faq"].includes(
+      s.type,
+    ) || brandHeader;
+  const variants = SECTION_VARIANTS[s.type];
+  /** A link picker: a page, the owner's sign-in, or a custom address. */
+  const linkTo = (
+    label: string,
+    value: string,
+    onChange: (url: string) => void,
+  ) => (
+    <label className="field">
+      {label}
+      <select
+        value={
+          value === OWNER_LINK ||
+          store.project.pages.some((p) => `/${p.slug}` === value)
+            ? value
+            : "custom"
+        }
+        onChange={(e) =>
+          onChange(e.target.value === "custom" ? "#" : e.target.value)
+        }
+      >
+        {store.project.pages.map((p) => (
+          <option value={`/${p.slug}`} key={p.id}>
+            {p.name}
+          </option>
+        ))}
+        <option value={OWNER_LINK}>Owner sign-in (your app)</option>
+        <option value="custom">Custom link</option>
+      </select>
+    </label>
+  );
+  const itemIcon = (index: number) => s.items[index]?.icon ?? "";
+  const setItemIcon = (index: number, icon: string) => {
+    const items = [...s.items];
+    while (items.length <= index) items.push(blankItem());
+    const next = { ...items[index] };
+    if (icon) next.icon = icon;
+    else delete next.icon;
+    items[index] = next;
+    update({ items });
+  };
   return (
     <aside className="inspector" ref={inspectorRef}>
       <div className="inspector-heading">
@@ -350,60 +410,134 @@ export function Inspector({
                 )}
               </div>
             )}
-            <div className="inspector-group">
-              <h4>
-                {["header", "footer"].includes(s.type) ? "BRAND" : "TEXT"}
-              </h4>
-              {!["header", "footer", "announcement", "features"].includes(
-                s.type,
-              ) && (
+            {s.type === "app" && (
+              <div className="inspector-group">
+                <h4>APP FORM</h4>
+                {store.project.app?.forms.length ? (
+                  <label className="field">
+                    Show
+                    <select
+                      value={s.appForm ?? ""}
+                      onChange={(e) => {
+                        const form = store.project.app?.forms.find(
+                          (f) => f.id === e.target.value,
+                        );
+                        if (form)
+                          update({
+                            appForm: form.id,
+                            title: form.title.slice(0, 200),
+                          });
+                      }}
+                    >
+                      {!store.project.app.forms.some(
+                        (f) => f.id === s.appForm,
+                      ) && <option value="">Choose a form</option>}
+                      {store.project.app.forms.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name} ({f.kind === "lookup" ? "lookup" : "form"})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <small className="block-hint">
+                    {store.project.app
+                      ? "Your app has no forms yet."
+                      : "Set up your business app to show its forms here."}
+                  </small>
+                )}
+                <small className="block-hint">
+                  The heading, introduction and fields come from the form. It
+                  works on your published site.
+                </small>
+                {onOpenApp && (
+                  <button
+                    className="subtle-button full-width"
+                    onClick={() =>
+                      onOpenApp(
+                        store.project.app?.forms.some((f) => f.id === s.appForm)
+                          ? s.appForm
+                          : undefined,
+                      )
+                    }
+                  >
+                    <Icon name="activity" size={15} />
+                    {store.project.app
+                      ? "Edit forms in App"
+                      : "Set up your app"}
+                  </button>
+                )}
+              </div>
+            )}
+            {s.type !== "app" && (
+              <div className="inspector-group">
+                <h4>
+                  {["header", "footer"].includes(s.type) ? "BRAND" : "TEXT"}
+                </h4>
+                {(!["header", "footer", "announcement", "features"].includes(
+                  s.type,
+                ) ||
+                  brandHeader) && (
+                  <Field
+                    label={
+                      brandHeader
+                        ? "Second line"
+                        : s.type === "hero" && s.variant === "badge"
+                          ? "Badge"
+                          : "Eyebrow"
+                    }
+                    editorField="eyebrow"
+                    highlighted={focusField === "eyebrow"}
+                    onEditCanvas={
+                      onEditText ? () => onEditText("eyebrow") : undefined
+                    }
+                    value={draft?.field === "eyebrow" ? draft.text : s.eyebrow}
+                    editingOnCanvas={draft?.field === "eyebrow"}
+                    onChange={(eyebrow) => update({ eyebrow })}
+                    placeholder={
+                      brandHeader
+                        ? "Shown small under the name"
+                        : "A short introduction"
+                    }
+                  />
+                )}
                 <Field
-                  label="Eyebrow"
-                  editorField="eyebrow"
-                  highlighted={focusField === "eyebrow"}
-                  onEditCanvas={
-                    onEditText ? () => onEditText("eyebrow") : undefined
+                  label={
+                    s.type === "footer" && s.variant === "centered"
+                      ? "Site name line"
+                      : ["header", "footer"].includes(s.type)
+                        ? "Brand name"
+                        : s.type === "announcement"
+                          ? "Announcement"
+                          : "Heading"
                   }
-                  value={draft?.field === "eyebrow" ? draft.text : s.eyebrow}
-                  editingOnCanvas={draft?.field === "eyebrow"}
-                  onChange={(eyebrow) => update({ eyebrow })}
-                  placeholder="A short introduction"
-                />
-              )}
-              <Field
-                label={
-                  ["header", "footer"].includes(s.type)
-                    ? "Brand name"
-                    : s.type === "announcement"
-                      ? "Announcement"
-                      : "Heading"
-                }
-                editorField="title"
-                highlighted={focusField === "title"}
-                onEditCanvas={
-                  onEditText ? () => onEditText("title") : undefined
-                }
-                value={draft?.field === "title" ? draft.text : s.title}
-                editingOnCanvas={draft?.field === "title"}
-                multiline={s.type === "hero"}
-                onChange={(title) => update({ title })}
-              />
-              {!["header", "announcement", "features"].includes(s.type) && (
-                <Field
-                  label="Description"
-                  editorField="body"
-                  highlighted={focusField === "body"}
+                  editorField="title"
+                  highlighted={focusField === "title"}
                   onEditCanvas={
-                    onEditText ? () => onEditText("body") : undefined
+                    onEditText ? () => onEditText("title") : undefined
                   }
-                  value={draft?.field === "body" ? draft.text : s.body}
-                  editingOnCanvas={draft?.field === "body"}
-                  multiline
-                  onChange={(body) => update({ body })}
+                  value={draft?.field === "title" ? draft.text : s.title}
+                  editingOnCanvas={draft?.field === "title"}
+                  multiline={s.type === "hero"}
+                  onChange={(title) => update({ title })}
                 />
-              )}
-            </div>
-            {hasMedia && (
+                {!["header", "announcement", "features"].includes(s.type) && (
+                  <Field
+                    label="Description"
+                    editorField="body"
+                    highlighted={focusField === "body"}
+                    onEditCanvas={
+                      onEditText ? () => onEditText("body") : undefined
+                    }
+                    value={draft?.field === "body" ? draft.text : s.body}
+                    editingOnCanvas={draft?.field === "body"}
+                    multiline
+                    onChange={(body) => update({ body })}
+                  />
+                )}
+              </div>
+            )}
+            {hasMedia && s.variant !== "badge" && (
               <div className="inspector-group">
                 <h4>IMAGE</h4>
                 {mediaButton(s.image)}
@@ -432,37 +566,76 @@ export function Inspector({
                   onChange={(buttonLabel) => update({ buttonLabel })}
                   placeholder="Leave empty to hide"
                 />
-                <label className="field">
-                  Link to
-                  <select
-                    value={
-                      store.project.pages.some(
-                        (p) => `/${p.slug}` === s.buttonUrl,
-                      )
-                        ? s.buttonUrl
-                        : "custom"
-                    }
-                    onChange={(e) =>
-                      update({
-                        buttonUrl:
-                          e.target.value === "custom" ? "#" : e.target.value,
-                      })
-                    }
-                  >
-                    {store.project.pages.map((p) => (
-                      <option value={`/${p.slug}`} key={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                    <option value="custom">Custom link</option>
-                  </select>
-                </label>
+                {linkTo("Link to", s.buttonUrl, (buttonUrl) =>
+                  update({ buttonUrl }),
+                )}
+                {s.buttonUrl !== OWNER_LINK && (
+                  <Field
+                    label="Link URL"
+                    value={s.buttonUrl}
+                    onChange={(buttonUrl) => update({ buttonUrl })}
+                    placeholder="https://example.com"
+                  />
+                )}
+              </div>
+            )}
+            {["hero", "cta"].includes(s.type) && (
+              <div className="inspector-group">
+                <h4>SECOND BUTTON</h4>
                 <Field
-                  label="Link URL"
-                  value={s.buttonUrl}
-                  onChange={(buttonUrl) => update({ buttonUrl })}
-                  placeholder="https://example.com"
+                  label="Button label"
+                  value={s.secondaryLabel ?? ""}
+                  onChange={(secondaryLabel) => update({ secondaryLabel })}
+                  placeholder="Leave empty to hide"
                 />
+                {s.secondaryLabel && (
+                  <>
+                    {linkTo("Link to", s.secondaryUrl ?? "", (secondaryUrl) =>
+                      update({ secondaryUrl }),
+                    )}
+                    {s.secondaryUrl !== OWNER_LINK && (
+                      <Field
+                        label="Link URL"
+                        value={s.secondaryUrl ?? ""}
+                        onChange={(secondaryUrl) => update({ secondaryUrl })}
+                        placeholder="https://example.com"
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {s.type === "hero" && (
+              <div className="inspector-group">
+                <Field
+                  label="Small note under the buttons"
+                  value={s.note ?? ""}
+                  onChange={(note) => update({ note })}
+                  placeholder="No sign-up needed."
+                  hint="Leave empty to hide."
+                />
+                {s.variant === "badge" &&
+                  (
+                    [
+                      [0, "Main button icon"],
+                      [1, "Second button icon"],
+                    ] as const
+                  ).map(([index, label]) => (
+                    <label className="field" key={index}>
+                      {label}
+                      <select
+                        value={itemIcon(index)}
+                        onChange={(e) => setItemIcon(index, e.target.value)}
+                      >
+                        <option value="">None</option>
+                        {FEATURE_ICONS.map((name) => (
+                          <option key={name} value={name}>
+                            {iconName(name)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
               </div>
             )}
             {s.type === "announcement" && (
@@ -477,9 +650,20 @@ export function Inspector({
             {hasItems && (
               <div className="inspector-group">
                 <h4>
-                  {s.type === "products" ? "PRODUCTS" : "ITEMS"}
+                  {s.type === "products"
+                    ? "PRODUCTS"
+                    : brandHeader
+                      ? "PHONE TABS"
+                      : "ITEMS"}
                   <span>{s.items.length}</span>
                 </h4>
+                {brandHeader && (
+                  <small className="block-hint">
+                    On phones the page links move to a bar at the bottom of the
+                    screen. Add tabs to give them short names and icons; with
+                    none, every page gets a tab.
+                  </small>
+                )}
                 {s.items.map((item, index) => (
                   <details className="item-editor" key={item.id}>
                     <summary>
@@ -506,18 +690,55 @@ export function Inspector({
                           })
                         }
                       />
-                      <Field
-                        label={s.type === "faq" ? "Answer" : "Description"}
-                        value={item.body}
-                        multiline
-                        onChange={(body) =>
+                      {!brandHeader && (
+                        <Field
+                          label={s.type === "faq" ? "Answer" : "Description"}
+                          value={item.body}
+                          multiline
+                          onChange={(body) =>
+                            update({
+                              items: s.items.map((i) =>
+                                i.id === item.id ? { ...i, body } : i,
+                              ),
+                            })
+                          }
+                        />
+                      )}
+                      {brandHeader &&
+                        linkTo("Opens", item.url, (url) =>
                           update({
                             items: s.items.map((i) =>
-                              i.id === item.id ? { ...i, body } : i,
+                              i.id === item.id ? { ...i, url } : i,
                             ),
-                          })
-                        }
-                      />
+                          }),
+                        )}
+                      {(s.type === "features" || brandHeader) && (
+                        <label className="field">
+                          Icon
+                          <select
+                            value={item.icon ?? ""}
+                            onChange={(e) =>
+                              update({
+                                items: s.items.map((i) => {
+                                  if (i.id !== item.id) return i;
+                                  const next = { ...i };
+                                  if (e.target.value)
+                                    next.icon = e.target.value;
+                                  else delete next.icon;
+                                  return next;
+                                }),
+                              })
+                            }
+                          >
+                            <option value="">Automatic</option>
+                            {FEATURE_ICONS.map((name) => (
+                              <option key={name} value={name}>
+                                {iconName(name)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                       {["products", "gallery"].includes(s.type) && (
                         <>
                           {mediaButton(item.image, item.id)}
@@ -583,14 +804,20 @@ export function Inspector({
                     update({
                       items: [
                         ...s.items,
-                        {
-                          id: uid(),
-                          title: "New item",
-                          body: "A short description.",
-                          image: "",
-                          price: "",
-                          url: "",
-                        },
+                        brandHeader
+                          ? {
+                              ...blankItem(),
+                              title: "New tab",
+                              url: `/${store.project.pages[0].slug}`,
+                            }
+                          : {
+                              id: uid(),
+                              title: "New item",
+                              body: "A short description.",
+                              image: "",
+                              price: "",
+                              url: "",
+                            },
                       ],
                     })
                   }
@@ -609,18 +836,65 @@ export function Inspector({
                   onChange={(buttonLabel) => update({ buttonLabel })}
                 />
                 <Field
-                  label="Form endpoint"
+                  label="Send messages to (optional)"
                   value={s.formAction}
                   onChange={(formAction) => update({ formAction })}
                   placeholder="https://formspree.io/f/…"
-                  hint="Connect a form service to receive submissions. The form stays disabled until an HTTPS or HTTP endpoint is supplied."
+                  hint="Leave empty and messages arrive in your Inbox once published. Or paste a form service link."
                 />
               </div>
             )}
           </>
         ) : (
           <>
-            {hasMedia && (
+            {(variants || s.type === "hero") && (
+              <div className="inspector-group">
+                <h4>STYLE</h4>
+                {variants && (
+                  <label className="field">
+                    Look
+                    <select
+                      value={s.variant ?? ""}
+                      onChange={(e) =>
+                        update({ variant: e.target.value || undefined })
+                      }
+                    >
+                      <option value="">Standard</option>
+                      {variants.map((v) => (
+                        <option key={v} value={v}>
+                          {variantNames[v] ?? iconName(v)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {s.type === "hero" && (
+                  <label className="field">
+                    Moving background
+                    <select
+                      value={s.effect ?? "none"}
+                      onChange={(e) =>
+                        update({
+                          effect: e.target.value as Section["effect"],
+                        })
+                      }
+                    >
+                      <option value="none">None</option>
+                      <option value="orbits">
+                        Orbits with travelling lights
+                      </option>
+                    </select>
+                  </label>
+                )}
+                {s.variant && (
+                  <small className="block-hint">
+                    This look sets its own spacing, fonts and colours from your
+                    theme’s accent.
+                  </small>
+                )}
+              </div>
+            )}
+            {hasMedia && s.variant !== "badge" && (
               <div className="inspector-group">
                 <h4>LAYOUT</h4>
                 <div className="layout-options">
@@ -698,28 +972,32 @@ export function Inspector({
                   )}
                 </p>
               )}
-              <label className="field">Text alignment</label>
-              <div className="segmented alignment">
-                {(["left", "center", "right"] as const).map((a) => (
-                  <button
-                    aria-label={`Align ${a}`}
-                    className={align === a ? "chosen" : ""}
-                    key={a}
-                    onClick={() => responsive("align", a)}
-                  >
-                    <Icon
-                      name={`align${a[0].toUpperCase()}${a.slice(1)}`}
-                      size={17}
-                    />
-                  </button>
-                ))}
-              </div>
-              <Range
-                label="Vertical padding"
-                value={padding}
-                onChange={(value) => responsive("padding", value)}
-                step={4}
-              />
+              {!s.variant && (
+                <>
+                  <label className="field">Text alignment</label>
+                  <div className="segmented alignment">
+                    {(["left", "center", "right"] as const).map((a) => (
+                      <button
+                        aria-label={`Align ${a}`}
+                        className={align === a ? "chosen" : ""}
+                        key={a}
+                        onClick={() => responsive("align", a)}
+                      >
+                        <Icon
+                          name={`align${a[0].toUpperCase()}${a.slice(1)}`}
+                          size={17}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <Range
+                    label="Vertical padding"
+                    value={padding}
+                    onChange={(value) => responsive("padding", value)}
+                    step={4}
+                  />
+                </>
+              )}
               {device !== "desktop" && (
                 <label className="switch-row">
                   Show on {device}
@@ -750,7 +1028,7 @@ export function Inspector({
                   </select>
                 </label>
               )}
-              {s.type === "hero" && (
+              {s.type === "hero" && s.variant !== "badge" && (
                 <>
                   <Range
                     label="Banner height"
@@ -785,7 +1063,9 @@ export function Inspector({
               </div>
               <small className="block-hint">
                 Plays as the section scrolls into view, in preview and on your
-                published site. Respects reduced-motion settings.
+                published site, in browsers that support scroll-driven
+                animations (Chrome, Edge, Safari 26+). Others show the section
+                without motion. Respects reduced-motion settings.
               </small>
             </div>
             <div className="inspector-group">

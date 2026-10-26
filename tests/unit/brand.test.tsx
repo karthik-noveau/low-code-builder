@@ -58,7 +58,7 @@ describe("branded public pages", () => {
   );
   it("filters templates by category and search with an actionable empty state", () => {
     render(<PublicSite path="/templates" />);
-    fireEvent.click(screen.getByRole("button", { name: "Restaurant" }));
+    fireEvent.click(screen.getByRole("button", { name: "Food" }));
     expect(
       screen.getByRole("link", { name: "Preview Sunday Table" }),
     ).toBeTruthy();

@@ -15,10 +15,13 @@ import type { Site } from "./types";
 import { itemTitle, publishedItems } from "../src/studio/collections";
 import type { Project } from "../src/studio/model";
 import {
+  INBOX_KINDS,
+  isSiteForm,
   parseRequest,
-  REQUEST_KINDS,
+  SITE_FORMS,
   type InboxRequest,
   type RequestKind,
+  type SiteFormKind,
 } from "../src/studio/requests";
 import {
   canCollect,
@@ -47,6 +50,8 @@ export interface InboxConfig {
     /** Item slug → title and unit price in minor units. Slugs are [a-z0-9-], so no prototype keys. */
     items: Record<string, { title: string; price: number | null } | string>;
   }[];
+  /** Contact and Email signup sections that post here (no outside endpoint set). */
+  forms?: SiteFormKind[];
   /** How visitors pay; only methods that are correctly filled in. */
   payments?: PaymentSettings | null;
   site?: { name: string; accent: string };
@@ -81,8 +86,21 @@ export function inboxConfig(project: Project): InboxConfig {
         : null,
     };
   }
+  const forms = new Set<SiteFormKind>();
+  for (const section of [
+    ...project.header,
+    ...project.pages.flatMap((p) => p.sections),
+    ...project.footer,
+  ])
+    if (
+      isSiteForm(section.type) &&
+      !section.hidden &&
+      !/^https?:\/\//i.test(section.formAction)
+    )
+      forms.add(section.type);
   return {
     collections,
+    forms: [...forms],
     payments,
     site: { name: project.name.slice(0, 120), accent: project.theme.accent },
   };
@@ -185,42 +203,71 @@ export async function receiveRequest(
   insist(!input.website, 422, "Your request could not be sent.");
   const live = await liveConfig(siteId);
   insist(live, 404, "This website isn’t accepting requests.");
-  const collection = live.value.collections.find(
-    (c) => c.id === input.collection,
-  );
-  const entry =
-    collection &&
-    typeof input.item === "string" &&
-    Object.hasOwn(collection.items, input.item)
-      ? collection.items[input.item]
-      : undefined;
-  insist(collection && entry, 404, "This item no longer accepts requests.");
-  // Configs written before payments stored just the title.
-  const { title, price } =
-    typeof entry === "string" ? { title: entry, price: null } : entry;
-  const parsed = parseRequest(collection.kind, input);
-  insist(parsed.ok, 422, parsed.ok ? "" : parsed.error);
   const createdAt = now();
   const id = `${Date.now()}-${randomUUID()}`;
-  const item: InboxRequest = {
-    id,
-    kind: collection.kind,
-    collection: collection.id,
-    collectionName: collection.name,
-    item: input.item as string,
-    itemTitle: title,
-    name: parsed.name,
-    email: parsed.email,
-    fields: parsed.fields,
-    status: "new",
-    createdAt,
-  };
+  let item: InboxRequest;
+  let collection: InboxConfig["collections"][number] | undefined;
+  let price: number | null = null;
+  let fields: InboxRequest["fields"];
+  if (isSiteForm(input.form)) {
+    const form = input.form;
+    insist(
+      live.value.forms?.includes(form),
+      404,
+      "This form no longer accepts messages.",
+    );
+    const parsed = parseRequest(form, input);
+    insist(parsed.ok, 422, parsed.ok ? "" : parsed.error);
+    fields = parsed.fields;
+    item = {
+      id,
+      kind: form,
+      collection: "",
+      collectionName: (live.value.site?.name || "Website").slice(0, 120),
+      item: "",
+      itemTitle: SITE_FORMS[form].label,
+      name: parsed.name,
+      email: parsed.email,
+      fields: parsed.fields,
+      status: "new",
+      createdAt,
+    };
+  } else {
+    collection = live.value.collections.find((c) => c.id === input.collection);
+    const entry =
+      collection &&
+      typeof input.item === "string" &&
+      Object.hasOwn(collection.items, input.item)
+        ? collection.items[input.item]
+        : undefined;
+    insist(collection && entry, 404, "This item no longer accepts requests.");
+    // Configs written before payments stored just the title.
+    const details =
+      typeof entry === "string" ? { title: entry, price: null } : entry;
+    price = details.price;
+    const parsed = parseRequest(collection.kind, input);
+    insist(parsed.ok, 422, parsed.ok ? "" : parsed.error);
+    fields = parsed.fields;
+    item = {
+      id,
+      kind: collection.kind,
+      collection: collection.id,
+      collectionName: collection.name,
+      item: input.item as string,
+      itemTitle: details.title,
+      name: parsed.name,
+      email: parsed.email,
+      fields: parsed.fields,
+      status: "new",
+      createdAt,
+    };
+  }
   if (
-    collection.collect &&
+    collection?.collect &&
     (live.value.payments || (await getConnection(siteId)))
   )
     item.payment = {
-      amount: requestAmount(collection.kind, price, parsed.fields),
+      amount: requestAmount(collection.kind, price, fields),
       currency: (collection.currency ?? "").slice(0, 8),
       reference: paymentReference(id),
       status: "unpaid",
@@ -374,7 +421,7 @@ async function paymentPage(siteId: string, requestId: string) {
       ? await getConnection(siteId)
       : null;
   const total = amount === null ? "" : formatAmount(amount, currency);
-  const noun = REQUEST_KINDS[request.kind].noun.toLowerCase();
+  const noun = INBOX_KINDS[request.kind].noun.toLowerCase();
   const blocks: string[] = [];
   if (status === "paid")
     blocks.push(
@@ -600,4 +647,25 @@ export async function updateRequest(
   }
   await transact([put(siteId, "REQUEST", id, next, current.revision)]);
   return next;
+}
+/** Removes a request for good (spam, tests, or a visitor asking to be forgotten). */
+export async function deleteRequest(siteId: string, id: string) {
+  insist(requestIdPattern.test(id), 404, "Request not found.");
+  const current = await read<InboxRequest & { revision: number }>(
+    siteId,
+    "REQUEST",
+    id,
+  );
+  insist(current, 404, "Request not found.");
+  await transact([
+    {
+      Delete: {
+        TableName: settings.table,
+        Key: key(siteId, "REQUEST", id),
+        ConditionExpression: "revision = :revision",
+        ExpressionAttributeValues: { ":revision": current.revision },
+      },
+    },
+  ]);
+  return { ok: true };
 }

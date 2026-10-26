@@ -117,7 +117,9 @@ describe("pages and templates", () => {
     useStudio.getState().applyTemplate("table");
     const next = useStudio.getState().project;
     expect(next.template).toBe("table");
-    expect(next.collections).toHaveLength(1);
+    // The business's own collection is kept; the template adds its menu.
+    expect(next.collections![0].blueprint).toBe("events");
+    expect(next.collections!.map((c) => c.blueprint)).toContain("menu");
     expect(next.savedSections).toHaveLength(1);
     expect(next.assets.some((a) => a.id === "a")).toBe(true);
   });

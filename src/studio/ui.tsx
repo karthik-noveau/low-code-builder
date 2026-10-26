@@ -266,3 +266,48 @@ export function Modal({
     </div>
   );
 }
+/** A button on a notification, e.g. Undo after a delete. */
+export interface NotifyAction {
+  label: string;
+  run: () => void;
+}
+export type Notify = (text: string, action?: NotifyAction) => void;
+/** Asks before something that can't be taken back, in place instead of a browser dialog. */
+export function InlineConfirm({
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  busy = false,
+}: {
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  busy?: boolean;
+}) {
+  return (
+    <div className="inline-confirm" role="group" aria-label={message}>
+      <p>{message}</p>
+      <div>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
+        <button
+          type="button"
+          className="subtle-button"
+          disabled={busy}
+          autoFocus
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}

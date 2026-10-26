@@ -12,6 +12,7 @@ import {
   type Quote,
   type StoreSettings,
 } from "./types";
+import { returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
 import "./storefront.css";
 
@@ -91,7 +92,15 @@ export function Storefront({ siteId }: { siteId: string }) {
     [notice, setNotice] = useState("");
   const [order, setOrder] = useState<Order>(),
     [receipt, setReceipt] = useState("");
-  const [article, setArticle] = useState<ContentEntry>();
+  const [article, setArticleState] = useState<ContentEntry>();
+  // A story's slug is its address: ?story=<slug> opens it, and opening one updates the URL.
+  const setArticle = (entry?: ContentEntry) => {
+    setArticleState(entry);
+    const url = new URL(location.href);
+    if (entry) url.searchParams.set("story", entry.slug);
+    else url.searchParams.delete("story");
+    history.replaceState(history.state, "", url);
+  };
   const storageKey = `forma-store-cart-${siteId}`;
   useEffect(() => {
     if (page !== "checkout" || !session.account) return;
@@ -122,6 +131,14 @@ export function Storefront({ siteId }: { siteId: string }) {
         const result = await storeRequest<StoreData>(siteId);
         if (!active) return;
         setData(result);
+        const story = new URLSearchParams(location.search).get("story");
+        const linked = story
+          ? result.content.find((entry) => entry.slug === story)
+          : undefined;
+        if (linked) {
+          setPage("journal");
+          setArticleState(linked);
+        }
         setMarketId(result.settings.markets[0].id);
         setCountry(result.settings.markets[0].countries[0]);
         try {
@@ -231,6 +248,7 @@ export function Storefront({ siteId }: { siteId: string }) {
   };
   const navigate = (next: Page) => {
     if (next === "shop") setRequestedProduct("");
+    if (article) setArticle(undefined);
     setPage(next);
     setError("");
     setNotice("");
@@ -298,7 +316,7 @@ export function Storefront({ siteId }: { siteId: string }) {
         } catch {
           /* No persistent cart. */
         }
-        setNotice("Sandbox payment completed. No real money was collected.");
+        setNotice("Test payment completed. No money was taken.");
       }
     } catch (e) {
       setError(messageOf(e));
@@ -707,7 +725,7 @@ export function Storefront({ siteId }: { siteId: string }) {
                 </button>
               </p>
               <button className="commerce-button" disabled={busy}>
-                {busy ? "Preparing order…" : "Continue to sandbox payment"}
+                {busy ? "Preparing order…" : "Continue to test payment"}
               </button>
               <button
                 className="commerce-link"
@@ -752,7 +770,9 @@ export function Storefront({ siteId }: { siteId: string }) {
                 <h2>#{order.id.slice(0, 8)}</h2>
                 <p className="commerce-muted">{order.email}</p>
               </div>
-              <span className="commerce-badge">{order.status}</span>
+              <span className="commerce-badge">
+                {statusLabel(order.status)}
+              </span>
             </div>
             <div className="commerce-order-lines">
               {order.lines.map((line) => (
@@ -768,7 +788,7 @@ export function Storefront({ siteId }: { siteId: string }) {
             {order.tracking && <p>Tracking: {order.tracking}</p>}
             {order.returnRequest ? (
               <p className="commerce-notice">
-                Return {order.returnRequest.status}:{" "}
+                {returnLabel(order.returnRequest.status)}:{" "}
                 {order.returnRequest.reason}
               </p>
             ) : (
@@ -786,7 +806,9 @@ export function Storefront({ siteId }: { siteId: string }) {
                     )
                       .then((result) => {
                         setOrder(result.order);
-                        setNotice("Your return request has been received.");
+                        setNotice(
+                          "Return request sent. The store will email you.",
+                        );
                       })
                       .catch((e) => setError(messageOf(e)))
                       .finally(() => setBusy(false));
@@ -805,8 +827,8 @@ export function Storefront({ siteId }: { siteId: string }) {
             {order.status === "pending" && (
               <div className="commerce-form">
                 <div className="commerce-notice">
-                  This is a local payment simulator. Do not enter card details.
-                  Choose a result to test the order flow.
+                  This is a test payment, so no money is taken. Don’t enter card
+                  details. Choose a result to try the order flow.
                 </div>
                 <div className="commerce-actions">
                   <button
@@ -884,6 +906,15 @@ export function Storefront({ siteId }: { siteId: string }) {
       return (
         <div className="store-cart">
           <h1>Let’s talk.</h1>
+          {data?.settings.contactEmail && (
+            <p className="commerce-muted">
+              Or email us at{" "}
+              <a href={`mailto:${data.settings.contactEmail}`}>
+                {data.settings.contactEmail}
+              </a>
+              .
+            </p>
+          )}
           <div className="commerce-columns">
             <StoreForm
               kind="contact"
@@ -930,7 +961,7 @@ export function Storefront({ siteId }: { siteId: string }) {
     <div className="commerce-app storefront">
       {data?.sandbox && (
         <div className="store-sandbox">
-          Local demo store · Payments are simulated. No real money is collected.
+          Demo store · Payments are tests. No money is taken.
         </div>
       )}
       <div className="store-shell">

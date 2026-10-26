@@ -11,16 +11,63 @@ import { useSession } from "./useSession";
 import { Icon } from "../studio/Icon";
 import * as cloud from "../cloud/client";
 import { GlobalSearch, Notifications, type SearchItem } from "./ShellTools";
+import { loadSites } from "./activity";
 import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 import "./admin.css";
 import "./polish.css";
 
-export type ShellArea = "websites" | "templates" | "store" | "account";
+export type ShellArea = "websites" | "templates" | "store" | "app" | "account";
+/** The app page's sections for the sidebar, given by the app page itself. */
+export interface AppNav {
+  siteId: string;
+  items: { id: string; label: string; icon: string }[];
+  current: string;
+  onSelect: (id: string) => void;
+}
+/** The address of an app page section; ids other than these two are tables. */
+const appSectionHref = (siteId: string, id: string) =>
+  `/apps?site=${encodeURIComponent(siteId)}${
+    id === "dashboard"
+      ? ""
+      : id === "notifications"
+        ? "&section=notifications"
+        : `&table=${encodeURIComponent(id)}`
+  }`;
 export interface Crumb {
   label: string;
   href?: string;
 }
+
+/**
+ * Store sections, always listed in the sidebar so every part of the store is
+ * one click away. Labels match the store page's own section names.
+ */
+const STORE_NAV: { label: string; items: [string, string][] }[] = [
+  {
+    label: "Store",
+    items: [
+      ["Overview", "chart"],
+      ["Products", "tag"],
+      ["Orders", "receipt"],
+      ["Customers", "users"],
+      ["Discounts", "percent"],
+      ["Content", "type"],
+      ["Inbox", "mail"],
+    ],
+  },
+  {
+    label: "Store settings",
+    items: [
+      ["Markets", "globe"],
+      ["Team", "lock"],
+      ["Integrations", "plug"],
+      ["Usage & activity", "activity"],
+    ],
+  },
+];
+/** Recent websites listed under "Your websites". */
+const SIDEBAR_SITES = 4;
 
 /**
  * The frame every signed-in page shares: a top bar with the trail and the
@@ -33,7 +80,9 @@ export function AppShell({
   crumbs,
   children,
   siteCount,
-  subnav,
+  storeSection,
+  onStoreSection,
+  appNav,
   headerExtra,
   contentRef,
   searchItems,
@@ -43,8 +92,15 @@ export function AppShell({
   children: ReactNode;
   /** Shown next to "Your websites" when the page already knows it. */
   siteCount?: number;
-  /** Second-level links shown under the active area (e.g. store sections). */
-  subnav?: ReactNode;
+  /** The store page's open section; with `onStoreSection`, store links switch in place. */
+  storeSection?: string;
+  onStoreSection?: (section: string) => void;
+  /**
+   * The app page's sections (Dashboard, each table, Notifications); they switch
+   * in place. Other pages show a single "App" link instead, so the sidebar
+   * never loads an app definition itself.
+   */
+  appNav?: AppNav;
   /** Controls placed after the breadcrumbs, such as a website switcher. */
   headerExtra?: ReactNode;
   contentRef?: Ref<HTMLDivElement>;
@@ -55,6 +111,22 @@ export function AppShell({
   const [error, setError] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const accountRef = useRef<HTMLDetailsElement>(null);
+  const [sites, setSites] = useState<cloud.Site[]>([]);
+  useEffect(() => {
+    if (!session.account) return;
+    let live = true;
+    loadSites()
+      .then((list) => live && setSites(list))
+      // The sidebar still works without the list; the dashboard reports errors.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [session.account]);
+  const recent = [...sites]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, SIDEBAR_SITES);
+  const current = new URLSearchParams(location.search).get("site");
   // The account menu closes on any click outside it, like a real menu.
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -81,24 +153,19 @@ export function AppShell({
     }
   };
   const link = (
-    to: ShellArea,
+    to: ShellArea | null,
     href: string,
     icon: string,
     label: string,
     extra?: ReactNode,
   ) => (
-    <>
-      <a href={href} aria-current={area === to ? "page" : undefined}>
-        <span>
-          <Icon name={icon} size={16} />
-        </span>
-        {label}
-        {extra}
-      </a>
-      {area === to && subnav && (
-        <div className="dashboard-subnav">{subnav}</div>
-      )}
-    </>
+    <a href={href} aria-current={to && area === to ? "page" : undefined}>
+      <span>
+        <Icon name={icon} size={16} />
+      </span>
+      {label}
+      {extra}
+    </a>
   );
   return (
     <div
@@ -192,23 +259,92 @@ export function AppShell({
       />
       <aside className="dashboard-sidebar">
         <nav aria-label="Workspace navigation">
+          <p className="dashboard-nav-label">Workspace</p>
           {link(
             "websites",
             "/workspace",
             "grid",
             "Your websites",
-            siteCount !== undefined && (
-              <small className="dashboard-nav-count">{siteCount}</small>
+            (siteCount ?? (session.account ? sites.length : undefined)) !==
+              undefined && (
+              <small className="dashboard-nav-count">
+                {siteCount ?? sites.length}
+              </small>
             ),
           )}
-          {link("store", "/commerce", "store", "Store management")}
+          {recent.length > 0 && (
+            <div className="dashboard-nav-sites">
+              {recent.map((site) => (
+                <a
+                  key={site.id}
+                  href={`/editor?site=${site.id}`}
+                  aria-current={current === site.id ? "true" : undefined}
+                  title={`Open ${site.name} in the editor`}
+                >
+                  <i
+                    className={site.publishedRelease ? "is-live" : ""}
+                    aria-label={site.publishedRelease ? "Live" : "Draft"}
+                  />
+                  {site.name}
+                </a>
+              ))}
+            </div>
+          )}
           {link("templates", "/workspace/templates", "panel", "Templates")}
-          <a href="/editor">
-            <span>
-              <Icon name="edit" size={16} />
-            </span>
-            Browser draft
-          </a>
+          {link(null, "/editor", "edit", "Browser draft")}
+          <p className="dashboard-nav-label">App</p>
+          {appNav
+            ? appNav.items.map((item) => (
+                <a
+                  key={item.id}
+                  href={appSectionHref(appNav.siteId, item.id)}
+                  aria-current={appNav.current === item.id ? "page" : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    appNav.onSelect(item.id);
+                    setNavOpen(false);
+                  }}
+                >
+                  <span>
+                    <Icon name={item.icon} size={16} />
+                  </span>
+                  {item.label}
+                </a>
+              ))
+            : link(
+                "app",
+                `/apps${current ? `?site=${encodeURIComponent(current)}` : ""}`,
+                "layers",
+                "Business app",
+              )}
+          {STORE_NAV.map((group) => (
+            <Fragment key={group.label}>
+              <p className="dashboard-nav-label">{group.label}</p>
+              {group.items.map(([label, icon]) => {
+                const active = area === "store" && storeSection === label;
+                const href = `/commerce?${current ? `site=${current}&` : ""}section=${label.split(" ")[0].toLowerCase()}`;
+                return (
+                  <a
+                    key={label}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={(event) => {
+                      // On the store page, switch sections without a reload.
+                      if (!onStoreSection) return;
+                      event.preventDefault();
+                      onStoreSection(label);
+                      setNavOpen(false);
+                    }}
+                  >
+                    <span>
+                      <Icon name={icon} size={16} />
+                    </span>
+                    {label}
+                  </a>
+                );
+              })}
+            </Fragment>
+          ))}
         </nav>
         <div className="dashboard-sidebar-bottom">
           {link("account", "/account", "settings", "Settings")}

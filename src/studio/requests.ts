@@ -87,6 +87,36 @@ export const REQUEST_KINDS: Record<RequestKind, RequestKindSpec> = {
     required: ["guests"],
   },
 };
+/**
+ * Site-wide forms (Contact and Email signup sections) also arrive in the inbox
+ * when the site is published through Forma and no outside endpoint is set.
+ */
+export type SiteFormKind = "contact" | "newsletter";
+export type InboxKind = RequestKind | SiteFormKind;
+export const SITE_FORMS: Record<SiteFormKind, RequestKindSpec> = {
+  contact: {
+    label: "Contact form",
+    noun: "Message",
+    button: "Send message",
+    description: "Visitors send you a message.",
+    fields: ["message"],
+    required: ["message"],
+  },
+  newsletter: {
+    label: "Email signup",
+    noun: "Signup",
+    button: "Subscribe",
+    description: "Visitors join your mailing list.",
+    fields: [],
+    required: [],
+  },
+};
+export const INBOX_KINDS: Record<InboxKind, RequestKindSpec> = {
+  ...REQUEST_KINDS,
+  ...SITE_FORMS,
+};
+export const isSiteForm = (value: unknown): value is SiteFormKind =>
+  value === "contact" || value === "newsletter";
 export interface CollectionRequest {
   kind: RequestKind;
   /** Button text; empty uses the kind's default. */
@@ -113,7 +143,7 @@ export function validateRequestConfig(
 /** A visitor's request as stored in the inbox. */
 export interface InboxRequest {
   id: string;
-  kind: RequestKind;
+  kind: InboxKind;
   collection: string;
   collectionName: string;
   item: string;
@@ -150,17 +180,19 @@ const timePattern = /^\d{2}:\d{2}$/;
  * visitor-facing message explaining what to fix.
  */
 export function parseRequest(
-  kind: RequestKind,
+  kind: InboxKind,
   input: Record<string, unknown>,
 ):
   | { ok: true; name: string; email: string; fields: InboxRequest["fields"] }
   | { ok: false; error: string } {
-  const spec = REQUEST_KINDS[kind];
+  const spec = INBOX_KINDS[kind];
   const text = (key: string) =>
     typeof input[key] === "string" ? (input[key] as string).trim() : "";
   const name = text("name");
   const email = text("email").toLowerCase();
-  if (!name || name.length > 100) return { ok: false, error: "Add your name." };
+  // An email signup asks only for the address.
+  if ((!name && kind !== "newsletter") || name.length > 100)
+    return { ok: false, error: "Add your name." };
   if (!emailPattern.test(email) || email.length > 254)
     return { ok: false, error: "Add a valid email address." };
   const fields: InboxRequest["fields"] = {};

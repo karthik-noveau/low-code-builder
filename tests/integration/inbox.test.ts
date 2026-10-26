@@ -161,6 +161,78 @@ describe("visitor actions reach the inbox", { concurrent: false }, () => {
         .response.status,
     ).toBe(422);
   });
+  it("receives contact messages and email signups from the published site", async () => {
+    const page = await (await fetch(`${sites}/sites/${id}/index.html`)).text();
+    expect(page).toContain(`action="${base}/inbox/${id}"`);
+    expect(page).toContain('name="form" value="newsletter"');
+    const signup = await submit({
+      form: "newsletter",
+      email: "sam@example.com",
+      website: "",
+    });
+    expect(signup.status).toBe(303);
+    expect(
+      (await submit({ form: "contact", email: "sam@example.com" })).status,
+    ).toBe(422);
+    const message = await submit({
+      form: "contact",
+      name: "Sam Lee",
+      email: "sam@example.com",
+      message: "Do you deliver on weekends?",
+      website: "",
+    });
+    expect(message.status).toBe(303);
+    expect(message.headers.get("location")).toBe(
+      `${sites}/sites/${id}/thanks.html`,
+    );
+    const { data } = await call(`/sites/${id}/inbox`);
+    expect(data.requests.slice(0, 2)).toMatchObject([
+      {
+        kind: "contact",
+        itemTitle: "Contact form",
+        name: "Sam Lee",
+        fields: { message: "Do you deliver on weekends?" },
+      },
+      {
+        kind: "newsletter",
+        itemTitle: "Email signup",
+        email: "sam@example.com",
+      },
+    ]);
+  });
+  it("lets the site's team delete a request, and no one else", async () => {
+    const before = (await call(`/sites/${id}/inbox`)).data.requests;
+    const [request] = before;
+    expect(
+      (
+        await call(
+          `/sites/${id}/inbox/${request.id}`,
+          "DELETE",
+          undefined,
+          otherToken,
+        )
+      ).response.status,
+    ).toBe(404);
+    expect(
+      (
+        await call(
+          `/sites/${id}/inbox/${request.id}/delete`,
+          "POST",
+          {},
+          otherToken,
+        )
+      ).response.status,
+    ).toBe(404);
+    const removed = await call(`/sites/${id}/inbox/${request.id}`, "DELETE");
+    expect(removed.response.status).toBe(200);
+    const after = (await call(`/sites/${id}/inbox`)).data.requests;
+    expect(after).toHaveLength(before.length - 1);
+    expect(after.some((r: { id: string }) => r.id === request.id)).toBe(false);
+    expect(
+      (await call(`/sites/${id}/inbox/${request.id}`, "DELETE")).response
+        .status,
+    ).toBe(404);
+  });
   it("follows the live release: removed items close, rollback reopens them", async () => {
     const settle = async () => {
       for (let i = 0; i < 80; i++) {

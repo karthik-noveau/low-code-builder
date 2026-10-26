@@ -5,6 +5,7 @@ import {
   paymentProblems,
   usablePayments,
 } from "./payments";
+import { appIssues, appSectionProblem, type AppTarget } from "../apps/issues";
 
 export interface ReviewItem {
   id: string;
@@ -13,6 +14,8 @@ export interface ReviewItem {
   page: string;
   section?: string;
   kind: "content" | "links" | "forms" | "images";
+  /** Fixed outside the page: a collection's Data settings, Settings → Get paid, or the App. */
+  target?: { collection: string } | { app: AppTarget } | "payments";
 }
 export function reviewProject(project: Project): ReviewItem[] {
   const issues: ReviewItem[] = [];
@@ -64,19 +67,18 @@ export function reviewProject(project: Project): ReviewItem[] {
           section: section.id,
           kind: "images",
         });
-      if (
-        ["contact", "newsletter"].includes(section.type) &&
-        !/^https?:\/\//i.test(section.formAction)
-      )
-        issues.push({
-          id: `form-${section.id}`,
-          title: `Connect ${section.name.toLowerCase()}`,
-          detail:
-            "Choose where submissions go. This form is disabled until it is connected.",
-          page: page.id,
-          section: section.id,
-          kind: "forms",
-        });
+      if (section.type === "app") {
+        const problem = appSectionProblem(project.app, section.appForm);
+        if (problem)
+          issues.push({
+            id: `app-section-${section.id}`,
+            title: `${section.name} has no form to show`,
+            detail: `${problem} Until then it stays empty on your published site.`,
+            page: page.id,
+            section: section.id,
+            kind: "forms",
+          });
+      }
       const hasLinkButton = [
         "announcement",
         "header",
@@ -127,7 +129,48 @@ export function reviewProject(project: Project): ReviewItem[] {
           "Visitor actions appear on item pages, so this collection’s form isn’t shown anywhere yet.",
         page: project.pages[0].id,
         kind: "forms",
+        target: { collection: c.id },
       });
+  if (project.app) {
+    const home = project.pages[0].id;
+    for (const issue of appIssues(project.app, {
+      collections: project.collections,
+    }))
+      issues.push({
+        ...issue,
+        page: home,
+        kind: "forms",
+        target: { app: issue.target },
+      });
+    const placed = new Set(
+      project.pages.flatMap((p) =>
+        p.sections
+          .filter((s) => s.type === "app" && !s.hidden)
+          .map((s) => s.appForm),
+      ),
+    );
+    for (const form of project.app.forms)
+      if (!placed.has(form.id))
+        issues.push({
+          id: `app-unplaced-${form.id}`,
+          title: `Put “${form.name}” on a page`,
+          detail:
+            "Visitors can only use app forms that are on one of your pages.",
+          page: home,
+          kind: "forms",
+          target: { app: { tab: "forms", id: form.id } },
+        });
+  }
+  const appPaying = (project.app?.forms ?? []).filter((f) => f.payment);
+  if (appPaying.length && !usablePayments(project.payments))
+    issues.push({
+      id: "app-payments-missing",
+      title: "Add a way to get paid",
+      detail: `${appPaying.map((f) => `“${f.name}”`).join(", ")} ${appPaying.length === 1 ? "asks" : "ask"} visitors to pay, but Settings → Get paid has no UPI ID, online checkout, payment link or bank details, so they won’t see how.`,
+      page: project.pages[0].id,
+      kind: "forms",
+      target: "payments",
+    });
   const paying = (project.collections ?? []).filter(
     (c) => c.request?.collect && canCollect(c.request.kind),
   );
@@ -138,6 +181,7 @@ export function reviewProject(project: Project): ReviewItem[] {
       detail: `${paying.map((c) => c.name).join(", ")} ask visitors to pay, but Settings → Get paid has no card payments, UPI ID, payment link, bank details or in-person option.`,
       page: project.pages[0].id,
       kind: "forms",
+      target: "payments",
     });
   else if (
     usablePayments(project.payments)?.upi &&
@@ -154,6 +198,7 @@ export function reviewProject(project: Project): ReviewItem[] {
         )} so UPI apps fill in the amount, or use a payment link for other currencies.`,
       page: project.pages[0].id,
       kind: "forms",
+      target: "payments",
     });
   if (project.payments && paying.length) {
     const problems = Object.values(paymentProblems(project.payments));
@@ -164,6 +209,7 @@ export function reviewProject(project: Project): ReviewItem[] {
         detail: `${problems.join(" ")} Visitors won’t see that option until it’s fixed.`,
         page: project.pages[0].id,
         kind: "forms",
+        target: "payments",
       });
   }
   return issues;

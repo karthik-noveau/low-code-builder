@@ -29,6 +29,7 @@ function TemplateCard({ item }: { item: (typeof collections)[number] }) {
           <p>
             {item.category} · {item.subtitle}
           </p>
+          <p>Works out of the box: {item.works.join(" · ")}</p>
         </div>
         <div className="pub-palette" aria-hidden="true">
           {item.palette.map((color) => (
@@ -101,7 +102,7 @@ function Home() {
                 value={example}
                 onChange={(id) => setExample(id as typeof example)}
                 options={[
-                  { id: "studio", label: "Business" },
+                  { id: "studio", label: "Events" },
                   { id: "folio", label: "Portfolio" },
                   { id: "botanical", label: "Store" },
                 ]}
@@ -160,8 +161,11 @@ function Home() {
           <div className="pub-section-head" data-reveal>
             <div>
               <span className="pub-label">Templates</span>
-              <h2>A starting point. Your point of view.</h2>
-              <p>Choose a look you love. Make every detail your own.</p>
+              <h2>A working business, from day one.</h2>
+              <p>
+                Every template takes real orders, bookings or sign-ups. Make
+                every detail your own.
+              </p>
             </div>
             <a className="pub-btn pub-btn-ghost" href="/templates">
               All templates <Arrow />
@@ -240,7 +244,7 @@ function Templates() {
   const shown = collections.filter(
     (item) =>
       (category === "All templates" || item.category === category) &&
-      `${item.name} ${item.category} ${item.subtitle}`
+      `${item.name} ${item.category} ${item.subtitle} ${item.works.join(" ")}`
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
@@ -257,25 +261,28 @@ function Templates() {
             <span className="pub-gradient-text">Your own style.</span>
           </h1>
           <p className="pub-intro-lead">
-            Four distinct starting points, ready for your ideas. Choose a design
-            and make every part your own.
+            Ten working businesses, not mock-ups: a shop with checkout, a
+            restaurant that takes orders, bookings for salons and home services,
+            admissions, event tickets, gym plans and project enquiries. Choose
+            one and make every part your own.
           </p>
         </div>
       </section>
       <section className="pub-container" style={{ paddingBottom: 40 }}>
         <div className="pub-toolbar">
           <div className="pub-segmented" aria-label="Template categories">
-            {["All templates", ...collections.map((item) => item.category)].map(
-              (item) => (
-                <button
-                  aria-pressed={category === item}
-                  key={item}
-                  onClick={() => setCategory(item)}
-                >
-                  {item}
-                </button>
-              ),
-            )}
+            {[
+              "All templates",
+              ...new Set(collections.map((item) => item.category)),
+            ].map((item) => (
+              <button
+                aria-pressed={category === item}
+                key={item}
+                onClick={() => setCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
           </div>
           <label className="pub-search">
             <Icon name="search" size={16} />
@@ -527,10 +534,10 @@ function Pricing() {
           </a>
           <ul className="pub-checks">
             {[
-              "All four templates and a blank canvas",
+              `All ${collections.length} business templates and a blank canvas`,
               "Visual editing and responsive previews",
               "Saved sites, drafts, and release history",
-              "Local publishing, rollback, and export",
+              "Publishing, earlier versions you can restore, and export",
             ].map((item) => (
               <li key={item}>
                 <Icon name="check" size={15} />
@@ -582,7 +589,7 @@ function Pricing() {
             {[
               [
                 "What is available today?",
-                "Forma is a local website builder with a connected workspace and commerce sandbox. There is no paid Forma plan or managed hosting service in this version.",
+                "Forma is a website builder with a connected workspace and a store that uses test payments. There is no paid Forma plan or managed hosting service in this version.",
               ],
               [
                 "What does usage-based mean?",
@@ -594,7 +601,7 @@ function Pricing() {
               ],
               [
                 "What are the workspace limits?",
-                "The current workspace supports ten sites per account, fifty pages per site, and up to three retained releases. Image and draft size limits help keep storage and publishing manageable.",
+                "The current workspace supports ten sites per account, fifty pages per site, and your last three published versions. Image and draft size limits help keep storage and publishing manageable.",
               ],
             ].map(([title, body]) => (
               <article key={title}>

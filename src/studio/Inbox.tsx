@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { Modal } from "./ui";
+import { InlineConfirm, Modal } from "./ui";
 import { useStudio } from "./store";
 import * as cloud from "../cloud/client";
 import {
   REQUEST_FIELDS,
-  REQUEST_KINDS,
+  INBOX_KINDS,
   type InboxRequest,
   type RequestFieldId,
 } from "./requests";
@@ -23,6 +23,12 @@ const when = (value: string) =>
     minute: "2-digit",
   });
 
+/** One spreadsheet cell; a leading = + - @ is escaped so spreadsheet apps don't run it as a formula. */
+const cell = (value: string) => {
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
 export function Inbox({ onClose }: { onClose: () => void }) {
   const project = useStudio((s) => s.project);
   const siteId = activeSiteId();
@@ -30,6 +36,13 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"new" | "unpaid" | "all">("new");
   const [open, setOpen] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [checking, setChecking] = useState<string | null>(null);
+  /** What the last payment check found, per request. */
+  const [checked, setChecked] = useState<Record<string, string>>({});
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
   const fetchRequests = useCallback(
     () =>
       cloud
@@ -38,11 +51,14 @@ export function Inbox({ onClose }: { onClose: () => void }) {
     [siteId],
   );
   const load = async () => {
+    setRefreshing(true);
     try {
       setRequests(await fetchRequests());
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load your inbox.");
+    } finally {
+      setRefreshing(false);
     }
   };
   useEffect(() => {
@@ -77,19 +93,56 @@ export function Inbox({ onClose }: { onClose: () => void }) {
       setRequests(
         (list) => list?.map((x) => (x.id === r.id ? request : x)) ?? null,
       );
+      return request;
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Could not update the request.",
       );
     }
   };
+  const checkPayment = async (r: InboxRequest) => {
+    setChecking(r.id);
+    const request = await mark(r, { sync: true });
+    setChecking(null);
+    if (request)
+      setChecked((all) => ({
+        ...all,
+        [r.id]:
+          request.payment?.status === "paid"
+            ? "Payment confirmed"
+            : "Still unpaid — the provider hasn’t confirmed it yet.",
+      }));
+  };
+  const remove = async (r: InboxRequest) => {
+    if (!siteId) return;
+    setRemoving(true);
+    try {
+      await cloud.deleteInboxRequest(siteId, r.id);
+      setRequests((list) => list?.filter((x) => x.id !== r.id) ?? null);
+      setDeleting(null);
+      setOpen(null);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not delete the request.",
+      );
+    } finally {
+      setRemoving(false);
+    }
+  };
   const actions = (project.collections ?? []).filter((c) => c.request);
-  const shown = (requests ?? []).filter((r) =>
-    filter === "all"
-      ? true
-      : filter === "unpaid"
-        ? r.payment?.status === "unpaid"
-        : r.status === "new",
+  const q = query.trim().toLowerCase();
+  const shown = (requests ?? []).filter(
+    (r) =>
+      (filter === "all"
+        ? true
+        : filter === "unpaid"
+          ? r.payment?.status === "unpaid"
+          : r.status === "new") &&
+      (!q ||
+        [r.name, r.email, r.itemTitle].some((v) =>
+          v.toLowerCase().includes(q),
+        )),
   );
   const unread = (requests ?? []).filter((r) => r.status === "new").length;
   const unpaid = (requests ?? []).filter(
@@ -99,10 +152,55 @@ export function Inbox({ onClose }: { onClose: () => void }) {
     r.payment?.amount == null
       ? ""
       : formatAmount(r.payment.amount, r.payment.currency);
+  const details = (r: InboxRequest) =>
+    INBOX_KINDS[r.kind].fields
+      .filter((f): f is RequestFieldId => !!r.fields[f])
+      .map((f) => `${REQUEST_FIELDS[f].label}: ${r.fields[f]}`)
+      .join("\n");
+  /** The requests on screen as a spreadsheet, built in the browser. */
+  const downloadCsv = async () => {
+    const rows = [
+      [
+        "Received",
+        "Type",
+        "Name",
+        "Email",
+        "Item",
+        "Details",
+        "Payment",
+        "Status",
+      ],
+      ...shown.map((r) => [
+        new Date(r.createdAt).toLocaleString(),
+        INBOX_KINDS[r.kind].noun,
+        r.name,
+        r.email,
+        r.itemTitle,
+        details(r),
+        r.payment
+          ? [
+              r.payment.status === "paid" ? "Paid" : "Unpaid",
+              price(r),
+              r.payment.reference,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : "",
+        r.status === "new" ? "New" : "Done",
+      ]),
+    ];
+    const { downloadBlob } = await import("./export");
+    downloadBlob(
+      new Blob([rows.map((row) => row.map(cell).join(",")).join("\r\n")], {
+        type: "text/csv;charset=utf-8",
+      }),
+      `${project.name.replace(/[^\w-]+/g, "-").toLowerCase() || "site"}-inbox.csv`,
+    );
+  };
   return (
     <Modal
       title="Inbox"
-      subtitle="Bookings, orders, applications and RSVPs from your published site."
+      subtitle="Messages, signups, bookings, orders, applications and RSVPs from your published site."
       onClose={onClose}
     >
       <div className="inbox">
@@ -111,14 +209,14 @@ export function Inbox({ onClose }: { onClose: () => void }) {
             <Icon name="mail" size={20} />
             <strong>Publish with Forma to receive requests</strong>
             <p>
-              Open Workspace, save this site to your account and publish it.
+              Open My sites, save this site to your account and publish it.
               Visitor actions on item pages then send requests here, with no
               form service or app to install.
             </p>
             {!actions.length && (
               <p>
-                Choose a visitor action in Data → a collection → Settings, e.g.
-                bookings for services or applications for jobs.
+                In Data, choose a collection, open Settings and pick a Visitor
+                action, e.g. bookings for services or applications for jobs.
               </p>
             )}
           </div>
@@ -142,10 +240,35 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </div>
-              <button className="subtle-button" onClick={() => void load()}>
-                Refresh
+              <button
+                className="subtle-button"
+                disabled={refreshing}
+                onClick={() => void load()}
+              >
+                {refreshing ? "Refreshing…" : "Refresh"}
               </button>
             </div>
+            {!!requests?.length && (
+              <div className="data-toolbar">
+                <label className="data-search">
+                  <Icon name="search" size={14} />
+                  <input
+                    aria-label="Search requests"
+                    placeholder="Search by name, email or item"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+                <button
+                  className="subtle-button"
+                  disabled={!shown.length}
+                  onClick={() => void downloadCsv()}
+                >
+                  <Icon name="export" size={14} />
+                  Download CSV
+                </button>
+              </div>
+            )}
             {error && (
               <p className="inbox-error" role="alert">
                 {error}
@@ -158,16 +281,20 @@ export function Inbox({ onClose }: { onClose: () => void }) {
               <div className="inbox-empty">
                 <Icon name="mail" size={20} />
                 <strong>
-                  {filter === "new"
-                    ? "You’re all caught up"
-                    : filter === "unpaid"
-                      ? "Nothing waiting for payment"
-                      : "No requests yet"}
+                  {q
+                    ? "No requests match your search"
+                    : filter === "new"
+                      ? "You’re all caught up"
+                      : filter === "unpaid"
+                        ? "Nothing waiting for payment"
+                        : "No requests yet"}
                 </strong>
                 <p>
-                  {actions.length
-                    ? `Requests from ${actions.map((c) => c.name).join(", ")} pages appear here after you publish.`
-                    : "Choose a visitor action in Data → a collection → Settings."}
+                  {q
+                    ? "Try a name, an email address or an item."
+                    : actions.length
+                      ? `Contact form messages and requests from ${actions.map((c) => c.name).join(", ")} pages appear here after you publish.`
+                      : "Contact form messages and email signups appear here after you publish. For bookings or orders, open Data, choose a collection and pick a Visitor action in its Settings."}
                 </p>
               </div>
             )}
@@ -180,10 +307,10 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                     onClick={() => setOpen(open === r.id ? null : r.id)}
                   >
                     <span className="inbox-kind">
-                      {REQUEST_KINDS[r.kind].noun}
+                      {INBOX_KINDS[r.kind].noun}
                     </span>
                     <span className="inbox-who">
-                      <strong>{r.name}</strong>
+                      <strong>{r.name || r.email}</strong>
                       <small>
                         {r.itemTitle} · {r.collectionName}
                       </small>
@@ -221,7 +348,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                             </dd>
                           </div>
                         )}
-                        {REQUEST_KINDS[r.kind].fields
+                        {INBOX_KINDS[r.kind].fields
                           .filter((f): f is RequestFieldId => !!r.fields[f])
                           .map((f) => (
                             <div key={f}>
@@ -242,9 +369,12 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                           r.payment.checkout && (
                             <button
                               className="subtle-button"
-                              onClick={() => void mark(r, { sync: true })}
+                              disabled={checking === r.id}
+                              onClick={() => void checkPayment(r)}
                             >
-                              Check payment
+                              {checking === r.id
+                                ? "Checking…"
+                                : "Check payment"}
                             </button>
                           )}
                         {r.payment && (
@@ -276,7 +406,28 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                             ? "Mark as done"
                             : "Move back to new"}
                         </button>
+                        <button
+                          className="danger-text"
+                          onClick={() => setDeleting(r.id)}
+                        >
+                          <Icon name="trash" size={13} />
+                          Delete
+                        </button>
                       </div>
+                      {checked[r.id] && (
+                        <p className="inbox-note" role="status">
+                          {checked[r.id]}
+                        </p>
+                      )}
+                      {deleting === r.id && (
+                        <InlineConfirm
+                          message={`Delete this ${INBOX_KINDS[r.kind].noun.toLowerCase()} from ${r.name || r.email}? This can’t be undone.`}
+                          confirmLabel={removing ? "Deleting…" : "Delete"}
+                          busy={removing}
+                          onConfirm={() => void remove(r)}
+                          onCancel={() => setDeleting(null)}
+                        />
+                      )}
                     </div>
                   )}
                 </li>

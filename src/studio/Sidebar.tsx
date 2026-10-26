@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { useStudio } from "./store";
 import { Icon } from "./Icon";
-import { IconButton, Field, ColorField, Range } from "./ui";
+import { IconButton, Field, ColorField, Range, type Notify } from "./ui";
 import { sectionMeta, safeImage, type Section } from "./model";
 import { templateOptions } from "./templates";
 import { PaymentsPanel } from "./PaymentsPanel";
@@ -66,7 +66,7 @@ export function Sidebar({
   upload: (files: FileList | null) => void;
   onImport: (e: ChangeEvent<HTMLInputElement>) => void;
   onBackup: () => void;
-  notify: (s: string) => void;
+  notify: Notify;
   focusSection: (id: string) => void;
   onPageSettings: () => void;
 }) {
@@ -230,7 +230,7 @@ export function Sidebar({
               </div>
               <div>
                 <strong>{template.name}</strong>
-                <span>Current template</span>
+                <span>Templates</span>
               </div>
               <Icon name="chevron" size={14} />
             </button>
@@ -437,6 +437,135 @@ export function Sidebar({
                 </div>
               </div>
             ))}
+            <div className="theme-choice">
+              <span className="field">Dot after the site name</span>
+              <div className="segmented">
+                {(
+                  [
+                    [true, "Show"],
+                    [false, "Hide"],
+                  ] as const
+                ).map(([on, name]) => (
+                  <button
+                    key={name}
+                    className={
+                      (project.theme.brandDot ?? true) === on ? "chosen" : ""
+                    }
+                    aria-pressed={(project.theme.brandDot ?? true) === on}
+                    onClick={() =>
+                      store.commit((p) => ({
+                        ...p,
+                        theme: { ...p.theme, brandDot: on },
+                      }))
+                    }
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="theme-choice">
+              <span className="field">Logo mark</span>
+              <div className="segmented">
+                {(
+                  [
+                    ["none", "None"],
+                    ["bolt", "Lightning"],
+                    ["image", "Image"],
+                  ] as const
+                ).map(([value, name]) => {
+                  const logo = project.theme.logo;
+                  const current = !logo
+                    ? "none"
+                    : logo === "bolt"
+                      ? "bolt"
+                      : "image";
+                  return (
+                    <button
+                      key={value}
+                      className={current === value ? "chosen" : ""}
+                      aria-pressed={current === value}
+                      onClick={() =>
+                        store.commit((p) => {
+                          const theme = { ...p.theme };
+                          if (value === "none") delete theme.logo;
+                          else if (value === "bolt") theme.logo = "bolt";
+                          else if (current !== "image")
+                            theme.logo = p.assets[0]?.url ?? "https://";
+                          return { ...p, theme };
+                        })
+                      }
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {project.theme.logo && project.theme.logo !== "bolt" && (
+              <>
+                {project.assets.length > 0 && (
+                  <label className="field">
+                    Logo image
+                    <select
+                      value={
+                        project.assets.some((a) => a.url === project.theme.logo)
+                          ? project.theme.logo
+                          : ""
+                      }
+                      onChange={(e) =>
+                        e.target.value &&
+                        store.commit((p) => ({
+                          ...p,
+                          theme: { ...p.theme, logo: e.target.value },
+                        }))
+                      }
+                    >
+                      <option value="">Choose an uploaded image…</option>
+                      {project.assets.map((a) => (
+                        <option key={a.id} value={a.url}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <Field
+                  label="Logo image address"
+                  value={
+                    project.theme.logo.startsWith("data:")
+                      ? "Uploaded image"
+                      : project.theme.logo
+                  }
+                  disabled={project.theme.logo.startsWith("data:")}
+                  onChange={(logo) =>
+                    store.commit((p) => ({
+                      ...p,
+                      theme: { ...p.theme, logo },
+                    }))
+                  }
+                  placeholder="https://…"
+                  hint="Upload images in Assets to pick them here. Shown beside the site name in the header."
+                />
+              </>
+            )}
+            <label className="switch-row">
+              Visitors can switch to dark mode
+              <button
+                className={`switch ${project.theme.darkToggle ? "on" : ""}`}
+                role="switch"
+                aria-checked={!!project.theme.darkToggle}
+                aria-label="Visitors can switch to dark mode"
+                onClick={() =>
+                  store.commit((p) => ({
+                    ...p,
+                    theme: { ...p.theme, darkToggle: !p.theme.darkToggle },
+                  }))
+                }
+              >
+                <span />
+              </button>
+            </label>
             <div className="info-card">
               <Icon name="palette" size={18} />
               <p>
@@ -474,22 +603,39 @@ export function Sidebar({
             </label>
             <div className="asset-grid">
               {project.assets.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => {
-                    const id = store.addSection("imageText");
-                    store.updateSection(id, {
-                      image: asset.url,
-                      imageAlt: asset.name,
-                    });
-                    setPanel("sections");
-                    notify("Image added to a new section");
-                  }}
-                  title={`Add ${asset.name} to page`}
-                >
-                  <img src={safeImage(asset.url)} alt={asset.name} />
-                  <span>{asset.name}</span>
-                </button>
+                <div key={asset.id} className="asset-tile">
+                  <button
+                    onClick={() => {
+                      const id = store.addSection("imageText");
+                      store.updateSection(id, {
+                        image: asset.url,
+                        imageAlt: asset.name,
+                      });
+                      setPanel("sections");
+                      notify("Image added to a new section");
+                    }}
+                    title={`Add ${asset.name} to page`}
+                  >
+                    <img src={safeImage(asset.url)} alt={asset.name} />
+                    <span>{asset.name}</span>
+                  </button>
+                  <IconButton
+                    icon="x"
+                    className="asset-remove"
+                    label={`Remove ${asset.name}`}
+                    onClick={() => {
+                      // Pages keep using the image; it only leaves the library.
+                      store.commit((p) => ({
+                        ...p,
+                        assets: p.assets.filter((a) => a.id !== asset.id),
+                      }));
+                      notify(`${asset.name} removed from your library.`, {
+                        label: "Undo",
+                        run: () => useStudio.getState().undo(),
+                      });
+                    }}
+                  />
+                </div>
               ))}
             </div>
             {!project.assets.length && (
@@ -514,13 +660,16 @@ export function Sidebar({
               onChange={(name) => store.commit((p) => ({ ...p, name }))}
             />
             <div className="panel-divider" />
-            <h4 className="eyebrow-label">GET PAID</h4>
+            <h4 className="eyebrow-label" id="get-paid">
+              GET PAID
+            </h4>
             <PaymentsPanel />
             <div className="panel-divider" />
             <h4 className="eyebrow-label">YOUR PROJECT</h4>
             <p className="muted-note">
-              Changes are saved in this browser. Keep a project backup to edit
-              on another device.
+              {store.cloud
+                ? "Changes save to your workspace automatically, with a copy in this browser. Keep a project backup to take it elsewhere."
+                : "Changes are saved in this browser. Keep a project backup to edit on another device."}
             </p>
             <button className="subtle-button full-width" onClick={onBackup}>
               <Icon name="download" size={15} />
@@ -550,8 +699,9 @@ export function Sidebar({
             <div className="info-card">
               <Icon name="lock" size={17} />
               <p>
-                Your project stays in this browser. Download a backup to carry
-                it to another device.
+                {store.cloud
+                  ? "Your website is saved to your workspace. Only you and your team can see the draft."
+                  : "Your project stays in this browser. Download a backup to carry it to another device."}
               </p>
             </div>
           </div>

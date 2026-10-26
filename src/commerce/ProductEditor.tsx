@@ -226,6 +226,7 @@ export function ProductEditor({
               placeholder="fr"
               pattern="[a-z]{2}(-[A-Z]{2})?"
             />
+            <small>Two-letter code, e.g. en, fr, de</small>
           </label>
           <label className="commerce-field">
             Translated title

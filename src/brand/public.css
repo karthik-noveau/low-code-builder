@@ -1894,6 +1894,20 @@ html body .brand-public .pub-auth-main > footer {
 html body .brand-public .pub-auth-main > footer a:hover {
   color: var(--fx-text);
 }
+html body .brand-public .pub-notice {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: var(--fx-radius);
+  background: var(--fx-success-soft);
+  color: var(--fx-text);
+  font-size: 14px;
+}
+html body .brand-public .pub-field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--fx-muted);
+  font-size: 13px;
+}
 html body .brand-public .pub-error {
   margin-top: 20px;
   padding: 12px 14px;

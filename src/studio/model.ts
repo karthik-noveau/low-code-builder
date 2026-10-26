@@ -1,5 +1,6 @@
 import { validateCollections, type Collection } from "./collections";
 import { validatePayments, type PaymentSettings } from "./payments";
+import { validateApp, type App } from "../apps/model";
 export type SectionType =
   | "announcement"
   | "header"
@@ -16,7 +17,8 @@ export type SectionType =
   | "text"
   | "cta"
   | "custom"
-  | "collection";
+  | "collection"
+  | "app";
 export type BlockType =
   | "heading"
   | "text"
@@ -52,7 +54,22 @@ export interface Listing {
   columns: number;
   limit: number;
 }
-export type TemplateId = "botanical" | "folio" | "studio" | "table" | "blank";
+/** Every site template; projects remember which one they started from. */
+export const TEMPLATE_IDS = [
+  "botanical",
+  "folio",
+  "studio",
+  "table",
+  "volt",
+  "dhanlaxmi",
+  "glow",
+  "fixright",
+  "brightminds",
+  "pulse",
+  "freshbasket",
+  "blank",
+] as const;
+export type TemplateId = (typeof TEMPLATE_IDS)[number];
 export interface Item {
   id: string;
   title: string;
@@ -60,7 +77,29 @@ export interface Item {
   image: string;
   price: string;
   url: string;
+  /** A features item's icon (one of FEATURE_ICONS); the section's default otherwise. */
+  icon?: string;
 }
+/** Icons owners can pick for a features item. */
+export const FEATURE_ICONS = [
+  "leaf",
+  "truck",
+  "heart",
+  "phone",
+  "receipt",
+  "bell",
+  "wallet",
+  "zap",
+  "check",
+  "lock",
+  "users",
+  "tag",
+  "mail",
+  "sparkles",
+  "store",
+  "globe",
+  "home",
+] as const;
 export interface Section {
   id: string;
   type: SectionType;
@@ -87,7 +126,38 @@ export interface Section {
   responsive?: Partial<Record<Exclude<Device, "desktop">, DeviceOverrides>>;
   animation?: Animation;
   listing?: Listing;
+  /** The app form an "app" section shows (an AppForm id). */
+  appForm?: string;
+  /** A second, outlined button (hero and call to action). */
+  secondaryLabel?: string;
+  secondaryUrl?: string;
+  /** A small reassuring line under the buttons (hero). */
+  note?: string;
+  /** A moving background (hero): orange orbits with travelling lights. */
+  effect?: "none" | "orbits";
+  /** A different look for the same content; see SECTION_VARIANTS. */
+  variant?: string;
 }
+/**
+ * Looks a section can take. header "brand": a logo mark, the title over the
+ * eyebrow as a two-line wordmark, the current page as a filled pill and a
+ * light/dark switch. hero "badge": the eyebrow as a pill. features "cards":
+ * numbered cards with icon tiles under a left-aligned heading. text "notice":
+ * an information box. footer "centered": the page links and the button link
+ * centred over the site name.
+ */
+export const SECTION_VARIANTS: Partial<Record<SectionType, string[]>> = {
+  header: ["brand"],
+  hero: ["badge"],
+  features: ["cards"],
+  text: ["notice"],
+  footer: ["centered"],
+};
+/**
+ * Link targets the publisher fills in: OWNER_LINK becomes the site owner's
+ * branded app (sign-in, dashboard, approvals) for this site.
+ */
+export const OWNER_LINK = "{owner}";
 export interface Page {
   id: string;
   name: string;
@@ -114,6 +184,12 @@ export interface Project {
     scale?: "compact" | "balanced" | "dramatic";
     spacing?: "tight" | "comfortable" | "airy";
     buttons?: "solid" | "outline" | "pill";
+    /** The dot after the site name in the header and footer; on unless false. */
+    brandDot?: boolean;
+    /** Visitors can switch the site between light and dark. */
+    darkToggle?: boolean;
+    /** The header's logo mark: "bolt" (built in) or an image address. */
+    logo?: string;
   };
   header: Section[];
   footer: Section[];
@@ -123,6 +199,8 @@ export interface Project {
   collections?: Collection[];
   /** How visitors pay for orders, bookings and RSVPs. */
   payments?: PaymentSettings;
+  /** The site's business app: tables, steps, forms and dashboard. */
+  app?: App;
 }
 export const uid = () => crypto.randomUUID();
 export const pageHref = (slug: string) =>
@@ -219,6 +297,12 @@ export const sectionMeta: Record<
     label: "Collection list",
     icon: "grid",
     description: "Show products, a menu, listings, events, and more.",
+    category: "Essentials",
+  },
+  app: {
+    label: "App form",
+    icon: "activity",
+    description: "A form or lookup from your business app.",
     category: "Essentials",
   },
   custom: {
@@ -444,6 +528,17 @@ export function validateProject(value: unknown): value is Project {
       (Array.isArray(s.blocks) &&
         s.blocks.every((b) => b?.type !== "column" && blockValid(b, 0)))) &&
     oneOf(s.width, ["narrow", "normal", "wide", "full"] as const) &&
+    ["secondaryLabel", "secondaryUrl", "note"].every(
+      (k) =>
+        s[k as keyof Section] === undefined ||
+        (typeof s[k as keyof Section] === "string" &&
+          (s[k as keyof Section] as string).length <= 300),
+    ) &&
+    oneOf(s.effect, ["none", "orbits"] as const) &&
+    (s.variant === undefined ||
+      (SECTION_VARIANTS[s.type] ?? []).includes(s.variant)) &&
+    (s.appForm === undefined ||
+      (typeof s.appForm === "string" && s.appForm.length <= 64)) &&
     (s.listing === undefined ||
       (typeof s.listing === "object" &&
         typeof s.listing.collection === "string" &&
@@ -486,12 +581,14 @@ export function validateProject(value: unknown): value is Project {
         i &&
         ["id", "title", "body", "image", "price", "url"].every(
           (k) => typeof i[k as keyof Item] === "string",
-        ),
+        ) &&
+        (i.icon === undefined ||
+          (FEATURE_ICONS as readonly string[]).includes(i.icon)),
     );
   if (!(
     p.version === 1 &&
     typeof p.name === "string" &&
-    ["botanical", "folio", "studio", "table", "blank"].includes(p.template) &&
+    (TEMPLATE_IDS as readonly string[]).includes(p.template) &&
     p.theme &&
     ["accent", "background", "color"].every((k) =>
       /^#[\da-f]{6}$/i.test(p.theme[k as "accent"]),
@@ -503,6 +600,11 @@ export function validateProject(value: unknown): value is Project {
     oneOf(p.theme.scale, ["compact", "balanced", "dramatic"] as const) &&
     oneOf(p.theme.spacing, ["tight", "comfortable", "airy"] as const) &&
     oneOf(p.theme.buttons, ["solid", "outline", "pill"] as const) &&
+    (p.theme.brandDot === undefined || typeof p.theme.brandDot === "boolean") &&
+    (p.theme.darkToggle === undefined ||
+      typeof p.theme.darkToggle === "boolean") &&
+    (p.theme.logo === undefined ||
+      (typeof p.theme.logo === "string" && p.theme.logo.length <= 200_000)) &&
     Array.isArray(p.header) &&
     p.header.every(sectionValid) &&
     Array.isArray(p.footer) &&
@@ -512,6 +614,11 @@ export function validateProject(value: unknown): value is Project {
         p.savedSections.every(sectionValid))) &&
     (p.collections === undefined || validateCollections(p.collections)) &&
     (p.payments === undefined || validatePayments(p.payments)) &&
+    (p.app === undefined ||
+      validateApp(
+        p.app,
+        (p.collections ?? []).map((c) => c.id),
+      )) &&
     Array.isArray(p.assets) &&
     p.assets.every(
       (a) =>

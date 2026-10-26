@@ -2,7 +2,7 @@ import { collections, guides, pageMeta } from "./content";
 
 export function safeDestination(value: string | null) {
   return value &&
-    /^\/(?:workspace|new|editor|domains|commerce|store|account|customer)(?:\?|$)/.test(
+    /^\/(?:workspace|new|editor|domains|commerce|apps|owner|store|account|customer)(?:\?|$)/.test(
       value,
     ) &&
     !/[\\\r\n]/.test(value)
@@ -29,6 +29,8 @@ export const privatePaths = [
   "/new",
   "/editor",
   "/commerce",
+  "/apps",
+  "/owner",
   "/store",
   "/customer",
   "/account",
@@ -40,6 +42,17 @@ export function metadataFor(path: string) {
     return {
       title: "Store management — Forma",
       description: "Manage your products, orders, customers and storefront.",
+    };
+  if (path === "/apps")
+    return {
+      title: "App — Forma",
+      description:
+        "Run your website's business app: records, steps and totals.",
+    };
+  if (path === "/owner")
+    return {
+      title: "Shop owner — Forma",
+      description: "Run your shop: review submissions, customers and rewards.",
     };
   if (path === "/store")
     return {
@@ -73,4 +86,29 @@ export function metadataFor(path: string) {
     title: "Page not found — Forma",
     description: "Find your way back to Forma.",
   };
+}
+
+const appPaths = new Set([...publicPaths, ...privatePaths, ...previewPaths]);
+
+/**
+ * Whether `url` can open inside the running app instead of loading a new
+ * document. The editor always loads fresh, both ways: it keeps its open site
+ * in memory and only finishes text edits on unload.
+ */
+export function opensInApp(url: URL) {
+  const path = (p: string) => p.replace(/\/+$/, "") || "/";
+  return (
+    url.origin === location.origin &&
+    appPaths.has(path(url.pathname)) &&
+    path(url.pathname) !== "/editor" &&
+    path(location.pathname) !== "/editor"
+  );
+}
+
+/** Goes to an address in the app without reloading the page when it can. */
+export function navigate(href: string) {
+  const url = new URL(href, location.href);
+  if (!opensInApp(url)) return location.assign(url.href);
+  history.pushState(null, "", url.pathname + url.search + url.hash);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
