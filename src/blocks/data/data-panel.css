@@ -1,0 +1,154 @@
+/* The Inspector's Data tab (src/blocks/editor/DataPanel.tsx). */
+.dp-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+.dp-fields {
+  border: 1px solid var(--line, #e4e4e7);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dp-fields legend {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 4px;
+}
+.dp-fields label,
+.dp-consent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dp-fields label.is-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.dp-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dp-initials {
+  font-size: 12px !important;
+  color: var(--muted, #71717a);
+}
+.dp-consent {
+  align-items: flex-start;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #b45309 8%, transparent);
+  line-height: 1.4;
+}
+.dp-consent input {
+  margin-top: 2px;
+}
+.dp-warning {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  border-radius: 8px;
+  color: #92400e;
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+}
+.dp-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
+.dp-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+}
+[data-theme="dark"] .dp-warning {
+  color: #fcd34d;
+}
+.dp-suggest {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 30%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.dp-suggest span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dp-suggest strong {
+  font-size: 13px;
+}
+.dp-suggest small {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.dp-suggest svg {
+  flex: none;
+  margin-top: 2px;
+}
+.dp-fields input[type="checkbox"],
+.dp-consent input[type="checkbox"] {
+  appearance: auto;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent, #2563eb);
+}
+.dp-fields label > span {
+  flex: 1;
+  min-width: 0;
+}
+.dp-field-row > label:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.dp-fields legend {
+  margin-bottom: 2px;
+}
+.dp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dp-group > h4,
+.dp-group .dp-fields,
+.dp-group .dp-consent,
+.dp-group .dp-suggest {
+  margin: 0;
+}
+.dp-group .dp-warning {
+  margin: 0;
+}

@@ -1,4 +1,4 @@
-import { flattenBlocks, type Project } from "./model";
+import { flattenBlocks, OWNER_LINK, type Project } from "./model";
 import {
   canCollect,
   isRupee,
@@ -6,6 +6,7 @@ import {
   usablePayments,
 } from "./payments";
 import { appIssues, appSectionProblem, type AppTarget } from "../apps/issues";
+import { appFormsIn, shownNodes } from "../blocks/project";
 
 export interface ReviewItem {
   id: string;
@@ -44,9 +45,15 @@ export function reviewProject(project: Project): ReviewItem[] {
       ...(page.id === project.pages[0].id ? project.footer : []),
     ];
     for (const section of sections.filter((s) => !s.hidden)) {
-      const blockImages = flattenBlocks(section.blocks).filter(
-        (b) => b.type === "image" && b.image,
-      );
+      const nodes = [...shownNodes(section.root)];
+      const blockImages = [
+        ...flattenBlocks(section.blocks).filter(
+          (b) => b.type === "image" && b.image,
+        ),
+        ...nodes
+          .filter((n) => n.type === "image" && n.props.src)
+          .map((n) => ({ alt: String(n.props.alt ?? "") })),
+      ];
       if (blockImages.some((b) => !b.alt.trim()))
         issues.push({
           id: `block-alt-${section.id}`,
@@ -67,18 +74,25 @@ export function reviewProject(project: Project): ReviewItem[] {
           section: section.id,
           kind: "images",
         });
-      if (section.type === "app") {
-        const problem = appSectionProblem(project.app, section.appForm);
-        if (problem)
-          issues.push({
-            id: `app-section-${section.id}`,
-            title: `${section.name} has no form to show`,
-            detail: `${problem} Until then it stays empty on your published site.`,
-            page: page.id,
-            section: section.id,
-            kind: "forms",
-          });
-      }
+      // An app section's form, or each app form block's.
+      const forms =
+        section.type === "app"
+          ? [section.appForm]
+          : [...shownNodes(section.root)]
+              .filter((n) => n.type === "appForm")
+              .map((n) => String(n.props.form ?? "") || undefined);
+      const problem = forms
+        .map((f) => appSectionProblem(project.app, f))
+        .find(Boolean);
+      if (problem)
+        issues.push({
+          id: `app-section-${section.id}`,
+          title: `${section.name} has no form to show`,
+          detail: `${problem} Until then it stays empty on your published site.`,
+          page: page.id,
+          section: section.id,
+          kind: "forms",
+        });
       const hasLinkButton = [
         "announcement",
         "header",
@@ -100,6 +114,17 @@ export function reviewProject(project: Project): ReviewItem[] {
         ...flattenBlocks(section.blocks)
           .filter((b) => b.type === "button")
           .map((b) => b.url),
+        // Buttons, and boxes and images that link somewhere.
+        ...nodes
+          .filter(
+            (n) =>
+              n.type === "button" ||
+              ((n.type === "box" || n.type === "image") && n.props.link),
+          )
+          .map((n) =>
+            String((n.type === "button" ? n.props.url : n.props.link) ?? ""),
+          )
+          .filter((url) => url.trim() !== OWNER_LINK),
       ];
       if (
         links.some(
@@ -142,13 +167,7 @@ export function reviewProject(project: Project): ReviewItem[] {
         kind: "forms",
         target: { app: issue.target },
       });
-    const placed = new Set(
-      project.pages.flatMap((p) =>
-        p.sections
-          .filter((s) => s.type === "app" && !s.hidden)
-          .map((s) => s.appForm),
-      ),
-    );
+    const placed = appFormsIn(project);
     for (const form of project.app.forms)
       if (!placed.has(form.id))
         issues.push({

@@ -284,7 +284,7 @@ export function template() {
                   // Same as the local site server: only Forma's app.js and sw.js run,
                   // talking to the API and (for the offline cache) the site itself.
                   ContentSecurityPolicy: sub(
-                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${Api.ApiEndpoint}; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; base-uri 'self'; frame-ancestors 'none'",
+                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${Api.ApiEndpoint}; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'",
                   ),
                 },
               }

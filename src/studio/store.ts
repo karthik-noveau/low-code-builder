@@ -28,6 +28,20 @@ import {
   type TemplateId,
 } from "./model";
 import { validateApp, type App } from "../apps/model";
+import {
+  cloneNode,
+  findNode,
+  insertNode,
+  locate,
+  mapNode,
+  moveNode as moveTreeNode,
+  removeNode as removeTreeNode,
+  type Node,
+} from "../blocks/model";
+import { canHold } from "../blocks/registry";
+import { toBlocks, upgradeProject } from "../blocks/legacy";
+import { sectionAppForms, sectionCollections } from "../blocks/project";
+import { syncForms } from "../blocks/forms/sync";
 import { collectionUsedBy } from "../apps/edit";
 
 export const STORAGE_KEY = "forma-studio-project-v1";
@@ -54,7 +68,8 @@ try {
     loadError =
       "Your saved project couldn’t be opened, so a copy was kept in this browser. Download it from Help, or import a project backup.";
   }
-  initial = validateProject(parsed) ? parsed : createProject();
+  // Classic sections open as blocks (src/blocks/legacy.ts).
+  initial = validateProject(parsed) ? upgradeProject(parsed) : createProject();
 } catch {
   initial = createProject();
   loadError =
@@ -93,6 +108,35 @@ interface StudioState {
   removeBlock: (section: string, id: string) => void;
   duplicateBlock: (section: string, id: string) => void;
   moveBlock: (section: string, id: string, offset: number) => void;
+  /** Changes a block in a "blocks" section (props, style, name, hidden…). */
+  updateNode: (
+    section: string,
+    id: string,
+    update: (n: Node) => Node,
+    coalesce?: string,
+  ) => void;
+  /**
+   * Puts a block into `parent` at `index` (default: the end) and selects it.
+   * Refused (undefined) where the parent can't hold it.
+   */
+  insertNode: (
+    section: string,
+    parent: string,
+    node: Node,
+    index?: number,
+  ) => string | undefined;
+  /** Moves a block, within its section or into another "blocks" section. */
+  moveNode: (
+    from: string,
+    id: string,
+    to: string,
+    parent: string,
+    index: number,
+  ) => void;
+  removeNode: (section: string, id: string) => void;
+  duplicateNode: (section: string, id: string) => string | undefined;
+  /** Adds a "blocks" section (a prebuilt one, or empty) after `after`, or at the end. */
+  addBlocksSection: (root: Node, name: string, after?: string) => string;
   /** Adds a collection (from a blueprint, or an imported one) and returns its id. */
   addCollection: (source: Blueprint | Collection) => string;
   updateCollection: (id: string, update: (c: Collection) => Collection) => void;
@@ -189,11 +233,65 @@ function copySection(section: Section): Section {
     items: section.items.map((item) => ({ ...item, id: uid() })),
   };
   if (section.blocks) copy.blocks = copyBlocks(section.blocks);
+  if (section.root) copy.root = cloneNode(section.root);
   return copy;
 }
-/** An App form section; its heading and intro come from the form itself. */
-function appSection(form: string | undefined, title: string, padding = 64) {
-  return createSection("app", {
+/** A "blocks" section holding `root` (a section node). */
+export function blocksSection(root: Node, name: string): Section {
+  return createSection("blocks", { name, root });
+}
+/** Applies `fn` to a "blocks" section's tree. */
+function updateTree(
+  project: Project,
+  section: string,
+  fn: (root: Node) => Node,
+): Project {
+  return mapSections(project, (sections) =>
+    sections.map((s) =>
+      s.id === section && s.root ? { ...s, root: fn(s.root) } : s,
+    ),
+  );
+}
+/**
+ * Sections without the app forms `gone` picks: App form sections and app form
+ * blocks go, and a blocks section left empty goes with them.
+ */
+function withoutForms(sections: Section[], gone: (form: string) => boolean) {
+  const prune = (n: Node): Node =>
+    n.children
+      ? {
+          ...n,
+          children: n.children
+            .filter(
+              (c) =>
+                !(
+                  (c.type === "appForm" || c.type === "form") &&
+                  gone(String(c.props.form))
+                ),
+            )
+            .map(prune),
+        }
+      : n;
+  return sections.flatMap((s) => {
+    if (s.type === "app") return gone(s.appForm ?? "") ? [] : [s];
+    if (!s.root || !sectionAppForms(s).some(gone)) return [s];
+    const root = prune(s.root);
+    return root.children?.some((c) => c.type !== "text")
+      ? [{ ...s, root }]
+      : [];
+  });
+}
+/**
+ * An App form section, built from blocks; its heading and intro come from the
+ * form itself. `main`: its title is the page's main heading.
+ */
+function appSection(
+  form: string | undefined,
+  title: string,
+  padding = 64,
+  main = false,
+) {
+  const section = createSection("app", {
     ...(form ? { name: title } : {}),
     title,
     eyebrow: "",
@@ -201,6 +299,8 @@ function appSection(form: string | undefined, title: string, padding = 64) {
     padding,
     ...(form ? { appForm: form } : {}),
   });
+  const page = { sections: main ? [section] : [] };
+  return toBlocks(section, { name: "", pages: [page] } as unknown as Project);
 }
 /** The blueprint that fits a template, for a first Collection list section. */
 const templateBlueprint: Record<TemplateId, Blueprint> = {
@@ -241,7 +341,10 @@ function validSelection(
     activePage: pg.id,
     selected: section ? section.id : null,
     selectedBlock:
-      section && findBlock(section.blocks, selectedBlock)
+      section &&
+      selectedBlock &&
+      (findBlock(section.blocks, selectedBlock) ||
+        (section.root && findNode([section.root], selectedBlock)))
         ? selectedBlock
         : null,
   };
@@ -257,7 +360,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   savedAt: Date.now(),
   commit: (update, coalesce) => {
     const state = get();
-    const project = update(state.project);
+    // Form blocks and their app forms stay equal (src/blocks/forms/sync.ts).
+    const project = syncForms(state.project, update(state.project));
     if (project === state.project) return;
     if (!validateProject(project)) {
       set({
@@ -378,6 +482,104 @@ export const useStudio = create<StudioState>((set, get) => ({
     );
     set({ selectedBlock: copy.id });
   },
+  updateNode: (section, id, update, coalesce) =>
+    get().commit(
+      (p) =>
+        updateTree(p, section, (root) =>
+          root.id === id
+            ? update(root)
+            : (mapNode([root], id, update)[0] ?? root),
+        ),
+      coalesce,
+    ),
+  insertNode: (section, parent, node, index) => {
+    const root = findSection(get().project, section)?.root;
+    const target = root && findNode([root], parent);
+    if (!target || !canHold(target.type, node.type)) return;
+    get().commit((p) =>
+      updateTree(p, section, (r) => insertNode([r], parent, node, index)[0]),
+    );
+    set({ selected: section, selectedBlock: node.id });
+    return node.id;
+  },
+  moveNode: (from, id, to, parent, index) => {
+    const p = get().project;
+    const source = findSection(p, from)?.root;
+    const node = source && findNode([source], id);
+    const dest = findSection(p, to)?.root;
+    const target = dest && findNode([dest], parent);
+    if (!node || !target || node.id === source.id) return;
+    if (!canHold(target.type, node.type)) return;
+    get().commit((current) =>
+      from === to
+        ? updateTree(
+            current,
+            from,
+            (r) => moveTreeNode([r], id, parent, index)[0],
+          )
+        : updateTree(
+            updateTree(current, from, (r) => removeTreeNode([r], id)[0]),
+            to,
+            (r) => insertNode([r], parent, node, index)[0],
+          ),
+    );
+    set({ selected: to, selectedBlock: id });
+  },
+  removeNode: (section, id) => {
+    const root = findSection(get().project, section)?.root;
+    if (!root) return;
+    // The section node itself goes with its section.
+    if (root.id === id) return get().removeSection(section);
+    const parent = locate([root], id)?.parent;
+    get().commit((p) =>
+      updateTree(p, section, (r) => removeTreeNode([r], id)[0]),
+    );
+    set({ selected: section, selectedBlock: parent?.id ?? null });
+  },
+  duplicateNode: (section, id) => {
+    const root = findSection(get().project, section)?.root;
+    if (!root) return;
+    if (root.id === id) {
+      get().duplicateSection(section);
+      return;
+    }
+    const at = locate([root], id);
+    if (!at?.parent) return;
+    const copy = cloneNode(at.siblings[at.index]);
+    return get().insertNode(section, at.parent.id, copy, at.index + 1);
+  },
+  addBlocksSection: (root, name, after) => {
+    const section = blocksSection(cloneNode(root), name);
+    const tag = root.props.tag;
+    const active = get().activePage;
+    get().commit((p) => {
+      if (tag === "header" && !after)
+        return { ...p, header: [...p.header, section] };
+      if (tag === "footer" && !after)
+        return { ...p, footer: [...p.footer, section] };
+      const inChrome = (list: Section[]) => list.some((s) => s.id === after);
+      if (after && (inChrome(p.header) || inChrome(p.footer)))
+        return mapSections(p, (list) =>
+          list.flatMap((s) => (s.id === after ? [s, section] : [s])),
+        );
+      return {
+        ...p,
+        pages: p.pages.map((pg) => {
+          if (pg.id !== active) return pg;
+          const sections = [...pg.sections];
+          const index = after ? sections.findIndex((s) => s.id === after) : -1;
+          sections.splice(
+            after === "start" ? 0 : index < 0 ? sections.length : index + 1,
+            0,
+            section,
+          );
+          return { ...pg, sections };
+        }),
+      };
+    });
+    set({ selected: section.id, selectedBlock: section.root!.id });
+    return section.id;
+  },
   addCollection: (source) => {
     if ((get().project.collections ?? []).length >= MAX_COLLECTIONS) return "";
     const taken = (get().project.collections ?? []).map((c) => c.slug);
@@ -429,9 +631,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         const next = { ...p, app };
         return gone.size
           ? mapSections(next, (sections) =>
-              sections.filter(
-                (s) => !(s.type === "app" && s.appForm && gone.has(s.appForm)),
-              ),
+              withoutForms(sections, (f) => gone.has(f)),
             )
           : next;
       },
@@ -457,8 +657,13 @@ export const useStudio = create<StudioState>((set, get) => ({
         slug,
         title: `${pageName} — ${project.name}`,
         description: app.forms[0].intro.slice(0, 160),
-        sections: app.forms.map((form) =>
-          appSection(form.id, form.title, form.kind === "lookup" ? 48 : 64),
+        sections: app.forms.map((form, n) =>
+          appSection(
+            form.id,
+            form.title,
+            form.kind === "lookup" ? 48 : 64,
+            n === 0,
+          ),
         ),
       };
     }
@@ -478,11 +683,11 @@ export const useStudio = create<StudioState>((set, get) => ({
   removeApp: () =>
     get().commit((p) => {
       const next = mapSections(p, (sections) =>
-        sections.filter((s) => s.type !== "app"),
+        withoutForms(sections, () => true),
       );
       delete next.app;
       if (next.savedSections)
-        next.savedSections = next.savedSections.filter((s) => s.type !== "app");
+        next.savedSections = withoutForms(next.savedSections, () => true);
       return next;
     }),
   addAppSection: (formId, pageId) => {
@@ -490,7 +695,12 @@ export const useStudio = create<StudioState>((set, get) => ({
     const form = p.app?.forms.find((f) => f.id === formId);
     const target = pageId ?? get().activePage;
     if (!form || !p.pages.some((pg) => pg.id === target)) return;
-    const section = appSection(form.id, form.title);
+    const section = appSection(
+      form.id,
+      form.title,
+      64,
+      !p.pages.find((pg) => pg.id === target)?.sections.some((s) => !s.hidden),
+    );
     get().commit((p) => ({
       ...p,
       pages: p.pages.map((pg) =>
@@ -783,7 +993,9 @@ export const useStudio = create<StudioState>((set, get) => ({
     const forms = new Set((p.app?.forms ?? []).map((f) => f.id));
     const keep = (s: Section) =>
       !(s.type === "app" && !forms.has(s.appForm ?? "")) &&
-      !(s.type === "collection" && !kept.has(s.listing?.collection ?? ""));
+      !(s.type === "collection" && !kept.has(s.listing?.collection ?? "")) &&
+      sectionAppForms(s).every((f) => forms.has(f)) &&
+      sectionCollections(s).every((c) => kept.has(c));
     p.pages = p.pages.map((pg) => ({
       ...pg,
       sections: pg.sections.filter(keep),
@@ -794,7 +1006,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     ];
     get().importProject(p);
   },
-  importProject: (project) => {
+  importProject: (imported) => {
+    const project = upgradeProject(imported);
     get().commit(() => project);
     set({
       activePage: project.pages[0].id,

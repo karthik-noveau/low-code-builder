@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "vitest run src/studio tests/unit",
+    "test": "vitest run src/studio src/blocks tests/unit",
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/build-pages.mjs",
     "lint": "eslint .",
@@ -14,7 +14,7 @@
     "backend:build": "node scripts/build-backend.mjs",
     "typecheck": "tsc -b && tsc -p tsconfig.backend.json",
     "test:integration": "vitest run tests/integration --testTimeout=30000",
-    "lint:current": "eslint backend scripts infra src/studio src/apps src/owner src/commerce src/cloud src/brand src/App.tsx vite.config.ts --max-warnings 0",
+    "lint:current": "eslint backend scripts infra src/studio src/blocks src/apps src/owner src/commerce src/cloud src/brand src/App.tsx vite.config.ts --max-warnings 0",
     "check": "npm run typecheck && npm run lint:current && npm test && npm run build && npm run backend:build",
     "infra:build": "node infra/template.mjs && node infra/bootstrap.mjs && node scripts/build-domain-template.mjs",
     "aws:bootstrap": "node scripts/bootstrap-aws.mjs",

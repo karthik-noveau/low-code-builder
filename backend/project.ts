@@ -7,6 +7,7 @@ import {
   type Project,
 } from "../src/studio/model";
 import { config, insist, HttpError } from "./config";
+import { upgradeProject } from "../src/blocks/legacy";
 
 export const digest = (bytes: Uint8Array | string) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -95,5 +96,6 @@ export function decodeProject(bytes: Buffer): {
     422,
     "A page field is too long.",
   );
-  return { project: p, checksum: digest(json) };
+  // Classic sections are stored as sent and built as blocks (src/blocks/legacy.ts).
+  return { project: upgradeProject(p), checksum: digest(json) };
 }

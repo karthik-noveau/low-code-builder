@@ -1,7 +1,17 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 export type TextField = "title" | "body" | "eyebrow" | "buttonLabel";
-export type TextEditTarget = { section: string; field: TextField };
+export type TextEditTarget = {
+  section: string;
+  field: TextField;
+  /** Typing into a block of a "blocks" section. */
+  node?: string;
+};
 
 export function InlineText({
   as: Tag = "span",
@@ -15,8 +25,10 @@ export function InlineText({
   onStartEdit,
   onFinishEdit,
   onDraft,
+  attrs,
+  render,
 }: {
-  as?: "span" | "div" | "h1" | "h2" | "p";
+  as?: "span" | "div" | "h1" | "h2" | "h3" | "h4" | "p";
   value: string;
   className?: string;
   enabled?: boolean;
@@ -27,6 +39,10 @@ export function InlineText({
   onStartEdit?: () => void;
   onFinishEdit?: () => void;
   onDraft?: (text: string) => void;
+  /** Extra attributes for the element (a block's data-node-id). */
+  attrs?: Record<string, unknown>;
+  /** How the value looks while not being typed into (e.g. *accent* words). */
+  render?: (value: string) => ReactNode;
 }) {
   const element = useRef<HTMLElement | null>(null);
   const original = useRef(value);
@@ -71,6 +87,7 @@ export function InlineText({
   };
   return (
     <Tag
+      {...attrs}
       ref={(node) => {
         element.current = node;
       }}
@@ -83,7 +100,7 @@ export function InlineText({
       aria-description={
         editing
           ? "Escape cancels. Command or Control Enter saves."
-          : "Click for section settings. Double-click or press Enter to edit text."
+          : "Click for settings. Double-click or press Enter to edit text."
       }
       aria-multiline={editing || undefined}
       data-edit-field={label}
@@ -153,7 +170,7 @@ export function InlineText({
         );
       }}
     >
-      {value}
+      {render && !editing ? render(value) : value}
     </Tag>
   );
 }

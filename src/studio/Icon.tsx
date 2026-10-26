@@ -5,6 +5,8 @@ const paths: Record<string, string> = {
   command:
     "M8 8V5a3 3 0 1 0-3 3h14a3 3 0 1 0-3-3v14a3 3 0 1 0 3-3H5a3 3 0 1 0 3 3V8Z",
   plus: "M12 5v14M5 12h14",
+  minus: "M5 12h14",
+  link: "M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1m2 5a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1",
   x: "m6 6 12 12M6 18 18 6",
   check: "m5 12 4 4L19 6",
   zap: "M13 2 4 14h7l-1 8 9-12h-7l1-8Z",
@@ -80,6 +82,24 @@ const paths: Record<string, string> = {
   alignCenter: "M3 5h18M6 10h12M3 15h18M6 20h12",
   alignRight: "M3 5h18M9 10h12M3 15h18M9 20h12",
 };
+/** Every plain icon name (the blocks Inspector's icon picker). */
+export const ICON_NAMES = Object.keys(paths);
+/** Editor-only glyphs (text tools, layout controls); not offered to websites. */
+const editor: Record<string, string> = {
+  bold: "M7 5h6a3.5 3.5 0 0 1 0 7H7V5Zm0 7h7a3.5 3.5 0 0 1 0 7H7v-7Z",
+  italic: "M10 5h8M6 19h8M14 5l-4 14",
+  keyboard: "M3 6h18v12H3V6Zm4 4h.01M11 10h.01M15 10h.01M7 14h10",
+  parent: "M14 9 9 4 4 9M9 4v10a6 6 0 0 0 6 6h5",
+  wrap: "M3 3h18v18H3V3Zm5 5h8v8H8V8Z",
+  collapseAll: "m7 20 5-5 5 5M7 4l5 5 5-5",
+  expandAll: "m7 15 5 5 5-5M7 9l5-5 5 5",
+  stacked: "M5 4h14v6H5V4Zm0 10h14v6H5v-6Z",
+  sideBySide: "M4 5h6v14H4V5Zm10 0h6v14h-6V5Z",
+  textSmaller: "M3 17 7 7l4 10M4.5 13.5h5M15 12h6",
+  textBigger: "M3 17 7 7l4 10M4.5 13.5h5M15 12h6M18 9v6",
+  paste: "M9 4h6v3H9V4ZM7 5H5v16h14V5h-2",
+  dots: "M5 12h.01M12 12h.01M19 12h.01",
+};
 /**
  * The rewards-site set (a 24px, 1.7 stroke family), drawn exactly as the
  * Dhanlaxmi Rewards reference. Website variants ask for "rw:<name>" and fall
@@ -133,7 +153,12 @@ export function Icon({
       style={style}
     >
       <path
-        d={refined[name] ?? paths[name.replace(/^rw:/, "")] ?? paths.grid}
+        d={
+          refined[name] ??
+          paths[name.replace(/^rw:/, "")] ??
+          editor[name] ??
+          paths.grid
+        }
       />
     </svg>
   );

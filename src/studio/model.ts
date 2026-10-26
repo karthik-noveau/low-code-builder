@@ -1,6 +1,13 @@
 import { validateCollections, type Collection } from "./collections";
 import { validatePayments, type PaymentSettings } from "./payments";
 import { validateApp, type App } from "../apps/model";
+import type { Node } from "../blocks/model";
+import {
+  mapNodeLinks,
+  nodeImages,
+  replaceNodeImages,
+  rootValid,
+} from "../blocks/validate";
 export type SectionType =
   | "announcement"
   | "header"
@@ -18,7 +25,8 @@ export type SectionType =
   | "cta"
   | "custom"
   | "collection"
-  | "app";
+  | "app"
+  | "blocks";
 export type BlockType =
   | "heading"
   | "text"
@@ -137,6 +145,8 @@ export interface Section {
   effect?: "none" | "orbits";
   /** A different look for the same content; see SECTION_VARIANTS. */
   variant?: string;
+  /** A "blocks" section's tree: a section node and everything in it. */
+  root?: Node;
 }
 /**
  * Looks a section can take. header "brand": a logo mark, the title over the
@@ -305,6 +315,12 @@ export const sectionMeta: Record<
     description: "A form or lookup from your business app.",
     category: "Essentials",
   },
+  blocks: {
+    label: "Blocks",
+    icon: "layers",
+    description: "Built from blocks you arrange and style freely.",
+    category: "Essentials",
+  },
   custom: {
     label: "Custom section",
     icon: "layers",
@@ -415,6 +431,7 @@ export function sectionImages(section: Section) {
     section.image,
     ...section.items.map((i) => i.image),
     ...flattenBlocks(section.blocks).map((b) => b.image),
+    ...nodeImages(section.root),
   ].filter(Boolean);
 }
 /** Replace image URLs in a section in place, e.g. for portable exports. */
@@ -426,6 +443,7 @@ export function replaceSectionImages(
   for (const i of section.items) i.image = replace(i.image) ?? i.image;
   for (const b of flattenBlocks(section.blocks))
     b.image = replace(b.image) ?? b.image;
+  replaceNodeImages(section.root, replace);
 }
 /** Rewrite links in a section, including those inside blocks. */
 export function mapSectionLinks(
@@ -439,6 +457,7 @@ export function mapSectionLinks(
     buttonUrl: fn(section.buttonUrl),
     items: section.items.map((i) => ({ ...i, url: fn(i.url) })),
     ...(section.blocks ? { blocks: blocks(section.blocks) } : {}),
+    ...(section.root ? { root: mapNodeLinks(section.root, fn) } : {}),
   };
 }
 export const safeUrl = (value: string) =>
@@ -450,9 +469,12 @@ export const safeUrl = (value: string) =>
 export const safeImage = (value: string) =>
   /^(https?:\/\/|\/?images\/|data:image\/(?:png|jpeg|webp|gif);base64,)/i.test(
     value,
-  )
+  ) || PUBLISHED_IMAGE.test(value)
     ? value
     : "";
+/** Where publishing puts a copied image: /sites/<site>/releases/<release>/images/<hash>.<ext>. */
+const PUBLISHED_IMAGE =
+  /^\/sites\/[\w-]+\/releases\/[\w-]+\/images\/[\da-f]+\.(?:png|jpeg|webp|gif)$/i;
 export const slugify = (value: string) =>
   value
     .toLowerCase()
@@ -524,6 +546,7 @@ export function validateProject(value: unknown): value is Project {
   const p = value as Project;
   const sectionValid = (s: Section) =>
     s &&
+    (s.type === "blocks" ? rootValid(s.root) : s.root === undefined) &&
     (s.blocks === undefined ||
       (Array.isArray(s.blocks) &&
         s.blocks.every((b) => b?.type !== "column" && blockValid(b, 0)))) &&

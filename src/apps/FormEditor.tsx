@@ -12,6 +12,7 @@ import {
   type AppTable,
   type FormCopyKey,
 } from "./model";
+import { sectionAppForms } from "../blocks/project";
 import {
   canPay,
   changeFormTable,
@@ -191,7 +192,7 @@ export function FormEditor({
     );
   if (!table) return null;
   const pages = store.project.pages.filter((p) =>
-    p.sections.some((s) => s.type === "app" && s.appForm === f.id),
+    p.sections.some((s) => sectionAppForms(s).includes(f.id)),
   );
   const options = (fields: { id: string; name: string }[]) =>
     fields.map((x) => ({ id: x.id, label: x.name || "Untitled field" }));

@@ -1,4 +1,5 @@
 import type { UserManager } from "oidc-client-ts";
+import { upgradeProject } from "../blocks/legacy";
 import {
   validateProject,
   type Project,
@@ -256,7 +257,10 @@ export async function loadDraft(id: string) {
   const project: unknown = await response.json();
   if (!validateProject(project))
     throw new Error("The saved draft could not be read.");
-  return { project, version: Number(response.headers.get("x-draft-version")) };
+  return {
+    // Classic sections open as blocks (src/blocks/legacy.ts).
+    project: upgradeProject(project),
+    version: Number(response.headers.get("x-draft-version")) };
 }
 export const publish = (
   site: Site,

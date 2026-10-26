@@ -29,6 +29,15 @@
  *                                                        409 { message, field } a capacity is full
  *   GET  /apps/:siteId/forms/:formId/availability        → Availability (places left, for the form's table)
  *   GET  /apps/:siteId/records/:recordId/pay?key=…       → SubmitResult["payment"] refreshed (checkout paid?)
+ *   GET  /apps/:siteId/views/:viewId?page=0&size=12      → PublicView: a page of an owner-made public
+ *                                                        view (data blocks). Only the view's allow-listed
+ *                                                        fields, formatted; no record ids or references;
+ *                                                        paging stops at the view's limit. 404 when the
+ *                                                        view isn't public in the live release; 429 more
+ *                                                        than VIEW_READS_PER_MINUTE reads per IP per minute.
+ *   GET  /apps/:siteId/metrics                           → PublicMetrics: the dashboard cards and charts
+ *                                                        the owner marked public, as numbers only (stat
+ *                                                        and chart blocks). Same limit as views.
  *
  * Owner routes added for payments:
  *   POST /sites/:id/app/records/:recordId/paid           { revision } → { record } (marks the payment paid)
@@ -54,6 +63,34 @@ export interface Summary {
   lists: { id: string; name: string; table: string; records: AppRecord[] }[];
   links: LinkTitles;
 }
+/** A page of a public view: allow-listed columns and formatted values only. */
+export interface PublicView {
+  name: string;
+  columns: { id: string; name: string; type: string; money?: boolean }[];
+  /** Column id → value as shown (money, dates and link titles formatted). */
+  rows: Record<string, string>[];
+  page: number;
+  /** Another page exists (still within the view's limit). */
+  more: boolean;
+}
+/** Public dashboard figures: numbers only, never records. */
+export interface PublicMetrics {
+  cards: {
+    id: string;
+    name: string;
+    value: number;
+    money: boolean;
+    shown: string;
+  }[];
+  charts: {
+    id: string;
+    name: string;
+    money: boolean;
+    bars: { label: string; long: string; value: number; shown: string }[];
+  }[];
+}
+/** Public view and metric reads per IP per minute. */
+export const VIEW_READS_PER_MINUTE = 60;
 export interface PushDevice {
   id: string;
   label: string;

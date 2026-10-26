@@ -31,16 +31,16 @@
  */
 import type { ReactNode } from "react";
 import { Icon } from "../studio/Icon";
-import { safeImage } from "../studio/model";
-import { formatValue, itemTitle, type Collection } from "../studio/collections";
+import type { Collection } from "../studio/collections";
+import { currencySymbol, makeCatalog, type Catalog } from "./catalog";
 import {
   fieldOf,
-  formatMoney,
   tableOf,
   REF_KEY,
   type App,
   type AppField,
   type AppForm,
+  type AppTable,
   type FormCopyKey,
 } from "./model";
 
@@ -61,7 +61,13 @@ const STATE_ICONS: Record<string, string> = {
   arrowLeft: "M20 12H4m6-6-6 6 6 6",
   info: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 16v-4.5M12 8h.01",
 };
-function StateIcon({ name, size = 18 }: { name: string; size?: number }) {
+export function StateIcon({
+  name,
+  size = 18,
+}: {
+  name: string;
+  size?: number;
+}) {
   if (!STATE_ICONS[name]) return <Icon name={name} size={size} />;
   return (
     <svg
@@ -82,10 +88,6 @@ function StateIcon({ name, size = 18 }: { name: string; size?: number }) {
 /** The owner's words for a part of the form, or the default. */
 const words = (form: AppForm, key: FormCopyKey, fallback: string) =>
   form.copy?.[key]?.trim() || fallback;
-/** The currency's symbol, e.g. ₹ for INR. */
-function currencySymbol(currency: string) {
-  return formatMoney(0, currency).replace(/[\d.,\s]/g, "") || currency;
-}
 /** How a field is drawn in a step-by-step form: a prefix, a bigger input. */
 interface FieldLook {
   prefix?: string;
@@ -97,68 +99,6 @@ interface FieldLook {
   /** A taller text box. */
   tall?: boolean;
 }
-
-/** A collection item as visitors pick it. */
-export interface MenuItem {
-  slug: string;
-  title: string;
-  subtitle: string;
-  summary: string;
-  image: string;
-  /** In whole currency units; null when the item has no price. */
-  price: number | null;
-  priceText: string;
-  category: string;
-}
-/** A field that obviously sorts a collection into groups, like Category or Course. */
-const CATEGORY =
-  /^(category|categories|type|course|section|kind|group|cuisine)$/i;
-/**
- * The items visitors can choose from a collection: published (not hidden)
- * ones, priced from the card's price field like the backend prices them.
- */
-function catalogOf(c: Collection): {
-  items: MenuItem[];
-  categories: string[];
-} {
-  const d = c.display;
-  const category = c.fields.find(
-    (f) => f.type === "choice" && CATEGORY.test(f.name.trim()),
-  );
-  const items = c.items
-    .filter((i) => !i.hidden)
-    .map((item): MenuItem => {
-      const v = (field: string) => (field ? (item.values[field] ?? "") : "");
-      const raw = v(d.price).trim();
-      const n = raw ? Number(raw.replace(/[^\d.-]/g, "")) : NaN;
-      return {
-        slug: item.slug,
-        title: itemTitle(c, item),
-        subtitle:
-          d.subtitle && d.subtitle !== d.summary
-            ? formatValue(c, d.subtitle, v(d.subtitle))
-            : "",
-        summary: formatValue(c, d.summary, v(d.summary)),
-        image: safeImage(v(d.image)),
-        price: Number.isFinite(n) ? n : null,
-        priceText: raw ? formatValue(c, d.price, raw) : "",
-        category: category ? v(category.id).trim() : "",
-      };
-    });
-  const used = new Set(items.map((i) => i.category).filter(Boolean));
-  const categories = category
-    ? [
-        ...category.options.filter((o) => used.has(o)),
-        ...[...used].filter((o) => !category.options.includes(o)),
-      ]
-    : [];
-  return { items, categories };
-}
-type Catalog = (
-  collectionId?: string,
-) =>
-  | { collection: Collection; items: MenuItem[]; categories: string[] }
-  | undefined;
 
 function inputFor(
   field: AppField,
@@ -261,7 +201,7 @@ const Optional = ({ field }: { field: AppField }) =>
   field.required ? null : <small> (optional)</small>;
 
 /** An "item" field: cards to tap, or a select when there are many. */
-function ItemChoice({
+export function ItemChoice({
   field,
   id,
   disabled,
@@ -430,7 +370,7 @@ function FieldInput({
 }
 
 /** An "items" field: the menu or catalogue, with Add and − 1 + on each item. */
-function Picker({
+export function Picker({
   field,
   prefix,
   disabled,
@@ -570,7 +510,7 @@ function Picker({
   );
 }
 
-const ErrorLine = () => <p className="app-error" role="alert" hidden />;
+export const ErrorLine = () => <p className="app-error" role="alert" hidden />;
 
 /** A step's heading and lead line, as in the step-by-step forms. */
 function StepHead({ title, lead }: { title: string; lead?: string }) {
@@ -627,7 +567,7 @@ function StateScreen({
   );
 }
 /** "Can't reach the shop" with Retry (the widget re-sends what was typed). */
-function Offline({ form, step }: { form: AppForm; step?: string }) {
+export function Offline({ form, step }: { form: AppForm; step?: string }) {
   const content = (
     <>
       <span className="app-state-icon tone-danger" aria-hidden="true">
@@ -666,6 +606,356 @@ function Offline({ form, step }: { form: AppForm; step?: string }) {
 const valueWord = (field: AppField) =>
   field.type === "phone" ? "number" : field.name.toLowerCase();
 
+/** Skeletons while a step-by-step lookup loads. */
+export function LookupLoading() {
+  return (
+    <div
+      className="app-step app-bare"
+      data-step="loading"
+      key="loading"
+      aria-busy="true"
+      hidden
+    >
+      <p className="app-step-title sr-only" tabIndex={-1}>
+        Loading…
+      </p>
+      <div className="app-card app-skeletons" aria-hidden="true">
+        <span className="app-skeleton is-block" />
+        <span className="app-skeleton-row">
+          <span className="app-skeleton is-avatar" />
+          <span className="app-skeleton-lines">
+            <span className="app-skeleton is-title" />
+            <span className="app-skeleton is-short" />
+          </span>
+        </span>
+      </div>
+      <div className="app-card app-skeletons" aria-hidden="true">
+        <span className="app-skeleton is-title" />
+        <span className="app-skeleton" />
+        <span className="app-skeleton" />
+        <span className="app-skeleton is-short" />
+      </div>
+    </div>
+  );
+}
+/** What a step-by-step lookup found: the person, a highlighted total, tiles and history. */
+export function FlowResult({
+  table,
+  form,
+  history,
+  links,
+  word,
+}: {
+  table: AppTable;
+  form: AppForm;
+  history: AppTable | undefined;
+  links: AppLinks;
+  /** What visitors call the value they typed, e.g. "number". */
+  word: string;
+}) {
+  return (
+    <>
+      <div className="app-person">
+        <span className="app-avatar is-xl" aria-hidden="true" />
+        <div className="app-person-copy">
+          <h3 className="app-step-title app-person-name" tabIndex={-1} />
+          <p
+            className="app-person-meta"
+            data-since={`${table.singular.toLowerCase()} since`}
+          />
+        </div>
+      </div>
+      <div className="app-panel" hidden>
+        <p className="app-panel-label" />
+        <p className="app-panel-value" />
+        <p className="app-panel-meta" hidden />
+      </div>
+      <dl className="app-record-fields" />
+      <div className="app-tiles" hidden />
+      {history && (
+        <section className="app-card app-history is-card">
+          <div className="app-card-header">
+            <h4>{words(form, "historyTitle", history.name)}</h4>
+            {links.submit && (
+              <a className="site-button app-small" href={links.submit.href}>
+                <Icon name="plus" size={15} />
+                <span>New</span>
+              </a>
+            )}
+          </div>
+          <div className="app-card-body">
+            <ol className="app-timeline is-rich" />
+            <div className="app-history-empty app-state" hidden>
+              <span className="app-state-icon tone-brand" aria-hidden="true">
+                <Icon name="receipt" size={26} />
+              </span>
+              <div>
+                <h5 className="app-state-title">
+                  {words(form, "emptyTitle", "Nothing yet")}
+                </h5>
+                {form.copy?.emptyBody?.trim() && (
+                  <p className="app-state-text">{form.copy.emptyBody.trim()}</p>
+                )}
+              </div>
+              {links.submit && (
+                <a className="site-button" href={links.submit.href}>
+                  <Icon name="plus" size={16} />
+                  <span>{links.submit.label}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+      <div className="app-actions app-center">
+        <button className="app-ghost" type="button" data-action="refresh">
+          <StateIcon name="refresh" size={15} />
+          Refresh
+        </button>
+        <button className="app-ghost" type="button" data-action="change">
+          Check a different {word}
+        </button>
+      </div>
+      <div className="app-icons" hidden>
+        {[
+          "check",
+          "x",
+          "clock",
+          "checkCircle",
+          "xCircle",
+          "receipt",
+          "chart",
+        ].map((name) => (
+          <span key={name} data-icon={name}>
+            <StateIcon name={name} size={name.length > 5 ? 18 : 14} />
+          </span>
+        ))}
+      </div>
+    </>
+  );
+}
+/** A step-by-step lookup's screens for unknown and paused accounts and no connection. */
+export function LookupScreens({
+  form,
+  keyField: key,
+}: {
+  form: AppForm;
+  keyField: AppField;
+}) {
+  const word = valueWord(key);
+  return (
+    <>
+      <StateScreen
+        key="notfound"
+        step="notfound"
+        icon="alertCircle"
+        tone="neutral"
+        title={words(
+          form,
+          "notFoundTitle",
+          key.type === "phone"
+            ? "This number isn’t registered"
+            : `We couldn’t find that ${key.name.toLowerCase()}`,
+        )}
+        body={form.copy?.notFoundBody?.trim() ?? ""}
+      >
+        <button className="site-button" type="button" data-action="change">
+          <span>Try another {word}</span>
+        </button>
+      </StateScreen>
+      <StateScreen
+        key="paused"
+        step="paused"
+        icon="xCircle"
+        tone="neutral"
+        title={words(form, "pausedTitle", "This account is paused")}
+        body={form.copy?.pausedBody?.trim() ?? ""}
+      >
+        <button
+          className="site-button is-secondary"
+          type="button"
+          data-action="change"
+        >
+          <span>Try another {word}</span>
+        </button>
+      </StateScreen>
+      <Offline key="offline" form={form} step="offline" />
+    </>
+  );
+}
+/** "Is this you?": the initials, name and details the widget fills in. */
+export function IdentityCard() {
+  return (
+    <div className="app-identity">
+      <span className="app-avatar is-lg" aria-hidden="true" />
+      <span className="app-identity-copy">
+        <span className="app-identity-name" />
+        <span className="app-identity-meta" />
+        <span className="app-identity-detail" hidden />
+      </span>
+    </div>
+  );
+}
+/** Screens for an unknown or paused account after the identify step. */
+export function IdentifyScreens({
+  form,
+  who,
+}: {
+  form: AppForm;
+  who: AppField;
+}) {
+  const word = valueWord(who);
+  return (
+    <>
+      <StateScreen
+        key="notfound"
+        step="notfound"
+        icon="alertCircle"
+        tone="danger"
+        title={words(
+          form,
+          "notFoundTitle",
+          who.type === "phone"
+            ? "This number isn’t registered"
+            : `We couldn’t find that ${who.name.toLowerCase()}`,
+        )}
+        body={form.copy?.notFoundBody?.trim() ?? ""}
+      >
+        <button className="site-button" type="button" data-action="change">
+          <span>Try another {word}</span>
+        </button>
+      </StateScreen>
+      <StateScreen
+        key="paused"
+        step="paused"
+        icon="xCircle"
+        tone="neutral"
+        title={words(form, "pausedTitle", "This account is paused")}
+        body={form.copy?.pausedBody?.trim() ?? ""}
+      >
+        <button
+          className="site-button is-secondary"
+          type="button"
+          data-action="change"
+        >
+          <span>Try another {word}</span>
+        </button>
+      </StateScreen>
+    </>
+  );
+}
+/** Payment after sending: UPI, online checkout or instructions, and a status check. */
+export function PayStep() {
+  return (
+    <div className="app-step app-pay" data-step="pay" hidden>
+      <h3 className="app-step-title" tabIndex={-1}>
+        Complete your payment
+      </h3>
+      <p className="app-pay-message" />
+      <dl className="app-pay-summary">
+        <div>
+          <dt>Amount</dt>
+          <dd className="app-pay-amount" />
+        </div>
+        <div>
+          <dt>Reference</dt>
+          <dd className="app-pay-reference" />
+        </div>
+      </dl>
+      <div className="app-pay-options">
+        <a className="site-button app-pay-upi" href="#pay" hidden>
+          <span>Pay with UPI</span>
+          <Icon name="arrow" size={16} />
+        </a>
+        <p className="app-pay-desktop" hidden>
+          On a computer? Pay from any UPI app to{" "}
+          <strong className="app-pay-upi-id" />, or open this page on your
+          phone.
+        </p>
+        <a className="site-button app-pay-online" href="#pay" hidden>
+          <span>Pay online</span>
+          <Icon name="arrow" size={16} />
+        </a>
+        <p className="app-pay-instructions" hidden />
+      </div>
+      <p className="app-pay-state" role="status" />
+      <div className="app-actions">
+        <button
+          className="site-button app-pay-check"
+          type="button"
+          data-action="paid"
+        >
+          <span>I’ve paid — check status</span>
+          <Icon name="check" size={16} />
+        </button>
+        <button className="app-link" type="button" data-action="again">
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+/** What a lookup found: the record, its progress, order, totals and history. */
+export function PlainResult({
+  table,
+  form,
+  history,
+  list,
+  byRef,
+  keyField: key,
+}: {
+  table: AppTable;
+  form: AppForm;
+  history: AppTable | undefined;
+  /** The key isn't unique: the visitor's records are listed. */
+  list: boolean;
+  byRef: boolean;
+  keyField: AppField;
+}) {
+  return (
+    <>
+      <div className="app-result-head">
+        <h3
+          className="app-step-title"
+          tabIndex={-1}
+          data-label={
+            list ? `Your ${table.name.toLowerCase()}` : table.singular
+          }
+        >
+          {list ? `Your ${table.name.toLowerCase()}` : table.singular}
+        </h3>
+        <span className="app-pill app-result-status" hidden />
+      </div>
+      <p className="app-result-note" hidden />
+      <ol className="app-steps" aria-label="Progress" hidden />
+      <div className="app-lines-box" hidden>
+        <h4>Your order</h4>
+        <ul className="app-lines" />
+      </div>
+      <dl className="app-record-fields" />
+      <div className="app-totals" />
+      {(history || list) && (
+        <section className="app-history">
+          {history && <h4>{words(form, "historyTitle", history.name)}</h4>}
+          <ol className="app-timeline" />
+          <p className="app-history-empty" hidden>
+            {words(form, "emptyTitle", "Nothing yet.")}
+          </p>
+        </section>
+      )}
+      <div className="app-actions">
+        <button className="app-link" type="button" data-action="refresh">
+          Refresh
+        </button>
+        <button className="app-link" type="button" data-action="change">
+          {byRef
+            ? "Track another"
+            : `Look up another ${key.name.toLowerCase()}`}
+        </button>
+      </div>
+    </>
+  );
+}
 /** The working part of an app section (the heading is the section's). */
 export function AppFormMarkup({
   app,
@@ -692,18 +982,7 @@ export function AppFormMarkup({
   const live = mode === "live" && !!appApi;
   const disabled = !live;
   const p = `app-${prefix}`;
-  const catalogs = new Map<string, ReturnType<Catalog>>();
-  const catalog: Catalog = (collectionId) => {
-    if (!collectionId) return;
-    if (!catalogs.has(collectionId)) {
-      const collection = collections.find((c) => c.id === collectionId);
-      catalogs.set(
-        collectionId,
-        collection && { collection, ...catalogOf(collection) },
-      );
-    }
-    return catalogs.get(collectionId);
-  };
+  const catalog = makeCatalog(collections);
   const rupees = app.currency === "INR";
   const button = (label: string, icon = "arrow", wide = false) => (
     <button
@@ -812,201 +1091,35 @@ export function AppFormMarkup({
       </form>,
     );
     if (live && flow) {
-      const word = valueWord(key);
       steps.push(
-        <div
-          className="app-step app-bare"
-          data-step="loading"
-          key="loading"
-          aria-busy="true"
-          hidden
-        >
-          <p className="app-step-title sr-only" tabIndex={-1}>
-            Loading…
-          </p>
-          <div className="app-card app-skeletons" aria-hidden="true">
-            <span className="app-skeleton is-block" />
-            <span className="app-skeleton-row">
-              <span className="app-skeleton is-avatar" />
-              <span className="app-skeleton-lines">
-                <span className="app-skeleton is-title" />
-                <span className="app-skeleton is-short" />
-              </span>
-            </span>
-          </div>
-          <div className="app-card app-skeletons" aria-hidden="true">
-            <span className="app-skeleton is-title" />
-            <span className="app-skeleton" />
-            <span className="app-skeleton" />
-            <span className="app-skeleton is-short" />
-          </div>
-        </div>,
+        <LookupLoading key="loading" />,
         <div
           className="app-step app-bare"
           data-step="result"
           key="result"
           hidden
         >
-          <div className="app-person">
-            <span className="app-avatar is-xl" aria-hidden="true" />
-            <div className="app-person-copy">
-              <h3 className="app-step-title app-person-name" tabIndex={-1} />
-              <p
-                className="app-person-meta"
-                data-since={`${table.singular.toLowerCase()} since`}
-              />
-            </div>
-          </div>
-          <div className="app-panel" hidden>
-            <p className="app-panel-label" />
-            <p className="app-panel-value" />
-            <p className="app-panel-meta" hidden />
-          </div>
-          <dl className="app-record-fields" />
-          <div className="app-tiles" hidden />
-          {history && (
-            <section className="app-card app-history is-card">
-              <div className="app-card-header">
-                <h4>{words(form, "historyTitle", history.name)}</h4>
-                {links.submit && (
-                  <a className="site-button app-small" href={links.submit.href}>
-                    <Icon name="plus" size={15} />
-                    <span>New</span>
-                  </a>
-                )}
-              </div>
-              <div className="app-card-body">
-                <ol className="app-timeline is-rich" />
-                <div className="app-history-empty app-state" hidden>
-                  <span
-                    className="app-state-icon tone-brand"
-                    aria-hidden="true"
-                  >
-                    <Icon name="receipt" size={26} />
-                  </span>
-                  <div>
-                    <h5 className="app-state-title">
-                      {words(form, "emptyTitle", "Nothing yet")}
-                    </h5>
-                    {form.copy?.emptyBody?.trim() && (
-                      <p className="app-state-text">
-                        {form.copy.emptyBody.trim()}
-                      </p>
-                    )}
-                  </div>
-                  {links.submit && (
-                    <a className="site-button" href={links.submit.href}>
-                      <Icon name="plus" size={16} />
-                      <span>{links.submit.label}</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-          <div className="app-actions app-center">
-            <button className="app-ghost" type="button" data-action="refresh">
-              <StateIcon name="refresh" size={15} />
-              Refresh
-            </button>
-            <button className="app-ghost" type="button" data-action="change">
-              Check a different {word}
-            </button>
-          </div>
-          <div className="app-icons" hidden>
-            {[
-              "check",
-              "x",
-              "clock",
-              "checkCircle",
-              "xCircle",
-              "receipt",
-              "chart",
-            ].map((name) => (
-              <span key={name} data-icon={name}>
-                <StateIcon name={name} size={name.length > 5 ? 18 : 14} />
-              </span>
-            ))}
-          </div>
+          <FlowResult
+            table={table}
+            form={form}
+            history={history || undefined}
+            links={links}
+            word={valueWord(key)}
+          />
         </div>,
-        <StateScreen
-          key="notfound"
-          step="notfound"
-          icon="alertCircle"
-          tone="neutral"
-          title={words(
-            form,
-            "notFoundTitle",
-            key.type === "phone"
-              ? "This number isn’t registered"
-              : `We couldn’t find that ${key.name.toLowerCase()}`,
-          )}
-          body={form.copy?.notFoundBody?.trim() ?? ""}
-        >
-          <button className="site-button" type="button" data-action="change">
-            <span>Try another {word}</span>
-          </button>
-        </StateScreen>,
-        <StateScreen
-          key="paused"
-          step="paused"
-          icon="xCircle"
-          tone="neutral"
-          title={words(form, "pausedTitle", "This account is paused")}
-          body={form.copy?.pausedBody?.trim() ?? ""}
-        >
-          <button
-            className="site-button is-secondary"
-            type="button"
-            data-action="change"
-          >
-            <span>Try another {word}</span>
-          </button>
-        </StateScreen>,
-        <Offline key="offline" form={form} step="offline" />,
+        <LookupScreens key="screens" form={form} keyField={key} />,
       );
     } else if (live)
       steps.push(
         <div className="app-step" data-step="result" key="result" hidden>
-          <div className="app-result-head">
-            <h3
-              className="app-step-title"
-              tabIndex={-1}
-              data-label={
-                list ? `Your ${table.name.toLowerCase()}` : table.singular
-              }
-            >
-              {list ? `Your ${table.name.toLowerCase()}` : table.singular}
-            </h3>
-            <span className="app-pill app-result-status" hidden />
-          </div>
-          <p className="app-result-note" hidden />
-          <ol className="app-steps" aria-label="Progress" hidden />
-          <div className="app-lines-box" hidden>
-            <h4>Your order</h4>
-            <ul className="app-lines" />
-          </div>
-          <dl className="app-record-fields" />
-          <div className="app-totals" />
-          {(history || list) && (
-            <section className="app-history">
-              {history && <h4>{words(form, "historyTitle", history.name)}</h4>}
-              <ol className="app-timeline" />
-              <p className="app-history-empty" hidden>
-                {words(form, "emptyTitle", "Nothing yet.")}
-              </p>
-            </section>
-          )}
-          <div className="app-actions">
-            <button className="app-link" type="button" data-action="refresh">
-              Refresh
-            </button>
-            <button className="app-link" type="button" data-action="change">
-              {byRef
-                ? "Track another"
-                : `Look up another ${key.name.toLowerCase()}`}
-            </button>
-          </div>
+          <PlainResult
+            table={table}
+            form={form}
+            history={history || undefined}
+            list={list}
+            byRef={byRef}
+            keyField={key}
+          />
         </div>,
       );
   } else {
@@ -1147,14 +1260,7 @@ export function AppFormMarkup({
                 "Confirm it’s you before you continue.",
               )}
             />
-            <div className="app-identity">
-              <span className="app-avatar is-lg" aria-hidden="true" />
-              <span className="app-identity-copy">
-                <span className="app-identity-name" />
-                <span className="app-identity-meta" />
-                <span className="app-identity-detail" hidden />
-              </span>
-            </div>
+            <IdentityCard />
             <button
               className="site-button app-block"
               type="button"
@@ -1171,40 +1277,7 @@ export function AppFormMarkup({
               Use a different {word}
             </button>
           </div>,
-          <StateScreen
-            key="notfound"
-            step="notfound"
-            icon="alertCircle"
-            tone="danger"
-            title={words(
-              form,
-              "notFoundTitle",
-              who.type === "phone"
-                ? "This number isn’t registered"
-                : `We couldn’t find that ${who.name.toLowerCase()}`,
-            )}
-            body={form.copy?.notFoundBody?.trim() ?? ""}
-          >
-            <button className="site-button" type="button" data-action="change">
-              <span>Try another {word}</span>
-            </button>
-          </StateScreen>,
-          <StateScreen
-            key="paused"
-            step="paused"
-            icon="xCircle"
-            tone="neutral"
-            title={words(form, "pausedTitle", "This account is paused")}
-            body={form.copy?.pausedBody?.trim() ?? ""}
-          >
-            <button
-              className="site-button is-secondary"
-              type="button"
-              data-action="change"
-            >
-              <span>Try another {word}</span>
-            </button>
-          </StateScreen>,
+          <IdentifyScreens key="screens" form={form} who={who} />,
         );
       else if (live)
         steps.push(
@@ -1356,55 +1429,7 @@ export function AppFormMarkup({
           )}
         </form>,
       );
-    if (live && form.payment)
-      steps.push(
-        <div className="app-step app-pay" data-step="pay" key="pay" hidden>
-          <h3 className="app-step-title" tabIndex={-1}>
-            Complete your payment
-          </h3>
-          <p className="app-pay-message" />
-          <dl className="app-pay-summary">
-            <div>
-              <dt>Amount</dt>
-              <dd className="app-pay-amount" />
-            </div>
-            <div>
-              <dt>Reference</dt>
-              <dd className="app-pay-reference" />
-            </div>
-          </dl>
-          <div className="app-pay-options">
-            <a className="site-button app-pay-upi" href="#pay" hidden>
-              <span>Pay with UPI</span>
-              <Icon name="arrow" size={16} />
-            </a>
-            <p className="app-pay-desktop" hidden>
-              On a computer? Pay from any UPI app to{" "}
-              <strong className="app-pay-upi-id" />, or open this page on your
-              phone.
-            </p>
-            <a className="site-button app-pay-online" href="#pay" hidden>
-              <span>Pay online</span>
-              <Icon name="arrow" size={16} />
-            </a>
-            <p className="app-pay-instructions" hidden />
-          </div>
-          <p className="app-pay-state" role="status" />
-          <div className="app-actions">
-            <button
-              className="site-button app-pay-check"
-              type="button"
-              data-action="paid"
-            >
-              <span>I’ve paid — check status</span>
-              <Icon name="check" size={16} />
-            </button>
-            <button className="app-link" type="button" data-action="again">
-              Done
-            </button>
-          </div>
-        </div>,
-      );
+    if (live && form.payment) steps.push(<PayStep key="pay" />);
     if (live && flow)
       steps.push(
         <div

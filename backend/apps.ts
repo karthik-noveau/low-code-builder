@@ -16,6 +16,7 @@
  *   APPCAP#<table>#<capacity>#<group> places taken in one group of a capacity
  *                                  (`taken`), changed in the record's transaction
  *   APPAVAIL#<ip hash>#<minute>    availability reads per IP per minute
+ *   APPVIEW#<ip hash>#<minute>     public view and metric reads per IP per minute
  * Totals are rolled up on read, never stored, so they can't drift.
  *
  * The owner's routes work on the latest saved draft's app, so customers can
@@ -100,7 +101,18 @@ import type {
   SubmitResult,
   Summary,
   TotalValue,
+  PublicView,
 } from "../src/apps/api-types";
+import { VIEW_READS_PER_MINUTE } from "../src/apps/api-types";
+import {
+  MAX_PAGE_SIZE,
+  PAGE_SIZE,
+  publicMetrics,
+  publicViews,
+  selectRecords,
+  shownRow,
+  viewColumns,
+} from "../src/blocks/data/views";
 
 /** A validation problem that belongs to one input. */
 export class FieldError extends HttpError {
@@ -178,7 +190,12 @@ export interface AppConfig {
 export function appConfig(project: Project): AppConfig | null {
   if (!project.app) return null;
   return {
-    app: { ...project.app, forms: liveAppForms(project) },
+    // Only public views are published; drafts never reach the public API.
+    app: {
+      ...project.app,
+      forms: liveAppForms(project),
+      views: publicViews(project.app),
+    },
     site: { name: project.name.slice(0, 120), accent: project.theme.accent },
     catalogs: appCatalogs(project),
     payments: usablePayments(project.payments),
@@ -233,7 +250,9 @@ async function liveApp(siteId: string) {
     configs.set(cacheKey, value);
   }
   const value = configs.get(cacheKey);
-  return value ? { owner: pointer.owner, ...value } : undefined;
+  return value
+    ? { owner: pointer.owner, releaseId: pointer.releaseId, ...value }
+    : undefined;
 }
 const drafts = new Map<string, { app: App | null; catalogs: Catalogs }>();
 /** The app in the site's latest saved draft, and its collections' items. */
@@ -2376,6 +2395,106 @@ async function notifyOwner(
       },
     ]);
 }
+// ---------------------------------------------------------------- public views
+
+const viewGone = () =>
+  new HttpError(404, "This list isn’t available right now.");
+/**
+ * Reads of a whole table are bounded by MAX_RECORDS but not free, so each
+ * instance keeps a view's chosen rows (at most its limit, already reduced to
+ * allow-listed text) for a few seconds. Keyed by release, so publishing a
+ * changed view never serves the old one.
+ */
+const viewRows = new Map<string, { at: number; value: Promise<unknown> }>();
+const VIEW_TTL = 10_000;
+function cached<T>(cacheKey: string, make: () => Promise<T>): Promise<T> {
+  const hit = viewRows.get(cacheKey);
+  if (hit && Date.now() - hit.at < VIEW_TTL) return hit.value as Promise<T>;
+  if (viewRows.size > 500) viewRows.clear();
+  const value = make();
+  viewRows.set(cacheKey, { at: Date.now(), value });
+  value.catch(() => viewRows.delete(cacheKey));
+  return value;
+}
+const limitViewReads = (siteId: string, ip: string) =>
+  limitPerMinute(
+    siteId,
+    ip,
+    "APPVIEW",
+    VIEW_READS_PER_MINUTE,
+    "Too many requests. Wait a minute and try again.",
+  );
+/**
+ * GET /apps/:site/views/:view — a page of a public view from the live
+ * release's definition: allow-listed fields only, no ids, within its limit.
+ */
+async function publicView(
+  siteId: string,
+  viewId: string,
+  page: number,
+  size: number,
+  ip: string,
+) {
+  insist(
+    idPattern.test(siteId) && /^[\w-]{1,64}$/.test(viewId),
+    404,
+    "This list isn’t available right now.",
+  );
+  const live = await liveApp(siteId);
+  const view = live && publicViews(live.app).find((v) => v.id === viewId);
+  if (!live || !view) throw viewGone();
+  await limitViewReads(siteId, ip);
+  const table = tableOf(live.app, view.table)!;
+  const all = await cached(
+    `${siteId}#${live.releaseId}#view#${view.id}`,
+    async () => {
+      const load = tableCache(siteId);
+      const records = structuredClone(await load(table.id));
+      // Totals are needed only when shown or sorted by.
+      if (
+        table.totals.some(
+          (t) => view.fields.includes(t.id) || view.sort === t.id,
+        )
+      )
+        await withTotals(live.app, table, records, load);
+      // Link titles only for link fields on the allow-list.
+      const shownLinks = table.fields.some(
+        (f) => f.type === "link" && view.fields.includes(f.id),
+      );
+      const links = shownLinks ? await linkTitles(live.app, [table], load) : {};
+      // Every page from one selection, so paging is consistent within the TTL.
+      return {
+        name: view.name,
+        columns: viewColumns(live.app, view),
+        rows: selectRecords(live.app, view, records).map((r) =>
+          shownRow(live.app, view, r, links),
+        ),
+      };
+    },
+  );
+  const per = Math.max(
+    1,
+    Math.min(MAX_PAGE_SIZE, Math.floor(size) || PAGE_SIZE),
+  );
+  const at = Math.max(0, Math.min(100, Math.floor(page) || 0));
+  return {
+    ...all,
+    rows: all.rows.slice(at * per, at * per + per),
+    page: at,
+    more: all.rows.length > (at + 1) * per,
+  } satisfies PublicView;
+}
+/** GET /apps/:site/metrics — public dashboard cards and charts, numbers only. */
+async function metrics(siteId: string, ip: string) {
+  insist(idPattern.test(siteId), 404, "Not found.");
+  const live = await liveApp(siteId);
+  if (!live) throw new HttpError(404, "Not found.");
+  await limitViewReads(siteId, ip);
+  return cached(`${siteId}#${live.releaseId}#metrics`, () =>
+    publicMetrics(live.app, tableCache(siteId)),
+  );
+}
+
 /** /apps/:siteId/… and /push/key: no sign-in, any origin. */
 export async function appsPublic(
   request: ApiRequest,
@@ -2406,6 +2525,24 @@ export async function appsPublic(
       return failure(error, true);
     }
   }
+  const data = /^\/apps\/([^/]+)\/(?:views\/([^/]+)|(metrics))$/.exec(path);
+  if (data)
+    try {
+      insist(method === "GET", 405, "Use GET.");
+      const [, siteId, viewId] = data;
+      const value = viewId
+        ? await publicView(
+            siteId,
+            viewId,
+            Number(query.get("page") ?? 0),
+            Number(query.get("size") ?? PAGE_SIZE),
+            ip,
+          )
+        : await metrics(siteId, ip);
+      return json(value, 200, true, "public, max-age=15");
+    } catch (error) {
+      return failure(error, true);
+    }
   const match =
     /^\/apps\/([^/]+)\/forms\/([^/]+)(?:\/(find|availability))?$/.exec(path);
   if (!match) return undefined;

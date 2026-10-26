@@ -31,6 +31,7 @@ import { undoAction, useAppEdit, useAppIssues } from "./builderHooks";
 import { TableEditor } from "./TableEditor";
 import { FormEditor } from "./FormEditor";
 import { type AppTab, type AppTarget } from "./issues";
+import { sectionAppForms } from "../blocks/project";
 import "./builder.css";
 
 const TABS: { id: AppTab; label: string }[] = [
@@ -72,7 +73,7 @@ function Gallery({
 }) {
   const store = useStudio();
   const hasSections = store.project.pages.some((p) =>
-    p.sections.some((s) => s.type === "app"),
+    p.sections.some((s) => sectionAppForms(s).length > 0),
   );
   const [addPage, setAddPage] = useState(!hasSections);
   const use = (template: AppTemplate) => {
@@ -431,7 +432,7 @@ function SettingsTab({
   const edit = useAppEdit(notify);
   const [confirming, setConfirming] = useState(false);
   const sections = store.project.pages.flatMap((p) =>
-    p.sections.filter((s) => s.type === "app").map(() => p.name),
+    p.sections.filter((s) => sectionAppForms(s).length).map(() => p.name),
   );
   const install = (values: Partial<App["install"]>, key?: string) =>
     edit((a) => ({ ...a, install: { ...a.install, ...values } }), key);

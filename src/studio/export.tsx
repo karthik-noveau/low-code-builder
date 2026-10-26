@@ -20,7 +20,12 @@ import {
   type CollectionItem,
 } from "./collections";
 import websiteCss from "./website.css?raw";
+import blocksCss from "../blocks/blocks.css?raw";
+import looksCss from "../blocks/looks.css?raw";
+import formsCss from "../blocks/forms/forms.css?raw";
+import { appFormsIn } from "../blocks/project";
 import { SITE_SCRIPT, needsSiteScript } from "./siteScript";
+import { needsDataScript } from "../blocks/data/project";
 import type { AppForm } from "../apps/model";
 const escape = (value: string) =>
   value.replace(
@@ -37,19 +42,14 @@ const shareTags = (title: string, description: string) =>
     ? `<meta property="og:description" content="${escape(description)}">`
     : "") +
   '<meta name="twitter:card" content="summary">';
-/** App forms visitors can reach: placed in a visible "app" section. Only these accept visitors once published. */
+/**
+ * App forms visitors can reach: placed in a visible "app" section or app form
+ * block. Only these accept visitors once published.
+ */
 export function liveAppForms(project: Project): AppForm[] {
   const app = project.app;
   if (!app) return [];
-  const placed = new Set(
-    [
-      ...project.header,
-      ...project.pages.flatMap((p) => p.sections),
-      ...project.footer,
-    ]
-      .filter((s) => s.type === "app" && !s.hidden && s.appForm)
-      .map((s) => s.appForm),
-  );
+  const placed = appFormsIn(project);
   return app.forms.filter((f) => placed.has(f.id));
 }
 /** Whether published pages carry the app form script (live app forms or an installable app). */
@@ -64,7 +64,8 @@ export function needsAppScript(project: Project, appApi?: string) {
  */
 function appHead(project: Project, appApi?: string) {
   const app = needsAppScript(project, appApi) ? project.app : undefined;
-  if (!app && !needsSiteScript(project)) return "";
+  if (!app && !needsSiteScript(project) && !needsDataScript(project, appApi))
+    return "";
   const install = !!app?.install.enabled;
   return (
     '<script src="app.js" defer></script>' +
@@ -188,7 +189,7 @@ export async function buildSiteArchive(project: Project) {
   if (needsSiteScript(portable)) zip.file("app.js", SITE_SCRIPT);
   zip.file(
     "styles.css",
-    `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}`,
+    `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}\n${blocksCss}\n${looksCss}\n${formsCss}`,
   );
   zip.file("project.forma.json", JSON.stringify(project, null, 2));
   zip.file(

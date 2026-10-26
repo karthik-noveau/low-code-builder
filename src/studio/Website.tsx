@@ -1,7 +1,5 @@
 import {
   Fragment,
-  useEffect,
-  useRef,
   useState,
   type CSSProperties,
   type MouseEvent,
@@ -23,8 +21,6 @@ import {
 import { responsiveCss } from "./responsive";
 import {
   formatValue,
-  itemHref,
-  itemPath,
   itemTitle,
   type Collection,
   type CollectionItem,
@@ -36,10 +32,21 @@ import {
   type CollectionRequest,
 } from "./requests";
 import { canCollect, usablePayments, type PaymentSettings } from "./payments";
-import { AppFormMarkup } from "../apps/AppSection";
-import { appLinks } from "../apps/links";
+import {
+  AppFormArea,
+  CollectionCards,
+  SiteForm,
+  TabBar,
+  Ambient,
+} from "./siteParts";
 import { appSectionProblem } from "../apps/issues";
+import { sectionCollections, tabBarOf } from "../blocks/project";
+import { Nodes, type RenderContext } from "../blocks/render";
+import { treeCss } from "../blocks/style";
 import "./website.css";
+import "../blocks/blocks.css";
+import "../blocks/looks.css";
+import "../blocks/forms/forms.css";
 
 function resolveHref(
   url: string,
@@ -53,95 +60,6 @@ function resolveHref(
   const page = project.pages.find((p) => `/${p.slug}` === safe);
   return exporting && page ? pageHref(page.slug) : safe;
 }
-function CollectionCards({
-  collection: c,
-  listing,
-  exporting,
-  editing,
-  href,
-}: {
-  collection: Collection;
-  listing: NonNullable<Section["listing"]>;
-  exporting: boolean;
-  editing: boolean;
-  href: (url: string) => string;
-}) {
-  const d = c.display;
-  const items = c.items.filter((i) => !i.hidden);
-  const shown = listing.limit ? items.slice(0, listing.limit) : items;
-  if (!shown.length)
-    return editing ? (
-      <p className="site-listing-empty">
-        {c.name} has no visible items yet. Add some in Data.
-      </p>
-    ) : null;
-  return (
-    <div
-      className={`site-listing site-listing-${listing.style}`}
-      style={{ "--columns": listing.columns } as CSSProperties}
-    >
-      {shown.map((item) => {
-        const v = (field: string) => (field ? (item.values[field] ?? "") : "");
-        const image = safeImage(v(d.image));
-        const content = (
-          <>
-            {image && (
-              <img
-                className="site-listing-image"
-                src={image}
-                alt={itemTitle(c, item)}
-                loading="lazy"
-              />
-            )}
-            <div className="site-listing-copy">
-              <div className="site-listing-title">
-                <h3>{itemTitle(c, item)}</h3>
-                {v(d.price) && (
-                  <span className="site-listing-price">
-                    {formatValue(c, d.price, v(d.price))}
-                  </span>
-                )}
-              </div>
-              {v(d.subtitle) && (
-                <span className="site-listing-meta">
-                  {formatValue(c, d.subtitle, v(d.subtitle))}
-                </span>
-              )}
-              {v(d.summary) && d.summary !== d.subtitle && (
-                <p>{formatValue(c, d.summary, v(d.summary))}</p>
-              )}
-            </div>
-          </>
-        );
-        return c.itemPages ? (
-          <a
-            key={item.id}
-            className="site-listing-card"
-            tabIndex={editing ? -1 : undefined}
-            href={exporting ? itemHref(c, item) : itemPath(c, item)}
-          >
-            {content}
-          </a>
-        ) : (
-          <article key={item.id} className="site-listing-card">
-            {content}
-            {v(d.action) && d.actionLabel && (
-              <a
-                className="site-text-link"
-                tabIndex={editing ? -1 : undefined}
-                href={href(v(d.action))}
-              >
-                {d.actionLabel}
-                <Icon name="arrow" size={14} />
-              </a>
-            )}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
 /** The body of an item's own page: everything known about it, plus its call to action. */
 /**
  * The visitor action form. Published sites post straight to the Forma inbox
@@ -313,7 +231,7 @@ export function ItemDetail({
   // "Back" goes to the page that lists this collection, or home.
   const listedOn =
     project.pages.find((p) =>
-      p.sections.some((x) => !x.hidden && x.listing?.collection === c.id),
+      p.sections.some((x) => !x.hidden && sectionCollections(x).includes(c.id)),
     ) ?? project.pages[0];
   return (
     <section className={`site-item ${image ? "" : "site-item-no-image"}`}>
@@ -553,132 +471,6 @@ function BrandMark({ logo }: { logo?: string }) {
   return src ? <img className="site-brand-mark" src={src} alt="" /> : null;
 }
 
-/**
- * The moving hero background: two tilted orbit sets with travelling lights,
- * two soft blooms, a dot texture and six motes. CSS does all the motion; this
- * (and the published page's app.js) only pauses it while it can't be seen.
- */
-function Ambient() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let visible = true;
-    const update = () => {
-      el.dataset.active = String(visible && !document.hidden);
-    };
-    const observer =
-      typeof IntersectionObserver === "undefined"
-        ? undefined
-        : new IntersectionObserver(([entry]) => {
-            visible = entry?.isIntersecting ?? false;
-            update();
-          });
-    observer?.observe(el);
-    update();
-    document.addEventListener("visibilitychange", update);
-    return () => {
-      observer?.disconnect();
-      document.removeEventListener("visibilitychange", update);
-    };
-  }, []);
-  const orbit = (side: "right" | "left") => (
-    <div className={`site-ambient-orbit site-ambient-${side}`}>
-      <div className="site-ambient-tilt">
-        {[0, 1, 2].map((n) => (
-          <span className="site-ambient-ring" key={n}>
-            <span className="site-ambient-runner" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-  return (
-    <div ref={ref} className="site-ambient" aria-hidden="true" data-ambient="">
-      <div className="site-ambient-light">
-        <span className="site-ambient-bloom" />
-        <span className="site-ambient-bloom site-ambient-bloom-2" />
-      </div>
-      <span className="site-ambient-dots" />
-      <div className="site-ambient-orbits">
-        {orbit("right")}
-        {orbit("left")}
-      </div>
-      <div className="site-ambient-motes">
-        {[0, 1, 2, 3, 4, 5].map((n) => (
-          <span className="site-ambient-mote" key={n} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Icons for the phone tab bar when a tab doesn't name one. */
-function tabIcon(label: string, url: string, project: Project) {
-  if (url === `/${project.pages[0]?.slug ?? ""}`) return "home";
-  if (/reward|wallet|point|balance/i.test(label)) return "wallet";
-  if (/add|purchase|order|receipt|bill|submit/i.test(label)) return "receipt";
-  if (/contact|mail|message/i.test(label)) return "mail";
-  if (/shop|product|store|menu/i.test(label)) return "store";
-  return "pages";
-}
-
-/**
- * The phone's bottom navigation for a "brand" header (as the reference's
- * TabBar): the header's items when it has some (short label, link, icon),
- * otherwise every page. Hidden above phone width, where the header links show.
- */
-function TabBar({
-  header,
-  project,
-  page,
-  href,
-  editing,
-}: {
-  header: Section;
-  project: Project;
-  page?: Page;
-  href: (url: string) => string;
-  editing: boolean;
-}) {
-  const tabs = header.items.length
-    ? header.items.map((i) => ({
-        id: i.id,
-        label: i.title,
-        url: i.url,
-        icon: i.icon,
-      }))
-    : project.pages.map((p) => ({
-        id: p.id,
-        label: p.name,
-        url: `/${p.slug}`,
-        icon: undefined,
-      }));
-  return (
-    <nav className="site-tabbar" aria-label="Phone navigation">
-      {tabs.map((t) => (
-        <a
-          key={t.id}
-          className="site-tab"
-          href={href(t.url)}
-          tabIndex={editing ? -1 : undefined}
-          aria-current={
-            page && t.url.trim() === `/${page.slug}` ? "page" : undefined
-          }
-        >
-          <span className="site-tab-icon">
-            <Icon
-              name={`rw:${t.icon ?? tabIcon(t.label, t.url.trim(), project)}`}
-              size={22}
-            />
-          </span>
-          <span className="site-tab-label">{t.label}</span>
-        </a>
-      ))}
-    </nav>
-  );
-}
-
 export function SectionContent({
   section: s,
   project,
@@ -697,10 +489,13 @@ export function SectionContent({
   currentPage,
   dark,
   onToggleTheme,
+  blockEdit,
 }: {
   section: Section;
   project: Project;
   exporting?: boolean;
+  /** Editor only: selecting and typing into a "blocks" section's blocks. */
+  blockEdit?: RenderContext["edit"];
   /** Where links to OWNER_LINK go (the owner's app for this site). */
   ownerHref?: string;
   /** The page being shown, marked as current in a "brand" header. */
@@ -1172,78 +967,23 @@ export function SectionContent({
           </section>
         );
       case "contact":
-      case "newsletter": {
-        const custom = /^https?:\/\//i.test(s.formAction);
-        const endpoint = custom ? s.formAction : inbox;
-        const connected = !!endpoint;
+      case "newsletter":
         return (
           <section
             className={`site-form-section ${s.type === "contact" ? "site-contact" : ""}`}
             style={style}
           >
             <div>{heading}</div>
-            <form
-              inert={!!onEdit || undefined}
-              action={endpoint}
-              method="POST"
-              onSubmit={(e) => {
-                if (!connected) e.preventDefault();
-              }}
-            >
-              {!custom && inbox && (
-                <>
-                  <input type="hidden" name="form" value={s.type} />
-                  <label className="site-request-trap" aria-hidden="true">
-                    Leave empty
-                    <input name="website" tabIndex={-1} autoComplete="off" />
-                  </label>
-                </>
-              )}
-              {s.type === "contact" && (
-                <label>
-                  Your name
-                  <input name="name" placeholder="Alex Smith" required />
-                </label>
-              )}
-              <label>
-                {s.type === "contact" ? (
-                  "Email address"
-                ) : (
-                  <span className="sr-only">Email address</span>
-                )}
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Your email address"
-                  required
-                />
-              </label>
-              {s.type === "contact" && (
-                <label>
-                  What’s on your mind?
-                  <textarea
-                    name="message"
-                    rows={4}
-                    placeholder="Tell us a little about it…"
-                    required
-                  />
-                </label>
-              )}
-              <button
-                className="site-button"
-                type="submit"
-                disabled={!connected && exporting}
-              >
-                {s.buttonLabel}
-                <Icon name="arrow" size={16} />
-              </button>
-              {!connected && exporting && (
-                <small>Form submissions haven’t been connected yet.</small>
-              )}
-            </form>
+            <SiteForm
+              kind={s.type}
+              buttonLabel={s.buttonLabel}
+              formAction={s.formAction}
+              inbox={inbox}
+              editing={!!onEdit}
+              exporting={exporting}
+            />
           </section>
         );
-      }
       case "collection": {
         const c = project.collections?.find(
           (x) => x.id === s.listing?.collection,
@@ -1274,64 +1014,53 @@ export function SectionContent({
         );
       }
       case "app": {
-        const form = project.app?.forms.find((f) => f.id === s.appForm);
-        const problem = appSectionProblem(project.app, s.appForm);
+        const area = (
+          <AppFormArea
+            project={project}
+            formId={s.appForm}
+            prefix={s.id}
+            pageName={
+              project.pages.find((p) => p.sections.some((x) => x.id === s.id))
+                ?.name
+            }
+            eyebrow={s.eyebrow && text("eyebrow", "div", "site-eyebrow")}
+            main={main}
+            exporting={exporting}
+            appApi={appApi}
+            href={href}
+          />
+        );
         // Published pages show nothing for a section whose form is gone.
-        if ((problem || !form || !project.app) && exporting) return null;
+        if (
+          exporting &&
+          (appSectionProblem(project.app, s.appForm) ||
+            !project.app?.forms.some((f) => f.id === s.appForm))
+        )
+          return null;
         return (
           <section className="site-app-section" style={style}>
-            {form && (form.steps || form.highlight) ? (
-              // Step-by-step forms and reward lookups sit under a breadcrumb;
-              // their cards carry the visible headings.
-              <div className="site-app-heading site-app-crumbs">
-                <nav aria-label="Breadcrumb" className="site-breadcrumb">
-                  <a href={href("/")}>{project.pages[0]?.name || "Home"}</a>
-                  <span aria-hidden="true">/</span>
-                  <span aria-current="page">
-                    {project.pages.find((p) =>
-                      p.sections.some((x) => x.id === s.id),
-                    )?.name ?? form.title}
-                  </span>
-                </nav>
-                {main ? (
-                  <h1 className="sr-only">{form.title}</h1>
-                ) : (
-                  <h2 className="sr-only">{form.title}</h2>
-                )}
-              </div>
-            ) : (
-              <div className="site-app-heading">
-                {s.eyebrow && text("eyebrow", "div", "site-eyebrow")}
-                {form?.title &&
-                  (main ? (
-                    <h1 className="site-title-main">{form.title}</h1>
-                  ) : (
-                    <h2>{form.title}</h2>
-                  ))}
-                {form?.intro && (
-                  <p className="site-description">{form.intro}</p>
-                )}
-              </div>
-            )}
-            {form && project.app ? (
-              <AppFormMarkup
-                app={project.app}
-                form={form}
-                appApi={appApi}
-                prefix={s.id}
-                collections={project.collections}
-                mode={exporting ? (appApi ? "live" : "export") : "editor"}
-                links={appLinks(project.app, project.pages, form, href)}
-              />
-            ) : (
-              <p className="site-listing-empty site-app-empty">
-                <Icon name="activity" size={18} />
-                {problem}
-              </p>
-            )}
+            {area}
           </section>
         );
       }
+      case "blocks":
+        return s.root ? (
+          <Nodes
+            nodes={[s.root]}
+            ctx={{
+              project,
+              exporting,
+              href,
+              currentPage,
+              page: project.pages.find((p) => p.id === currentPage),
+              inbox,
+              appApi,
+              dark,
+              onToggleTheme,
+              edit: blockEdit,
+            }}
+          />
+        ) : null;
       case "custom":
         return (
           <section className="site-custom" style={style}>
@@ -1447,7 +1176,9 @@ export function Website({
   onDraft,
   onNavigate,
   onAdd,
+  emptyPage,
   onEdit,
+  onEditNode,
   exporting = false,
   preview = false,
   item,
@@ -1479,7 +1210,16 @@ export function Website({
   onDraft?: (text: string) => void;
   onNavigate?: (id: string) => void;
   onAdd?: () => void;
+  /** The editor's blank-page panel, shown instead of the plain "add a section". */
+  emptyPage?: ReactNode;
   onEdit?: (id: string, values: Partial<Section>) => void;
+  /** Typing into a block: sets one of its props. */
+  onEditNode?: (
+    section: string,
+    node: string,
+    key: string,
+    value: string,
+  ) => void;
   exporting?: boolean;
   preview?: boolean;
 }) {
@@ -1506,9 +1246,12 @@ export function Website({
           : "light");
       return now === "dark" ? "light" : "dark";
     });
-  const brandHeader = project.header.find(
-    (s) => !s.hidden && s.type === "header" && s.variant === "brand",
+  const blockCss = treeCss(
+    sections.flatMap((s) => (s.type === "blocks" && s.root ? [s.root] : [])),
+    !preview,
   );
+  // A "brand" header, or a tab bar block in the header, adds the phone's bottom bar.
+  const tabs = tabBarOf(project);
   const clickLink = (event: MouseEvent) => {
     if (!preview || exporting) return;
     const a = (event.target as HTMLElement).closest("a");
@@ -1554,10 +1297,14 @@ export function Website({
             : (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                const block = (e.target as HTMLElement).closest<HTMLElement>(
-                  "[data-block-id]",
-                )?.dataset.blockId;
-                onSelect?.(s.id, undefined, block);
+                const target = (e.target as HTMLElement).closest<HTMLElement>(
+                  "[data-node-id],[data-block-id]",
+                );
+                onSelect?.(
+                  s.id,
+                  undefined,
+                  target?.dataset.nodeId ?? target?.dataset.blockId,
+                );
               }
         }
         onKeyDown={
@@ -1599,6 +1346,25 @@ export function Website({
             currentPage={item ? undefined : page.id}
             dark={mode === undefined ? undefined : mode === "dark"}
             onToggleTheme={preview && !exporting ? toggleTheme : undefined}
+            blockEdit={
+              !preview && onEditNode && s.type === "blocks"
+                ? {
+                    selected:
+                      selected === s.id ? (selectedBlock ?? null) : null,
+                    typing:
+                      editingText?.section === s.id
+                        ? (editingText.node ?? null)
+                        : null,
+                    onStartTyping: (node) =>
+                      onStartEdit?.({ section: s.id, field: "body", node }),
+                    onFinishTyping: () => onFinishEdit?.(),
+                    onCommit: (node, key, value) =>
+                      onEditNode(s.id, node, key, value),
+                    onDraft,
+                    onSelect: (node) => onSelect?.(s.id, undefined, node),
+                  }
+                : undefined
+            }
           />
         </div>
         {!preview && (
@@ -1638,9 +1404,26 @@ export function Website({
       }
       onClick={clickLink}
     >
+      {blockCss && <style dangerouslySetInnerHTML={{ __html: blockCss }} />}
       {sections
-        .filter((s) => !s.hidden && (!item || project.header.includes(s)))
+        .filter(
+          (s) =>
+            !s.hidden &&
+            (!item || project.header.includes(s)) &&
+            !project.footer.includes(s),
+        )
         .map(renderSection)}
+      {!item &&
+        !page.sections.some((s) => !s.hidden) &&
+        !preview &&
+        (emptyPage ?? (
+          <button className="site-empty" onClick={onAdd}>
+            <Icon name="plus" size={28} />
+            <strong>Your next great idea starts here.</strong>
+            <span>Add a section to start building this page.</span>
+          </button>
+        ))}
+      {!item && project.footer.filter((s) => !s.hidden).map(renderSection)}
       {item && (
         <div className="site-section">
           <div className="site-section-content">
@@ -1655,21 +1438,14 @@ export function Website({
         </div>
       )}
       {item && project.footer.filter((s) => !s.hidden).map(renderSection)}
-      {brandHeader && (
+      {tabs && (
         <TabBar
-          header={brandHeader}
+          tabs={tabs}
           project={project}
           page={item ? undefined : page}
           href={(url) => resolveHref(url, project, exporting, ownerHref)}
           editing={!preview}
         />
-      )}
-      {!item && !page.sections.some((s) => !s.hidden) && !preview && (
-        <button className="site-empty" onClick={onAdd}>
-          <Icon name="plus" size={28} />
-          <strong>Your next great idea starts here.</strong>
-          <span>Add a section to start building this page.</span>
-        </button>
       )}
     </div>
   );

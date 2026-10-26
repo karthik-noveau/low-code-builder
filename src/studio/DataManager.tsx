@@ -7,6 +7,7 @@ import { REQUEST_KINDS, type RequestKind } from "./requests";
 import { canCollect, usablePayments } from "./payments";
 import { PaymentsPanel } from "./PaymentsPanel";
 import { collectionUsedBy } from "../apps/edit";
+import { sectionCollections } from "../blocks/project";
 import {
   blueprints,
   createField,
@@ -502,7 +503,7 @@ function SettingsTab({
     .map((x) => x.slug);
   const appUses = collectionUsedBy(store.project.app, c.id);
   const used = store.project.pages.some((p) =>
-    p.sections.some((s) => s.listing?.collection === c.id),
+    p.sections.some((s) => sectionCollections(s).includes(c.id)),
   );
   return (
     <div className="data-settings">

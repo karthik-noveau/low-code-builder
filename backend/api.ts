@@ -62,7 +62,8 @@ export const jsonResponse = (value: unknown, status = 200): ApiResponse => ({
 export const isPublicAppPath = (path: string) =>
   path === "/push/key" ||
   /^\/apps\/[^/]+\/forms\/[^/]+(?:\/find|\/availability)?$/.test(path) ||
-  /^\/apps\/[^/]+\/records\/[^/]+\/(?:pay|checkout)$/.test(path);
+  /^\/apps\/[^/]+\/records\/[^/]+\/(?:pay|checkout)$/.test(path) ||
+  /^\/apps\/[^/]+\/(?:views\/[^/]+|metrics)$/.test(path);
 export async function api(request: ApiRequest): Promise<ApiResponse> {
   try {
     const { method, path, body, headers } = request;

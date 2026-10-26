@@ -9,6 +9,8 @@ import {
 } from "../src/studio/export";
 import { APP_SCRIPT } from "../src/apps/widget";
 import { SITE_SCRIPT, needsSiteScript } from "../src/studio/siteScript";
+import { DATA_SCRIPT } from "../src/blocks/data/runtime";
+import { needsDataScript } from "../src/blocks/data/project";
 import {
   collectionImages,
   itemHref,
@@ -23,7 +25,14 @@ import {
   type Project,
 } from "../src/studio/model";
 import websiteCss from "../src/studio/website.css?raw";
+import blocksCss from "../src/blocks/blocks.css?raw";
+import looksCss from "../src/blocks/looks.css?raw";
+import formsCss from "../src/blocks/forms/forms.css?raw";
 import { digest } from "./project";
+import { walk, type Node } from "../src/blocks/model";
+import { createNode } from "../src/blocks/registry";
+import { productCards } from "../src/blocks/legacy";
+import { placedNodes } from "../src/blocks/project";
 import { config, insist } from "./config";
 import type { CommerceBinding } from "./commerce-publishing";
 
@@ -63,6 +72,25 @@ const starterNames = new Set([
   "vegetables.jpg",
   "wires.jpg",
 ]);
+/**
+ * A blocks header's button becomes "Shop" (the store's address): its first
+ * button, shown even if hidden, or a new one beside the menu.
+ */
+function shopButton(root: Node, url: string) {
+  const nodes = [...walk([root])];
+  const button = nodes.find((n) => n.type === "button");
+  if (button) {
+    button.props = { ...button.props, label: "Shop", url };
+    delete button.hidden;
+    return;
+  }
+  const parent =
+    nodes.find((n) => n.children?.some((c) => c.type === "menu")) ?? root;
+  parent.children = [
+    ...(parent.children ?? []),
+    createNode("button", { label: "Shop", url, size: "sm" }),
+  ];
+}
 export async function compileSite(
   input: Project,
   releaseBase: string,
@@ -84,12 +112,17 @@ export async function compileSite(
       if (section.type === "header") {
         section.buttonLabel = "Shop";
         section.buttonUrl = commerce.shopUrl;
-      }
+      } else if (section.root?.props.tag === "header")
+        shopButton(section.root, commerce.shopUrl);
   if (commerce?.products)
     for (const page of project.pages)
       for (const section of page.sections)
         if (section.type === "products")
           section.items = structuredClone(commerce.products);
+        else
+          for (const node of walk(section.root ? [section.root] : []))
+            if (node.type === "products")
+              node.children = productCards(commerce.products, node.id);
   const artifacts: Artifact[] = [];
   let totalBytes = 0;
   const add = (artifact: Artifact) => {
@@ -224,7 +257,11 @@ export async function compileSite(
         (s) =>
           (s.type === "contact" || s.type === "newsletter") &&
           !/^https?:\/\//i.test(s.formAction),
-      )) &&
+      ) ||
+      [
+        ...placedNodes(sections, "contactForm"),
+        ...placedNodes(sections, "newsletter"),
+      ].some((n) => !/^https?:\/\//i.test(String(n.props.action ?? "")))) &&
     !project.pages.some((p) => p.slug === "thanks")
   )
     add({
@@ -241,7 +278,7 @@ export async function compileSite(
     name: "styles.css",
     type: "text/css; charset=utf-8",
     body: Buffer.from(
-      `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}`,
+      `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}\n${blocksCss}\n${looksCss}\n${formsCss}`,
     ),
   });
   const files = appApi ? appFiles(project, releaseBase) : [];
@@ -255,6 +292,18 @@ export async function compileSite(
         name: "app.js",
         type: "text/javascript; charset=utf-8",
         body: Buffer.from(SITE_SCRIPT),
+      });
+  }
+  // App data blocks (lists, tables, figures) are filled by the data script.
+  if (needsDataScript(project, appApi)) {
+    const script = files.find((f) => f.name === "app.js");
+    if (script)
+      script.body = Buffer.concat([script.body, Buffer.from(DATA_SCRIPT)]);
+    else
+      files.unshift({
+        name: "app.js",
+        type: "text/javascript; charset=utf-8",
+        body: Buffer.from(DATA_SCRIPT),
       });
   }
   for (const file of files) add(file);

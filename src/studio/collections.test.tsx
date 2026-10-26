@@ -156,7 +156,7 @@ describe("publishing collections", () => {
     expect(item).toContain("<title>Fiddle leaf fig — ");
     expect(item).toContain("$48");
     expect(item).toContain("Buy now");
-    expect(item).toContain('class="site-header"');
+    expect(item).toContain("lk lk-header");
   });
   it("exports item pages and bundles their images", async () => {
     const project = withListing();

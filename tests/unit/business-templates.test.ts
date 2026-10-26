@@ -18,6 +18,9 @@ import { renderItemPage, renderPage } from "../../src/studio/export";
 import { publishedItems } from "../../src/studio/collections";
 import { compileSite } from "../../backend/compiler";
 import { collections as gallery } from "../../src/brand/content";
+import { shownNodes } from "../../src/blocks/project";
+import { lines, pairs } from "../../src/blocks/text";
+import type { Node, NodeType } from "../../src/blocks/model";
 
 const business = templateOptions.filter((t) => t.id !== "blank");
 const sections = (p: Project) => [
@@ -25,18 +28,28 @@ const sections = (p: Project) => [
   ...p.pages.flatMap((pg) => pg.sections),
   ...p.footer,
 ];
+/** The blocks visitors see in a section. */
+const shown = (s: Section): Node[] => (s.hidden ? [] : [...shownNodes(s.root)]);
+/** Blocks of `type` visitors see in these sections. */
+const blocksOf = (list: Section[], type: NodeType) =>
+  list.flatMap(shown).filter((n) => n.type === type);
 /** Every link a visitor can follow, with where it was found. */
 function links(p: Project) {
   const found: [string, string][] = [];
   for (const s of sections(p).filter((s) => !s.hidden)) {
-    // Contact and email signup buttons send their form; they aren't links.
-    if (s.type === "contact" || s.type === "newsletter" || s.type === "app")
-      continue;
-    if (s.buttonLabel || s.type === "announcement")
-      found.push([s.buttonUrl, `${s.type} “${s.title}”`]);
-    if (s.secondaryLabel)
-      found.push([s.secondaryUrl ?? "", `${s.type} “${s.secondaryLabel}”`]);
-    for (const i of s.items) if (i.url) found.push([i.url, `item ${i.title}`]);
+    // Templates are built from blocks; classic sections would be missed.
+    expect(s.type).toBe("blocks");
+    for (const n of shown(s)) {
+      const where = `${s.name} ${n.type} ${String(n.props.label ?? n.props.text ?? "")}`;
+      if (n.type === "button") found.push([String(n.props.url), where]);
+      if ((n.type === "box" || n.type === "image") && n.props.link)
+        found.push([String(n.props.link), where]);
+      if (n.type === "menu" && n.props.source === "custom")
+        for (const [, url] of pairs(n.props.links)) found.push([url, where]);
+      if (n.type === "tabBar")
+        for (const line of lines(n.props.tabs))
+          found.push([line.split("|")[1]?.trim() ?? "", where]);
+    }
     for (const b of flattenBlocks(s.blocks))
       if (b.type === "button") found.push([b.url, `block ${b.text}`]);
   }
@@ -66,6 +79,7 @@ const visibleText = (p: Project) =>
         s.buttonLabel,
         s.items,
         s.blocks,
+        shown(s).map((n) => n.props),
       ]),
     p.collections,
     p.app?.forms,
@@ -96,12 +110,11 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
 
     it("names the business everywhere", () => {
       expect(p.name).toBe("Riverside Co");
-      const header = p.header.find((s) => s.type === "header")!;
+      const header = p.header.find((s) => s.root?.props.tag === "header")!;
+      const logo = shown(header).find((n) => n.type === "logo")!;
       // A two-line wordmark puts the name's first word over the rest.
       expect(
-        header.variant === "brand"
-          ? `${header.title} ${header.eyebrow}`
-          : header.title,
+        [logo.props.text, logo.props.tagline].filter(Boolean).join(" "),
       ).toBe("Riverside Co");
       expect(p.pages.every((pg) => pg.title.endsWith("— Riverside Co"))).toBe(
         true,
@@ -116,21 +129,26 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
     it("puts every app form on a page in the navigation", () => {
       for (const form of p.app?.forms ?? []) {
         const on = p.pages.filter((pg) =>
-          pg.sections.some(
-            (s) => s.type === "app" && s.appForm === form.id && !s.hidden,
+          blocksOf(pg.sections, "appForm").some(
+            (n) => n.props.form === form.id,
           ),
         );
         // Every page is in the header navigation, so a form on a page is reachable.
         expect([form.name, on.length > 0]).toEqual([form.name, true]);
       }
-      for (const s of sections(p).filter((s) => s.type === "app"))
-        expect(p.app?.forms.some((f) => f.id === s.appForm)).toBe(true);
-      for (const s of sections(p).filter((s) => s.type === "collection"))
-        expect(collectionIds).toContain(s.listing?.collection);
+      for (const n of blocksOf(sections(p), "appForm"))
+        expect(p.app?.forms.some((f) => f.id === n.props.form)).toBe(true);
+      for (const n of blocksOf(sections(p), "collectionList"))
+        expect(collectionIds).toContain(n.props.collection);
       expect(p.pages.length).toBeLessThanOrEqual(7);
-      const hero = p.pages[0].sections.find((s) => s.type === "hero")!;
-      expect(hero.buttonLabel).toBeTruthy();
-      expect(resolves(p, hero.buttonUrl)).toBe(true);
+      const hero = p.pages[0].sections.find((s) =>
+        String(s.root?.props.look).startsWith("hero"),
+      )!;
+      const cta = shown(hero).find(
+        (n) => n.type === "button" && n.props.variant === "primary",
+      )!;
+      expect(cta.props.label).toBeTruthy();
+      expect(resolves(p, String(cta.props.url))).toBe(true);
     });
 
     it("orders and books from collections with real, priced items", () => {
@@ -187,9 +205,9 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
       // Dhanlaxmi reproduces an existing app page for page, and it has neither.
       if (id !== "dhanlaxmi") {
         expect(
-          p.pages.some((pg) => pg.sections.some((s) => s.type === "contact")),
+          p.pages.some((pg) => blocksOf(pg.sections, "contactForm").length),
         ).toBe(true);
-        expect(sections(p).some((s) => s.type === "faq")).toBe(true);
+        expect(blocksOf(sections(p), "accordion").length).toBeGreaterThan(0);
       }
       expect(p.footer.length).toBe(1);
     });

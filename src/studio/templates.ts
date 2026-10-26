@@ -7,6 +7,7 @@
  * run by Forma Store; its products are seeded after the site is saved.
  */
 import { type Project, type TemplateId } from "./model";
+import { upgradeProject } from "../blocks/legacy";
 import { createSection, page, type SiteParts } from "./sites/kit";
 import {
   botanical,
@@ -167,6 +168,14 @@ const builders: Record<
  * footers, page titles and the installed app; the template's own name otherwise.
  */
 export function createProject(
+  template: TemplateId = "botanical",
+  siteName?: string,
+): Project {
+  // Templates are written with the classic section makers and built as blocks.
+  return upgradeProject(classicProject(template, siteName));
+}
+/** A template's project with classic sections (createProject converts them). */
+export function classicProject(
   template: TemplateId = "botanical",
   siteName?: string,
 ): Project {

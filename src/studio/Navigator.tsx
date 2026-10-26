@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useStudio } from "./store";
 import { Icon } from "./Icon";
 import { IconButton } from "./ui";
@@ -6,6 +6,10 @@ import { ActionMenu } from "./ActionMenu";
 import { sectionMeta, type Section } from "./model";
 
 export function Navigator({
+  view = "pages",
+  onView,
+  layers,
+  onAddBlock,
   onNavigate,
   hovered,
   onHover,
@@ -26,6 +30,12 @@ export function Navigator({
   onClose,
   notify,
 }: {
+  /** The site map (pages and sections) or the open page's layers. */
+  view?: "pages" | "layers";
+  onView?: (view: "pages" | "layers") => void;
+  layers?: ReactNode;
+  /** Opens the Add panel on its Blocks tab. */
+  onAddBlock?: () => void;
   onNavigate: (id: string, keepNavigator?: boolean) => void;
   hovered?: string | null;
   onHover?: (id: string | null) => void;
@@ -182,13 +192,48 @@ export function Navigator({
   return (
     <aside className="site-navigator" aria-label="Website navigator">
       <div className="navigator-title">
-        <div>
-          <strong>Website</strong>
-          <span className="navigator-count">{project.pages.length} pages</span>
-        </div>
+        {onView ? (
+          <div className="navigator-views" role="tablist" aria-label="Show">
+            {(["pages", "layers"] as const).map((v) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                className={view === v ? "selected" : ""}
+                onClick={() => onView(v)}
+              >
+                <Icon name={v === "pages" ? "pages" : "layers"} size={14} />
+                {v === "pages" ? "Pages" : "Layers"}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <strong>Website</strong>
+            <span className="navigator-count">
+              {project.pages.length} pages
+            </span>
+          </div>
+        )}
         <IconButton icon="panel" label="Hide site map" onClick={onClose} />
       </div>
-      <div className="navigator-search">
+      {view === "layers" && (
+        <>
+          <div className="navigator-insert-row">
+            <button className="navigator-insert" onClick={onAdd}>
+              <Icon name="plus" size={16} />
+              <span>Section</span>
+            </button>
+            <button className="navigator-insert" onClick={onAddBlock ?? onAdd}>
+              <Icon name="plus" size={16} />
+              <span>Block</span>
+            </button>
+          </div>
+          <div className="navigator-scroll">{layers}</div>
+        </>
+      )}
+      {/* The site map stays mounted under Layers (its search and folds keep). */}
+      <div className="navigator-search" hidden={view === "layers"}>
         <Icon name="search" size={15} />
         <input
           aria-label="Find pages or sections"
@@ -208,11 +253,12 @@ export function Navigator({
         className="navigator-insert"
         onClick={onAdd}
         aria-label="Insert a section"
+        hidden={view === "layers"}
       >
         <Icon name="plus" size={17} />
         <span>Add section</span>
       </button>
-      <div className="navigator-scroll">
+      <div className="navigator-scroll" hidden={view === "layers"}>
         <div className="navigator-group-label">
           <span>{search ? "Search results" : "Pages"}</span>
           <button
@@ -348,7 +394,7 @@ export function Navigator({
           </div>
         )}
       </div>
-      <div className="navigator-tools">
+      <div className="navigator-tools" hidden={view === "layers"}>
         <button
           className="navigator-design-kit"
           onClick={onStyles}

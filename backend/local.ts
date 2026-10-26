@@ -166,7 +166,8 @@ const server = createServer(async (req, res) => {
           ? attempt
           : { start: Date.now(), count: 0 };
       rate.set(ip, state);
-      if (++state.count > 30)
+      // Room for the full integration suite in one minute.
+      if (++state.count > 60)
         throw new HttpError(
           429,
           "Too many sign-in attempts. Try again in a minute.",
@@ -333,7 +334,7 @@ const sitesServer = createServer(async (req, res) => {
       "referrer-policy": "strict-origin-when-cross-origin",
       // Scripts are only Forma's own app.js and sw.js; they talk to the API and,
       // for the offline cache, the site itself.
-      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${config.apiOrigin}; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; base-uri 'self'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${config.apiOrigin}; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'`,
     });
     res.end(req.method === "HEAD" ? undefined : bytes);
   } catch {

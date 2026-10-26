@@ -163,6 +163,11 @@ describe("business templates work end to end", { concurrent: false }, () => {
         await fetch(`${sites}/sites/${id}/index.html`)
       ).text();
       expect(page).toContain("app.js");
+      // Images the template uses are copied into the release and shown from there.
+      if (JSON.stringify(project.pages[0]).includes("/images/"))
+        expect(page).toMatch(
+          new RegExp(`src="/sites/${id}/releases/[\\w-]+/images/[\\da-f]+\\.`),
+        );
       // People who identify themselves (customers, members, students) are added first.
       const people = new Map<string, string>();
       for (const form of app.forms)

@@ -1,0 +1,526 @@
+/* Forms built from blocks (src/blocks/forms). The form block reuses the
+   classic App form's markup for what the widget fills in (results, payment,
+   unknown-account screens), so it carries `.app-form`; its own frame is
+   reset here and drawn by the owner's styles instead. Inputs follow the
+   theme's colours, so they work on light, dark and tinted sections. */
+.website {
+  --blk-danger: #c4320a;
+  --blk-field-bg: var(--blk-raised);
+  --blk-field-line: color-mix(in srgb, var(--site-color) 24%, transparent);
+  --blk-field-hover: color-mix(in srgb, var(--site-color) 42%, transparent);
+  --blk-field-radius: min(var(--site-radius, 10px), 12px);
+  --blk-ring: color-mix(in srgb, var(--site-accent) 28%, transparent);
+}
+.website.site-themes[data-theme="dark"],
+.website .blk-section.tone-dark,
+.website .blk-box.v-dark {
+  --blk-danger: #ff8f7a;
+  --blk-ring: color-mix(in srgb, var(--site-accent) 45%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  .website-preview.site-themes:not([data-theme="light"]) {
+    --blk-danger: #ff8f7a;
+    --blk-ring: color-mix(in srgb, var(--site-accent) 45%, transparent);
+  }
+}
+.website :is(.blk-section.tone-accent, .blk-box.v-accent) {
+  --blk-danger: var(--site-accent-text, #fff);
+  --blk-ring: color-mix(
+    in srgb,
+    var(--site-accent-text, #fff) 45%,
+    transparent
+  );
+}
+
+/* The form and its steps. The classic step indicator and screens read
+   these (step-by-step forms set their own). */
+.website :where(.blk-form) {
+  --app-ok: #0f7a58;
+  --app-line: var(--blk-line);
+  --app-muted: var(--blk-muted);
+  --app-subtle: var(--blk-muted);
+}
+/* The form and its steps */
+.website .blk-form.app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: inherit;
+}
+:where(.blk-inner, .blk-column, .blk-box) > .blk-form {
+  margin-inline: var(--blk-margin, 0);
+}
+/* Steps, pages and the success and failure blocks lay out their blocks on a
+   six-column grid: everything full width, fields at half or a third. */
+.blk-form .blk-form-flow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: start;
+  align-content: start;
+  gap: inherit;
+  min-width: 0;
+}
+.blk-form .blk-form-flow[hidden] {
+  display: none;
+}
+.blk-form .blk-form-flow > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.blk-form .blk-form-flow > :is(.blk-button, .blk-badge, .blk-icon) {
+  justify-self: var(--blk-self, start);
+}
+.blk-form .blk-form-flow > .blk-field.w-half {
+  grid-column: span 3;
+}
+.blk-form .blk-form-flow > .blk-field.w-third {
+  grid-column: span 2;
+}
+@container (max-width: 768px) {
+  .blk-form .blk-form-flow > .blk-field.w-third {
+    grid-column: span 3;
+  }
+}
+@container (max-width: 480px) {
+  .blk-form .blk-form-flow > .blk-field:is(.w-half, .w-third) {
+    grid-column: 1 / -1;
+  }
+}
+.blk-form .blk-form-flow > .site-request-trap {
+  position: absolute;
+}
+.blk-form .app-error,
+.blk-form .app-places {
+  margin: 0;
+}
+.blk-form .app-places {
+  color: var(--blk-muted);
+  font-size: 13px;
+}
+
+/* Fields */
+.blk-form .blk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.blk-form fieldset.blk-field {
+  display: block;
+  min-inline-size: 0;
+}
+.blk-form fieldset.blk-field > * + * {
+  margin-top: 6px;
+}
+.blk-form .blk-field-label {
+  padding: 0;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.blk-form fieldset.blk-field > legend.blk-field-label {
+  margin-bottom: 8px;
+}
+.blk-form .blk-optional {
+  color: var(--blk-muted);
+  font-weight: 400;
+}
+.blk-form .blk-field:has([aria-invalid="true"]) > .blk-field-label {
+  color: var(--blk-danger);
+}
+.blk-form .blk-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.website .blk-form .blk-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--blk-field-line);
+  border-radius: var(--blk-field-radius);
+  background: var(--blk-field-bg);
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  outline: none;
+  appearance: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
+}
+.website .blk-form :is(input, select).blk-input {
+  height: 46px;
+}
+.website .blk-form textarea.blk-input {
+  min-height: 112px;
+  resize: vertical;
+}
+.website .blk-form .blk-input::placeholder {
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  opacity: 1;
+}
+.website .blk-form .blk-input:hover:not(:disabled, [readonly], :focus) {
+  border-color: var(--blk-field-hover);
+}
+.website .blk-form .blk-input:focus {
+  border-color: var(--site-accent);
+  box-shadow: 0 0 0 3px var(--blk-ring);
+}
+.website .blk-form .blk-input[aria-invalid="true"] {
+  border-color: var(--blk-danger);
+}
+.website .blk-form .blk-input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blk-danger) 22%, transparent);
+}
+.website .blk-form .blk-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.website .blk-form input.blk-input[type="date"] {
+  min-height: 46px;
+}
+.website .blk-form .blk-control.has-prefix .blk-input {
+  padding-left: 36px;
+}
+.website .blk-form .blk-control.has-prefix.is-wide .blk-input {
+  padding-left: 62px;
+}
+.blk-form .blk-adorn {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--blk-muted);
+  font-size: 16px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.blk-form .blk-control.is-wide .blk-adorn::after {
+  content: "";
+  width: 1px;
+  height: 22px;
+  background: var(--blk-field-line);
+}
+.website .blk-form .blk-control.is-select .blk-input {
+  padding-right: 42px;
+  cursor: pointer;
+}
+.blk-form .blk-control.is-select::after {
+  content: "";
+  position: absolute;
+  right: 17px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 2px solid var(--blk-muted);
+  border-bottom: 2px solid var(--blk-muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.blk-form .blk-field-hint {
+  color: var(--blk-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.blk-form .blk-field-error,
+.blk-form .app-error {
+  color: var(--blk-danger);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.blk-form .blk-counter {
+  align-self: flex-end;
+  color: var(--blk-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+}
+
+/* Choices as a list, as chips; yes/no as a checkbox or a switch */
+.blk-form .blk-options {
+  display: flex;
+  gap: 8px;
+}
+.blk-form .blk-options.is-radio {
+  flex-direction: column;
+}
+.blk-form .blk-options.is-chips {
+  flex-wrap: wrap;
+}
+.blk-form :is(.blk-radio, .blk-chip) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--blk-field-line);
+  background: var(--blk-field-bg);
+  font-size: 15px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+.blk-form .blk-radio {
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: var(--blk-field-radius);
+}
+.blk-form .blk-chip {
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.blk-form :is(.blk-radio, .blk-chip):hover {
+  border-color: var(--blk-field-hover);
+}
+.website .blk-form .blk-options input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--site-accent);
+}
+.website .blk-form .blk-chip input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.blk-form .blk-radio:has(input:checked) {
+  border-color: var(--site-accent);
+  background: color-mix(in srgb, var(--site-accent) 9%, var(--blk-field-bg));
+}
+.blk-form .blk-chip:has(input:checked) {
+  border-color: var(--site-accent);
+  background: var(--site-accent);
+  color: var(--site-accent-text, #fff);
+}
+.blk-form :is(.blk-radio, .blk-chip):has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--blk-ring);
+}
+.blk-form .blk-field:has([aria-invalid="true"]) :is(.blk-radio, .blk-chip) {
+  border-color: var(--blk-danger);
+}
+.blk-form :is(.blk-radio, .blk-chip):has(input:disabled) {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.blk-form .blk-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.website .blk-form .blk-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--site-accent);
+}
+.website .blk-form .blk-check input.blk-switch {
+  width: 42px;
+  height: 24px;
+  margin: -1px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 12px 50%, #fff 8.5px, transparent 9.5px),
+    color-mix(in srgb, currentColor 26%, transparent);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.website .blk-form .blk-check input.blk-switch:checked {
+  background:
+    radial-gradient(circle at 30px 50%, #fff 8.5px, transparent 9.5px),
+    var(--site-accent);
+}
+.website .blk-form .blk-check input:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 3px;
+}
+.blk-form .blk-field.is-check[aria-invalid="true"] .blk-check-label,
+.blk-form .blk-check:has([aria-invalid="true"]) {
+  color: var(--blk-danger);
+}
+
+/* Ordering (items) and choosing (item) reuse the classic pickers. */
+.blk-form .blk-field.is-items {
+  gap: 16px;
+}
+.blk-form .blk-cart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--blk-line);
+  border-radius: var(--blk-field-radius);
+  background: var(--blk-surface);
+}
+.blk-form .blk-cart-title {
+  font-size: 14px;
+}
+
+/* Buttons */
+.blk-form .blk-submit {
+  position: relative;
+  border: 0;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+.blk-form .blk-submit.s-sm {
+  font-size: 13px;
+}
+.blk-form .blk-submit.s-lg {
+  font-size: 16px;
+}
+.blk-form .blk-form-flow > .blk-submit.is-full,
+.blk-form .blk-submit.is-full {
+  justify-self: stretch;
+  width: 100%;
+}
+.blk-form .blk-submit:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 3px;
+}
+.blk-form .blk-submit:disabled {
+  cursor: not-allowed;
+}
+.blk-form .blk-submit.is-inert[aria-disabled="true"] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* When sending fails: a tinted notice unless the owner styles it. */
+.blk-form .blk-formError {
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--blk-danger) 32%, transparent);
+  border-radius: var(--blk-field-radius);
+  background: color-mix(in srgb, var(--blk-danger) 9%, transparent);
+  color: var(--blk-danger);
+}
+.blk-form .blk-formError .blk-text {
+  margin: 0;
+  color: inherit;
+}
+
+/* What was found */
+.blk-form .blk-record {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.blk-form .blk-record-sample {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 14px;
+  padding: 16px;
+  border: 1px dashed var(--blk-field-line);
+  border-radius: var(--blk-field-radius);
+  background: var(--blk-surface);
+}
+.blk-form .blk-record-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--site-accent) 14%, transparent);
+  color: var(--blk-ink);
+  font-weight: 700;
+}
+.blk-form .blk-record-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.blk-form .blk-record-lines span {
+  display: block;
+  width: 60%;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--blk-line);
+}
+.blk-form .blk-record-lines span + span {
+  width: 38%;
+}
+.blk-form .blk-record-sample small {
+  grid-column: 1 / -1;
+  color: var(--blk-muted);
+  font-size: 13px;
+}
+
+/* The step indicator keeps the classic look; inside a block form it has no
+   extra margin, since the form's gap spaces it. */
+.blk-form .blk-formSteps.app-wizard {
+  margin: 0;
+}
+
+/* Editor only (data-node-id is never published): every step shows with its
+   name, and inputs leave clicks to the canvas. */
+.blk-form [data-node-id] :is(input, select, textarea, .blk-chip, .blk-radio) {
+  pointer-events: none;
+}
+.blk-form [data-form-label] {
+  padding: 16px;
+  border: 1px dashed color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 12px;
+}
+.blk-form [data-form-label]::before {
+  content: attr(data-form-label);
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: var(--blk-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.blk-form .blk-form-questions.is-paged[data-node-id],
+.blk-form .blk-form-questions:not([data-step]) {
+  gap: inherit;
+}

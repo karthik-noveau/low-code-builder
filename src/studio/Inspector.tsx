@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { TextField } from "./InlineText";
 import { Icon } from "./Icon";
-import { Field, ColorField, Range, IconButton } from "./ui";
+import { Field, ColorField, Range, IconButton, type Notify } from "./ui";
 import { useStudio } from "./store";
 import { BlockSettings, BlockTree } from "./BlockEditor";
+import { NodeInspector } from "../blocks/editor/NodeInspector";
+import { findNode } from "../blocks/model";
 import {
   findSection,
   findBlock,
@@ -20,7 +22,15 @@ import {
   type Section,
 } from "./model";
 
-export type MediaTarget = { section: string; item?: string; block?: string };
+export type MediaTarget = {
+  section: string;
+  item?: string;
+  block?: string;
+  /** A block of a "blocks" section: one of its props, or its background image on a device. */
+  node?: string;
+  prop?: string;
+  style?: "style" | "tablet" | "mobile";
+};
 const deviceNames = { desktop: "Desktop", tablet: "Tablet", mobile: "Mobile" };
 const animations: { id: Animation; label: string }[] = [
   { id: "none", label: "None" },
@@ -56,14 +66,26 @@ export function Inspector({
   onDevice,
   onManageData,
   onOpenApp,
+  nodeDraft,
+  onEditNodeText,
+  onSelectNode,
+  onAddBlock,
 }: {
+  /** Opens the Add panel's blocks (to add inside the selected block). */
+  onAddBlock?: () => void;
+  /** A block's text while it's typed on the canvas. */
+  nodeDraft?: { node: string; text: string };
+  /** Starts typing a block's text on the canvas. */
+  onEditNodeText?: (node: string) => void;
+  /** Selects another block of the selected section (breadcrumbs). */
+  onSelectNode?: (node: string) => void;
   onManageData?: (collection?: string) => void;
   /** Opens the App builder, at a form when given. */
   onOpenApp?: (form?: string) => void;
   device?: Device;
   onDevice?: (device: Device) => void;
   pickMedia: (target: MediaTarget) => void;
-  notify: (text: string) => void;
+  notify: Notify;
   onClose?: () => void;
   focusField?: TextField | null;
   onEditText?: (field: TextField) => void;
@@ -215,6 +237,29 @@ export function Inspector({
           Select a section to edit its content and design.
         </div>
       </aside>
+    );
+  if (section.type === "blocks" && section.root)
+    return (
+      <NodeInspector
+        key={store.selectedBlock ?? section.root.id}
+        section={section}
+        node={
+          (store.selectedBlock &&
+            findNode([section.root], store.selectedBlock)) ||
+          section.root
+        }
+        device={device}
+        onDevice={onDevice}
+        pickMedia={pickMedia}
+        notify={notify}
+        onClose={onClose}
+        onSelectNode={(node) =>
+          onSelectNode ? onSelectNode(node) : store.select(section.id, node)
+        }
+        draft={nodeDraft}
+        onEditText={onEditNodeText}
+        onAddBlock={onAddBlock}
+      />
     );
   const s = section;
   const block = findBlock(s.blocks, store.selectedBlock);

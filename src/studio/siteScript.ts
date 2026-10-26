@@ -1,4 +1,5 @@
 import type { Project } from "./model";
+import { hasOrbits } from "../blocks/project";
 
 /**
  * The few things a published page does that CSS can't: remember a visitor's
@@ -57,11 +58,6 @@ export const SITE_SCRIPT = `;(function () {
 /** A published page needs SITE_SCRIPT when visitors can switch themes or a hero moves. */
 export function needsSiteScript(project: Project) {
   return (
-    !!project.theme.darkToggle ||
-    [
-      ...project.header,
-      ...project.pages.flatMap((p) => p.sections),
-      ...project.footer,
-    ].some((s) => !s.hidden && s.type === "hero" && s.effect === "orbits")
+    !!project.theme.darkToggle || hasOrbits(project)
   );
 }

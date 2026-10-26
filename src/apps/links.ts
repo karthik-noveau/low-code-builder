@@ -1,5 +1,7 @@
 /** Where an app section's screens link (AppSection.tsx). */
 import type { App, AppForm } from "./model";
+import type { Section } from "../studio/model";
+import { sectionAppForms } from "../blocks/project";
 
 /** Pages a step links to, e.g. "View my rewards" after sending. */
 export interface AppLinks {
@@ -15,13 +17,13 @@ export interface AppLinks {
  */
 export function appLinks(
   app: App,
-  pages: { slug: string; sections: { type: string; appForm?: string }[] }[],
+  pages: { slug: string; sections: Section[] }[],
   form: AppForm,
   href: (url: string) => string,
 ): AppLinks {
   const pageOf = (other: AppForm) =>
     pages.find((p) =>
-      p.sections.some((s) => s.type === "app" && s.appForm === other.id),
+      p.sections.some((s) => sectionAppForms(s).includes(other.id)),
     );
   const links: AppLinks = {};
   const lookup =

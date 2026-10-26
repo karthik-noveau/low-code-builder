@@ -254,6 +254,8 @@ export interface AppCard {
   tone?: "plain" | "accent" | "slate" | "dark";
   /** A short line under the figure, e.g. "Waiting for you". */
   caption?: string;
+  /** Its figure (a number only) may be shown on the website by a stat block. */
+  public?: boolean;
 }
 /** A figure per month on the owner's dashboard, e.g. rewards approved by month. */
 export interface AppChart {
@@ -266,6 +268,8 @@ export interface AppChart {
   money?: boolean;
   /** How many months back, including this one. */
   months: number;
+  /** Its monthly figures (numbers only) may be shown on the website by a chart block. */
+  public?: boolean;
 }
 export interface AppList {
   id: string;
@@ -278,10 +282,49 @@ export interface AppList {
   /** Offer the records' next steps (e.g. Approve / Reject) right in the list. */
   actions?: boolean;
 }
+/** A view's fixed condition on one field, set by the owner (visitors can't change it). */
+export interface AppViewFilter {
+  field: string;
+  op: "is" | "not" | "contains" | "atLeast" | "atMost" | "set" | "empty";
+  value: string;
+}
+/**
+ * Records shown on the website ("Show on your website: these fields only").
+ * Nothing in an app is public by default: a view names the only fields
+ * visitors get, which records (statuses, a filter), in what order and how
+ * many. Record ids and references are never sent. See src/blocks/data/views.ts.
+ */
+export interface AppView {
+  id: string;
+  name: string;
+  table: string;
+  /** The allow-list: field ids, total ids of the table, or VIEW_STATUS. */
+  fields: string[];
+  /** Text or link fields shown as a first name and initial, e.g. "Priya S." (leaderboards). */
+  initials?: string[];
+  /** Only records in these statuses; empty: every record. */
+  statuses: string[];
+  filter?: AppViewFilter;
+  /** A field or total id; empty: newest first. */
+  sort: string;
+  order?: "desc" | "asc";
+  /** The most records visitors can ever page through, 1–100. */
+  limit: number;
+  /** Off: the view is a draft and the public API refuses it. */
+  public: boolean;
+  /** The owner agreed to show phone numbers or email addresses. */
+  contact?: boolean;
+}
+/** A view field meaning "the record's status". */
+export const VIEW_STATUS = "status";
+export const MAX_VIEWS = 12;
+export const MAX_VIEW_LIMIT = 100;
 export interface App {
   tables: AppTable[];
   forms: AppForm[];
   dashboard: { cards: AppCard[]; lists: AppList[]; charts?: AppChart[] };
+  /** What the website may show of the records (data blocks). */
+  views?: AppView[];
   /** Money is shown in this currency (ISO code, e.g. INR). */
   currency: string;
   /** The published site installs to a phone's home screen. */
@@ -899,6 +942,7 @@ export function validateApp(
           return false;
     }
   }
+  if (a.views !== undefined && !viewsValid(a.views, tables)) return false;
   const d = a.dashboard;
   if (!d || !Array.isArray(d.cards) || !Array.isArray(d.lists)) return false;
   if (d.charts !== undefined) {
@@ -914,6 +958,8 @@ export function validateApp(
       )
         return false;
   }
+  for (const c of [...d.cards, ...(d.charts ?? [])])
+    if (c.public !== undefined && typeof c.public !== "boolean") return false;
   for (const c of d.cards)
     if (
       (c.tone !== undefined &&
@@ -937,5 +983,88 @@ export function validateApp(
     )
   )
     return false;
+  return true;
+}
+
+/** Field types that reach a person: shown publicly only with `contact`. */
+export const CONTACT_TYPES: AppFieldType[] = ["phone", "email"];
+/**
+ * Whether a view field shows a phone number or email: a contact field, or a
+ * link whose target is named by one (the link shows the target's title).
+ */
+export function showsContact(
+  table: AppTable,
+  fieldId: string,
+  tables: Map<string, AppTable>,
+) {
+  const field = fieldOf(table, fieldId);
+  if (!field) return false;
+  if (CONTACT_TYPES.includes(field.type)) return true;
+  const target =
+    field.type === "link" ? tables.get(field.table ?? "") : undefined;
+  return (
+    !!target &&
+    CONTACT_TYPES.includes(fieldOf(target, target.titleField)?.type ?? "text")
+  );
+}
+const VIEW_OPS = ["is", "not", "contains", "atLeast", "atMost", "set", "empty"];
+/**
+ * Views: the allow-list names only fields, totals or the status of the
+ * view's table, at most 12; phone and email fields need `contact`.
+ */
+function viewsValid(views: unknown, tables: Map<string, AppTable>) {
+  if (!Array.isArray(views) || views.length > MAX_VIEWS) return false;
+  const ids = new Set<string>();
+  for (const v of views as AppView[]) {
+    if (!v || typeof v !== "object" || !idOk(v.id) || ids.has(v.id))
+      return false;
+    ids.add(v.id);
+    const t = tables.get(v.table);
+    if (!t || !str(v.name, 60) || typeof v.public !== "boolean") return false;
+    if (v.contact !== undefined && typeof v.contact !== "boolean") return false;
+    const known = (id: string) =>
+      id === VIEW_STATUS
+        ? t.statuses.length > 0
+        : !!fieldOf(t, id) || t.totals.some((x) => x.id === id);
+    if (
+      !Array.isArray(v.fields) ||
+      !v.fields.length ||
+      v.fields.length > 12 ||
+      new Set(v.fields).size !== v.fields.length ||
+      !v.fields.every((f) => idOk(f) && known(f))
+    )
+      return false;
+    if (!v.contact && v.fields.some((f) => showsContact(t, f, tables)))
+      return false;
+    if (
+      v.initials !== undefined &&
+      !(
+        Array.isArray(v.initials) &&
+        v.initials.every(
+          (f) =>
+            v.fields.includes(f) &&
+            ["text", "link"].includes(fieldOf(t, f)?.type ?? ""),
+        )
+      )
+    )
+      return false;
+    if (!Array.isArray(v.statuses) || !v.statuses.every((s) => statusOf(t, s)))
+      return false;
+    if (v.filter !== undefined) {
+      const f = v.filter;
+      if (
+        !f ||
+        !(f.field === VIEW_STATUS ? t.statuses.length : fieldOf(t, f.field)) ||
+        !VIEW_OPS.includes(f.op) ||
+        !str(f.value, 120)
+      )
+        return false;
+    }
+    if (typeof v.sort !== "string" || (v.sort && !known(v.sort))) return false;
+    if (v.order !== undefined && !["asc", "desc"].includes(v.order))
+      return false;
+    if (!Number.isInteger(v.limit) || v.limit < 1 || v.limit > MAX_VIEW_LIMIT)
+      return false;
+  }
   return true;
 }

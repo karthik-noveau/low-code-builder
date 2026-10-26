@@ -1,0 +1,76 @@
+/* The Inspector's form settings (FormSettings.tsx) and the Add panel's
+   "Form fields" group (AddFields.tsx). Editor chrome only. */
+.form-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.form-settings-new {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface-alt);
+}
+.form-settings-new .segmented button {
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+}
+.form-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.form-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.form-settings-fields h4 {
+  margin: 4px 0 0;
+  color: var(--ui-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.form-settings-fields .add-more {
+  margin-top: 4px;
+}
+.form-settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.form-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.form-chip small {
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+.form-chip:is(:hover, :focus-visible) {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-alt);
+}
+.form-chip:focus-visible {
+  outline: 2px solid var(--ui-accent, #2f6fed);
+  outline-offset: 2px;
+}
+.add-field-icon {
+  display: grid;
+  place-items: center;
+}

@@ -12,7 +12,9 @@ import { createProject } from "../studio/templates";
 import { useStudio } from "../studio/store";
 import { Website } from "../studio/Website";
 import { reviewProject } from "../studio/review";
-import { validateProject, type Project } from "../studio/model";
+import { validateProject, type Project, type Section } from "../studio/model";
+import { sectionAppForms } from "../blocks/project";
+import { walk } from "../blocks/model";
 import { APP_TEMPLATES } from "./templates";
 import { AppBuilder } from "./AppBuilder";
 import { DataManager } from "../studio/DataManager";
@@ -22,8 +24,10 @@ import { addTable } from "./edit";
 const rewards = () =>
   APP_TEMPLATES.find((t) => t.id === "rewards")!.build("Shop");
 const state = () => useStudio.getState();
+/** Sections showing an app form: App form sections, built from blocks. */
 const appSections = (p: Project) =>
-  p.pages.flatMap((pg) => pg.sections).filter((s) => s.type === "app");
+  p.pages.flatMap((pg) => pg.sections).filter((s) => formOf(s));
+const formOf = (s: Section) => sectionAppForms(s)[0];
 
 beforeEach(() => {
   localStorage.clear();
@@ -47,8 +51,8 @@ describe("app in the store", () => {
     expect(p.pages).toHaveLength(pages + 1);
     const added = p.pages.find((pg) => pg.id === page)!;
     expect([added.name, added.slug]).toEqual(["Rewards", "rewards"]);
-    expect(added.sections.map((s) => [s.type, s.appForm])).toEqual(
-      p.app!.forms.map((f) => ["app", f.id]),
+    expect(added.sections.map((s) => [s.type, formOf(s)])).toEqual(
+      p.app!.forms.map((f) => ["blocks", f.id]),
     );
     expect(state().activePage).toBe(page);
     expect(validateProject(p)).toBe(true);
@@ -59,8 +63,13 @@ describe("app in the store", () => {
     state().installApp(rewards());
     const id = state().addSection("app");
     const section = appSections(state().project).find((s) => s.id === id)!;
-    expect(section.appForm).toBe(state().project.app!.forms[0].id);
-    expect(section.title).toBe("Record a purchase");
+    expect(formOf(section)).toBe(state().project.app!.forms[0].id);
+    // Its heading is the form's own title.
+    expect(
+      renderToStaticMarkup(
+        <Website project={state().project} page={state().project.pages[0]} />,
+      ),
+    ).toContain("Record a purchase");
   });
   it("refuses app changes that would break the app", () => {
     state().installApp(rewards());
@@ -81,7 +90,7 @@ describe("app in the store", () => {
       ...a,
       forms: a.forms.filter((f) => f.id !== record.id),
     }));
-    expect(appSections(state().project).map((s) => s.appForm)).toEqual([
+    expect(appSections(state().project).map(formOf)).toEqual([
       state().project.app!.forms[0].id,
     ]);
     state().removeApp();
@@ -151,7 +160,12 @@ describe("App form sections on the canvas and published site", () => {
         pg.id === page.id
           ? {
               ...pg,
-              sections: pg.sections.map((s) => ({ ...s, appForm: "gone" })),
+              sections: pg.sections.map((s) => {
+                const root = structuredClone(s.root!);
+                for (const n of walk([root]))
+                  if (n.type === "appForm") n.props.form = "gone";
+                return { ...s, root };
+              }),
             }
           : pg,
       ),

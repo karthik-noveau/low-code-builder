@@ -14,6 +14,7 @@ import { createProject, createSection } from "../../src/studio/templates";
 import { createCollection, createItem } from "../../src/studio/collections";
 import { emptyPayments } from "../../src/studio/payments";
 import { APP_TEMPLATES } from "../../src/apps/templates";
+import { checkBlockForms } from "./block-forms";
 import {
   createAppField,
   emptyApp,
@@ -1314,3 +1315,17 @@ describe(
     });
   },
 );
+
+// Forms built from blocks (src/blocks/forms), on this account's own site.
+describe("forms built from blocks", () => {
+  it("publish, send and look up like the classic App form", () =>
+    checkBlockForms(token, (path, method = "GET", body, auth = token) =>
+      call(
+        path,
+        method,
+        body,
+        auth,
+        path.startsWith("/apps/") ? { origin: sites } : {},
+      ),
+    ));
+});

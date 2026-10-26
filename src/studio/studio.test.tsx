@@ -7,7 +7,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { createProject, templateOptions } from "./templates";
+import { classicProject, createProject, templateOptions } from "./templates";
 import { findSection, safeImage, safeUrl, validateProject } from "./model";
 import { useStudio, STORAGE_KEY } from "./store";
 import { renderPage } from "./export";
@@ -24,7 +24,9 @@ vi.mock("../cloud/client", async (importOriginal) => ({
 
 beforeEach(() => {
   localStorage.clear();
-  const project = createProject();
+  // These workflows edit classic sections, which older projects may still have
+  // (templates are built from blocks; see src/blocks/legacy.test.ts).
+  const project = classicProject();
   useStudio.setState({
     project,
     past: [],
@@ -230,7 +232,7 @@ describe("portable websites", () => {
     expect(html).toContain("&lt;script&gt;");
   });
   it("enables form submission only after a service is connected", () => {
-    const p = createProject();
+    const p = classicProject();
     const contact = p.pages.at(-1)!;
     expect(renderPage(p, contact)).toContain('disabled=""');
     contact.sections[0].formAction = "https://example.com/contact";
@@ -275,17 +277,23 @@ describe("editor workflows", () => {
     render(<Studio />);
     fireEvent.click(screen.getByRole("button", { name: "Add section" }));
     const dialog = screen.getByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Search sections"), {
-      target: { value: "Questions" },
-    });
+    fireEvent.change(
+      within(dialog).getByLabelText("Search sections and blocks"),
+      {
+        target: { value: "Questions" },
+      },
+    );
+    // Every section is a prebuilt blocks section now.
     fireEvent.click(
-      within(dialog).getByRole("button", { name: /Questions & answers/ }),
+      within(dialog).getByRole("button", { name: /^Questions, centred:/ }),
     );
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
       useStudio
         .getState()
-        .project.pages[0].sections.some((s) => s.type === "faq"),
+        .project.pages[0].sections.some(
+          (s) => s.type === "blocks" && s.name === "Questions, centred",
+        ),
     ).toBe(true);
   });
   it("navigates between pages in preview and returns to the editor", () => {
@@ -423,14 +431,14 @@ describe("canvas-first workflow", () => {
     fireEvent.change(screen.getByLabelText("Section position"), {
       target: { value: "start" },
     });
-    fireEvent.change(screen.getByLabelText("Search sections"), {
+    fireEvent.change(screen.getByLabelText("Search sections and blocks"), {
       target: { value: "Questions" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: /Questions & answers Helpful/ }),
+      screen.getByRole("button", { name: /^Questions, centred:/ }),
     );
     const sections = useStudio.getState().project.pages[0].sections;
-    expect(sections[0].type).toBe("faq");
+    expect(sections[0].name).toBe("Questions, centred");
     expect(sections[1].id).toBe(original);
   });
   it("finds a task through the command menu and executes it with Enter", () => {
@@ -459,7 +467,7 @@ describe("canvas-first workflow", () => {
     expect(useStudio.getState().past).toHaveLength(0);
   });
   it("removes review issues as real content is corrected and ignores hidden sections", () => {
-    const project = createProject();
+    const project = classicProject();
     const hero = project.pages[0].sections[0];
     hero.imageAlt = "";
     hero.buttonUrl = "/does-not-exist";
@@ -486,7 +494,7 @@ describe("canvas-first workflow", () => {
     expect(html).not.toContain('role="textbox"');
   });
   it("doesn't flag forms, which post to the inbox when published", () => {
-    const project = createProject();
+    const project = classicProject();
     const form = project.pages[0].sections.find(
       (section) => section.type === "newsletter",
     )!;

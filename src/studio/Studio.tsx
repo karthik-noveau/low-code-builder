@@ -44,6 +44,30 @@ import "./editor-admin.css";
 import { ThemeSwitch } from "../design/ThemeSwitch";
 import { CloudWorkspace } from "../cloud/CloudWorkspace";
 import type { TextEditTarget, TextField } from "./InlineText";
+import { AddPanel, type AddTab } from "../blocks/editor/AddPanel";
+import { Layers } from "../blocks/editor/Layers";
+import { CanvasOverlay } from "../blocks/editor/CanvasOverlay";
+import {
+  blockSelection,
+  copySelected,
+  duplicateSelected,
+  insertPreset,
+  moveSibling,
+  paste,
+  removeSelected,
+  selectFirstChild,
+  selectParent,
+  selectSibling,
+  sectionAfter,
+  insertBlock,
+  undoAction,
+} from "../blocks/editor/actions";
+import { ShortcutSheet } from "../blocks/editor/ShortcutSheet";
+import { FirstRun } from "../blocks/editor/FirstRun";
+import { findNode } from "../blocks/model";
+import { BLOCKS } from "../blocks/registry";
+import { PRESETS } from "../blocks/presets";
+import "../blocks/editor/editor.css";
 
 const unreadableSave = () => {
   try {
@@ -64,6 +88,7 @@ type Dialog =
   | "data"
   | "inbox"
   | "app"
+  | "shortcuts"
   | null;
 const starterAssets: Asset[] = [
   { id: "botanical", name: "Fern & foliage", url: "/images/botanical.jpg" },
@@ -149,6 +174,10 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     () => window.innerWidth > 760,
   );
   const [insertAfter, setInsertAfter] = useState<string | undefined>();
+  /** The left panel: the site map, the page's layers, or the Add panel. */
+  const [leftView, setLeftView] = useState<"pages" | "layers">("pages");
+  const [adding, setAdding] = useState(false);
+  const [addTab, setAddTab] = useState<AddTab>("sections");
   const reviewItems = reviewProject(project);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All sections");
@@ -197,12 +226,39 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       input?.scrollIntoView({ block: "nearest" });
     });
   };
-  const openLibrary = (after?: string) => {
+  /** Opens the Add panel; new sections go after `after` ("start", or the end). */
+  const openLibrary = (after?: string, tab: AddTab = "sections") => {
     setInsertAfter(after);
-    setSearch("");
-    setCategory("All sections");
-    setDialog("library");
+    setAddTab(tab);
+    setAdding(true);
+    setNavigatorOpen(true);
+    setPreview(false);
   };
+  /** Shows a block's settings (canvas toolbar, Layers, drops). */
+  const selectNode = (section: string, node: string) =>
+    selectCanvasSection(section, undefined, node);
+  // The keyboard handler is set up once; these always call the latest versions.
+  const selectNodeRef = useRef(selectNode);
+  const openLibraryRef = useRef((tab: AddTab) => openLibrary(undefined, tab));
+  const startTextEditRef = useRef<(target: TextEditTarget) => void>(() => {});
+  useEffect(() => {
+    selectNodeRef.current = selectNode;
+    openLibraryRef.current = (tab) =>
+      openLibrary(
+        tab === "sections"
+          ? sectionAfter(
+              useStudio.getState().project,
+              useStudio.getState().activePage,
+              findSection(
+                useStudio.getState().project,
+                useStudio.getState().selected,
+              ),
+            )
+          : undefined,
+        tab,
+      );
+    startTextEditRef.current = startTextEdit;
+  });
   const selectCanvasSection = (
     id: string,
     field?: TextField,
@@ -229,8 +285,15 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     setHovered(null);
     setPanel("sections");
     setInspectorOpen(window.innerWidth > 1050);
+    const root = findSection(store.project, target.section)?.root;
+    const node =
+      target.node && root ? findNode([root], target.node) : undefined;
+    if (node) store.select(target.section, node.id);
+    const inline = node && BLOCKS[node.type].inline;
     setDraftText(
-      findSection(store.project, target.section)?.[target.field] ?? "",
+      node
+        ? String((inline && node.props[inline]) ?? "")
+        : (findSection(store.project, target.section)?.[target.field] ?? ""),
     );
     setEditingText(target);
     const fieldName =
@@ -242,7 +305,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     requestAnimationFrame(() => {
       document
         .querySelector(
-          `[data-section-id="${CSS.escape(target.section)}"] [data-edit-field$=" ${fieldName}"]`,
+          target.node
+            ? `[data-node-id="${CSS.escape(target.node)}"]`
+            : `[data-section-id="${CSS.escape(target.section)}"] [data-edit-field$=" ${fieldName}"]`,
         )
         ?.scrollIntoView({ block: "nearest" });
     });
@@ -305,6 +370,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               : "All changes are saved in this browser"),
         );
       }
+      if (e.key === "Escape" && selectParent()) return;
       if (e.key === "Escape") {
         setPreview(false);
         setInspectorOpen(false);
@@ -313,7 +379,80 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         setHovered(null);
         setSelectedField(null);
       }
-      if (e.key === "?") setDialog("help");
+      if (e.key === "?") {
+        setDialog("shortcuts");
+        return;
+      }
+      // Blocks: only while the canvas (or nothing) has focus, not the panels.
+      const onCanvas =
+        target === document.body || !!target.closest(".canvas-workspace");
+      const mod = e.metaKey || e.ctrlKey;
+      if (
+        onCanvas &&
+        !mod &&
+        !e.altKey &&
+        e.key.toLowerCase() === "a" &&
+        !e.repeat
+      ) {
+        e.preventDefault();
+        openLibraryRef.current(blockSelection().root ? "blocks" : "sections");
+        return;
+      }
+      if (!onCanvas || !blockSelection().root) return;
+      /** Shows the newly selected block: settings, in view, focused. */
+      const reveal = () => {
+        const s = useStudio.getState();
+        if (!s.selected) return;
+        selectNodeRef.current(s.selected, s.selectedBlock ?? "");
+        requestAnimationFrame(() => {
+          const el = s.selectedBlock
+            ? document.querySelector<HTMLElement>(
+                `.canvas-scroll [data-node-id="${CSS.escape(s.selectedBlock)}"]`,
+              )
+            : null;
+          el?.scrollIntoView?.({ block: "nearest" });
+          if (el && el.tabIndex >= 0) el.focus({ preventScroll: true });
+          else if (document.activeElement instanceof HTMLElement)
+            document.activeElement.blur();
+        });
+      };
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const name = removeSelected();
+        notify(`${name} deleted`, undoAction);
+      } else if (e.key === "Tab" && !mod && !e.altKey) {
+        e.preventDefault();
+        if (selectSibling(e.shiftKey ? -1 : 1)) reveal();
+      } else if (e.key === "Enter" && !mod && target === document.body) {
+        const sel = blockSelection();
+        if (sel.node && BLOCKS[sel.node.type].inline && sel.node !== sel.root) {
+          e.preventDefault();
+          startTextEditRef.current({
+            section: sel.section!.id,
+            field: "body",
+            node: sel.node.id,
+          });
+        } else if (selectFirstChild()) {
+          e.preventDefault();
+          reveal();
+        }
+      } else if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        duplicateSelected();
+        notify("Duplicated", undoAction);
+      } else if (mod && e.key.toLowerCase() === "c") {
+        if (copySelected())
+          notify("Copied. Select where it should go, then paste.");
+      } else if (mod && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        if (!paste())
+          notify(
+            "That can’t be pasted here. Select a box, row or section first.",
+          );
+      } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault();
+        moveSibling(e.key === "ArrowUp" ? -1 : 1);
+      }
     };
     const finishTextEdit = () => {
       const active = document.activeElement;
@@ -334,7 +473,16 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     }
     if (mediaTarget) {
       const s = findSection(useStudio.getState().project, mediaTarget.section);
-      if (s) {
+      if (s && mediaTarget.node) {
+        const { node, prop, style } = mediaTarget;
+        store.updateNode(s.id, node, (n) =>
+          prop
+            ? { ...n, props: { ...n.props, [prop]: url } }
+            : style
+              ? { ...n, [style]: { ...n[style], backgroundImage: url } }
+              : n,
+        );
+      } else if (s) {
         if (mediaTarget.block)
           store.updateBlock(s.id, mediaTarget.block, { image: url });
         else if (mediaTarget.item)
@@ -643,14 +791,17 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         focusSection(section.id);
       },
     })),
-    ...Object.entries(sectionMeta).map(([type, meta]) => ({
-      id: `add-${type}`,
-      title: `Add ${meta.label.toLowerCase()}`,
-      description: meta.description,
-      icon: meta.icon,
+    ...PRESETS.map((preset) => ({
+      id: `add-${preset.id}`,
+      title: `Add ${preset.name.toLowerCase()}`,
+      description: preset.description,
+      icon: "plus",
       run: () => {
-        const id = store.addSection(type as SectionType);
-        focusSection(id);
+        const id = insertPreset(
+          preset.id,
+          sectionAfter(project, page.id, findSection(project, store.selected)),
+        );
+        if (id) focusSection(id);
       },
     })),
   ];
@@ -817,8 +968,35 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       <div
         className={`studio-workspace ${!preview && (inspectorOpen || panel !== "sections") ? "has-inspector" : ""}`}
       >
+        {!preview && adding && (
+          <AddPanel
+            alone={!navigatorOpen}
+            tab={addTab}
+            onTab={setAddTab}
+            after={insertAfter}
+            onAfter={setInsertAfter}
+            onClose={() => setAdding(false)}
+            onSection={(id, name) => {
+              setAdding(false);
+              setPanel("sections");
+              focusSection(id);
+              notify(`${name} added`);
+            }}
+            onBlock={selectNode}
+            onBrowseSaved={openSavedSections}
+            notify={notify}
+          />
+        )}
         {!preview && navigatorOpen && (
           <Navigator
+            view={leftView}
+            onView={setLeftView}
+            layers={
+              <Layers
+                onSelectSection={focusSection}
+                onSelectNode={selectNode}
+              />
+            }
             onNavigate={navigate}
             hovered={editingText ? null : hovered}
             onHover={(id) => {
@@ -830,7 +1008,16 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               setPageName("");
               setDialog("page");
             }}
-            onAdd={() => openLibrary()}
+            onAdd={() =>
+              openLibrary(
+                sectionAfter(
+                  project,
+                  page.id,
+                  findSection(project, store.selected),
+                ),
+              )
+            }
+            onAddBlock={() => openLibrary(undefined, "blocks")}
             onStyles={() => openUtility("theme")}
             onMedia={() => openUtility("assets")}
             onHelp={() => setDialog("help")}
@@ -849,19 +1036,21 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           />
         )}
         <main className="canvas-workspace">
-          {editingText ? (
+          {editingText && !editingText.node ? (
             <div className="canvas-toolbar text-edit-bar">
               <div className="text-edit-status">
                 <Icon name="edit" size={16} />
                 <strong>
                   Editing{" "}
-                  {editingText.field === "title"
-                    ? "heading"
-                    : editingText.field === "body"
-                      ? "description"
-                      : editingText.field === "buttonLabel"
-                        ? "button text"
-                        : "eyebrow"}
+                  {editingText.node
+                    ? "text"
+                    : editingText.field === "title"
+                      ? "heading"
+                      : editingText.field === "body"
+                        ? "description"
+                        : editingText.field === "buttonLabel"
+                          ? "button text"
+                          : "eyebrow"}
                 </strong>
                 <span>Esc to cancel</span>
               </div>
@@ -884,6 +1073,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             </div>
           ) : (
             !preview &&
+            !editingText &&
             !navigatorOpen && (
               <div className="canvas-float-tools">
                 <IconButton
@@ -923,6 +1113,13 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               }
             }}
           >
+            {!preview && device !== "desktop" && (
+              <p className="canvas-device-label" aria-live="polite">
+                <Icon name={device} size={13} />
+                {device === "tablet" ? "Tablet · 768 px" : "Phone · 390 px"}
+                <span>Changes in Style apply to this size</span>
+              </p>
+            )}
             <div
               className={`canvas-device device-${device}`}
               style={{ zoom: zoom / 100 }}
@@ -960,7 +1157,39 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                     : undefined
                 }
                 onAdd={() => openLibrary("start")}
+                emptyPage={
+                  <FirstRun
+                    pageName={page.name}
+                    onAddSection={() => openLibrary("start")}
+                    onTemplates={() => {
+                      setTemplate(project.template);
+                      setDialog("templates");
+                    }}
+                    onPreset={(id) => {
+                      const added = insertPreset(id);
+                      if (added) {
+                        focusSection(added);
+                        notify("Section added", undoAction);
+                      }
+                    }}
+                    onBlock={(type) => {
+                      store.select(null);
+                      insertBlock(type);
+                      const s = useStudio.getState();
+                      if (s.selected)
+                        selectNode(s.selected, s.selectedBlock ?? "");
+                    }}
+                  />
+                }
                 onEdit={store.updateSection}
+                onEditNode={(section, node, key, value) =>
+                  store.updateNode(
+                    section,
+                    node,
+                    (n) => ({ ...n, props: { ...n.props, [key]: value } }),
+                    `prop:${node}:${key}`,
+                  )
+                }
                 preview={preview}
               />
             </div>
@@ -977,6 +1206,21 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               </div>
             )}
           </div>
+          {!preview && (
+            <CanvasOverlay
+              scroll={canvasScroll}
+              typing={!!editingText}
+              device={device}
+              onPick={selectNode}
+              notify={notify}
+              onAddSection={(after) => openLibrary(after, "sections")}
+              onAddBlock={() => openLibrary(undefined, "blocks")}
+              onEditText={(section, node) =>
+                startTextEdit({ section, field: "body", node })
+              }
+              onDoneTyping={() => finishCanvasText()}
+            />
+          )}
         </main>
         {!preview && inspectorOpen && panel === "sections" && (
           <div className="context-drawer">
@@ -994,6 +1238,19 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 store.selected &&
                 startTextEdit({ section: store.selected, field })
               }
+              nodeDraft={
+                editingText?.node && editingText.section === store.selected
+                  ? { node: editingText.node, text: draftText }
+                  : undefined
+              }
+              onEditNodeText={(node) =>
+                store.selected &&
+                startTextEdit({ section: store.selected, field: "body", node })
+              }
+              onSelectNode={(node) =>
+                store.selected && selectNode(store.selected, node)
+              }
+              onAddBlock={() => openLibrary(undefined, "blocks")}
               onClose={() => setInspectorOpen(false)}
               pickMedia={(target) => {
                 setMediaTarget(target);
@@ -1693,21 +1950,25 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 </p>
               </div>
             </div>
-            <div className="shortcuts">
-              <span>
-                Undo<kbd>⌘ / Ctrl Z</kbd>
-              </span>
-              <span>
-                Redo<kbd>⌘ / Ctrl ⇧ Z</kbd>
-              </span>
-              <span>
-                Find anything<kbd>⌘ / Ctrl K</kbd>
-              </span>
-              <span>
-                Open help<kbd>?</kbd>
-              </span>
-            </div>
+            <button
+              type="button"
+              className="subtle-button help-shortcuts"
+              onClick={() => setDialog("shortcuts")}
+            >
+              <Icon name="keyboard" size={15} />
+              Keyboard shortcuts
+              <kbd>?</kbd>
+            </button>
           </div>
+        </Modal>
+      )}
+      {dialog === "shortcuts" && (
+        <Modal
+          title="Keyboard shortcuts"
+          subtitle="Work faster on the page. Press ? any time to see these."
+          onClose={closeDialog}
+        >
+          <ShortcutSheet />
         </Modal>
       )}
     </div>

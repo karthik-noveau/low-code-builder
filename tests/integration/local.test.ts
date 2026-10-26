@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { gzipSync } from "node:zlib";
 import { randomUUID } from "node:crypto";
 import { createProject } from "../../src/studio/templates";
+import { walk, type Node, type NodeType } from "../../src/blocks/model";
 
 const base = process.env.TEST_API_URL || "http://127.0.0.1:8787";
 let token = "",
@@ -37,6 +38,9 @@ async function call(
   return { response, data: await response.json() };
 }
 const draft = () => gzipSync(JSON.stringify(project));
+/** The first block of `type` in a page's first section (the hero). */
+const heroBlock = (p: typeof project, type: NodeType): Node =>
+  [...walk([p.pages[0].sections[0].root!])].find((n) => n.type === type)!;
 async function waitForPublish() {
   for (let i = 0; i < 80; i++) {
     const { data } = await call(`/sites/${id}`);
@@ -178,7 +182,7 @@ describe("real DynamoDB Local end-to-end flow", { concurrent: false }, () => {
     expect((await fetch(`${url}images/%2e%2e%2fsecret`)).status).toBe(404);
   });
   it("retains the live site during a failed publish, then recovers", async () => {
-    project.pages[0].sections[0].image = "/images/missing.jpg";
+    heroBlock(project, "image").props.src = "/images/missing.jpg";
     const saved = await call(`/sites/${id}/draft`, "PUT", draft(), token, {
       "content-type": "application/gzip",
       "if-match": String(version),
@@ -190,8 +194,8 @@ describe("real DynamoDB Local end-to-end flow", { concurrent: false }, () => {
     expect(failed.status).toBe("failed");
     expect(failed.publishedRelease).toBe(firstRelease);
     expect((await fetch(url)).status).toBe(200);
-    project.pages[0].sections[0].image = "/images/botanical.jpg";
-    project.pages[0].sections[0].title = "A second release";
+    heroBlock(project, "image").props.src = "/images/botanical.jpg";
+    heroBlock(project, "heading").props.text = "A second release";
     const next = await call(`/sites/${id}/draft`, "PUT", draft(), token, {
       "content-type": "application/gzip",
       "if-match": String(version),
@@ -215,7 +219,7 @@ describe("real DynamoDB Local end-to-end flow", { concurrent: false }, () => {
     expect((await waitForPublish()).publishedRelease).toBe(firstRelease);
     expect(await (await fetch(url)).text()).toContain("Good things");
     expect(
-      (await call(`/sites/${id}/draft`)).data.pages[0].sections[0].title,
+      heroBlock((await call(`/sites/${id}/draft`)).data, "heading").props.text,
     ).toBe("A second release");
     await call(`/sites/${id}/unpublish`, "POST", { version });
     expect((await waitForPublish()).status).toBe("unpublished");

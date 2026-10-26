@@ -213,6 +213,36 @@ function appWidget() {
     const fields = step("fields") as HTMLFormElement | null;
     const menu = step("menu");
     const flowing = root.hasAttribute("data-flow");
+    // Forms built from blocks (src/blocks/forms): pages inside the details
+    // step, a step indicator over every step, owner-written success and
+    // failure blocks with {ref}-style placeholders.
+    const blocks = root.hasAttribute("data-blocks-form");
+    const pages = fields ? all(fields, "[data-page]") : [];
+    let page = 0;
+    let order: string[] | null = null;
+    try {
+      const raw = JSON.parse(root.getAttribute("data-steps") || "null");
+      order = Array.isArray(raw) ? (raw as string[]) : null;
+    } catch {
+      order = null;
+    }
+    /** Text with {ref}, {message}, {status} or {name}, as the owner wrote it. */
+    const TOKEN = /\{(ref|message|status|name)\}/g;
+    const slots: [Node, string][] = [];
+    const known: Record<string, string> = {};
+    if (blocks) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const text = n.nodeValue || "";
+        if (text.search(TOKEN) >= 0) slots.push([n, text]);
+      }
+    }
+    function tokens(values: Record<string, string>) {
+      for (const k of Object.keys(values)) known[k] = values[k];
+      for (const [node, text] of slots)
+        node.nodeValue = text.replace(TOKEN, (_, k: string) => known[k] || "");
+    }
+    tokens({});
     let identity = "";
     let key = "";
     let pending = false;
@@ -228,21 +258,47 @@ function appWidget() {
       const target = step(name);
       if (!target) return;
       for (const s of steps) s.hidden = s !== target;
+      if (target === fields && pages.length) return showPage(0);
+      focusIn(target);
+      progress(name);
+    }
+    /** A step's title, or (block forms) a screen's heading, or its first input. */
+    function focusIn(target: HTMLElement) {
+      const heading =
+        blocks && target.tagName !== "FORM" && !target.hasAttribute("data-page")
+          ? one(target, "h1, h2, h3, h4, h5, h6")
+          : null;
+      if (heading && !heading.hasAttribute("tabindex"))
+        heading.setAttribute("tabindex", "-1");
       const focus =
         one(target, ".app-step-title, .app-done-text") ||
+        heading ||
         one(
           target,
           "input:not([type=hidden]):not([name=website]), select, textarea",
         );
       if (focus) focus.focus();
-      progress(name);
+    }
+    /** A page of the details step (block forms with several "Questions" steps). */
+    function showPage(n: number) {
+      page = Math.max(0, Math.min(pages.length - 1, n));
+      pages.forEach((p, i) => (p.hidden = i !== page));
+      focusIn(pages[page]);
+      progress("fields");
     }
     /** The step indicator: which of identify, confirm and details is current. */
     function progress(name: string) {
       const wizard = one(root, ".app-wizard");
       if (!wizard) return;
-      const at =
-        name === "identify"
+      const current =
+        name === "fields" || name === "menu"
+          ? pages.length
+            ? `page-${page}`
+            : "fields"
+          : name;
+      const at = order
+        ? order.indexOf(current) + 1
+        : name === "identify"
           ? 1
           : name === "confirm"
             ? 2
@@ -275,6 +331,7 @@ function appWidget() {
       }
       for (const i of all(scope, "[aria-invalid]"))
         i.removeAttribute("aria-invalid");
+      for (const box of all(root, "[data-form-error]")) box.hidden = true;
     }
     function report(scope: Element, error: Failure) {
       const message = error.message || GENERIC;
@@ -296,10 +353,22 @@ function appWidget() {
         // A problem with something on another step (e.g. the menu) shows there.
         const owner = input.closest("[data-step]") as HTMLElement | null;
         if (owner && owner.hidden) show(owner.getAttribute("data-step") || "");
+        const pane = input.closest("[data-page]") as HTMLElement | null;
+        if (pane && pane.hidden) showPage(pages.indexOf(pane));
         input.setAttribute("aria-invalid", "true");
         slot.textContent = message;
         slot.hidden = false;
         input.focus();
+        announce(message);
+        return;
+      }
+      // An owner's "when sending fails" blocks, in this step or the form.
+      const box =
+        one(scope, "[data-form-error]") ||
+        (one(scope, ".app-error") ? null : one(root, "[data-form-error]"));
+      if (box) {
+        tokens({ message });
+        box.hidden = false;
         announce(message);
         return;
       }
@@ -329,7 +398,7 @@ function appWidget() {
         .toLowerCase();
     };
     /** Native checks first (required, number ranges, email), shown like server errors. */
-    function invalid(form: HTMLFormElement) {
+    function invalid(form: Element) {
       for (const input of all<HTMLInputElement>(
         form,
         "input, select, textarea",
@@ -405,6 +474,12 @@ function appWidget() {
         event.preventDefault();
         if (pending) return;
         clear(form);
+        // A page of questions before the last: check it, then the next page.
+        if (form === fields && page < pages.length - 1) {
+          const early = invalid(pages[page]);
+          if (early) return report(form, early);
+          return showPage(page + 1);
+        }
         const problem = invalid(form);
         if (problem) return report(form, problem);
         busy(form, true);
@@ -765,6 +840,7 @@ function appWidget() {
           const title =
             (flowing && str(found.title)) || (shown ? shown.value : "");
           for (const who of all(root, ".app-who-name")) who.textContent = title;
+          tokens({ name: title });
           if (flowing) {
             const meta = arr<Shown>(found.fields)
               .filter((f) => f && f.value && f.value !== title)
@@ -908,8 +984,9 @@ function appWidget() {
                 );
               }
             }
-            const slot = one(root, ".app-done-badge");
             const state = result.status as Tone;
+            tokens({ ref, message, status: state ? state.name : "" });
+            const slot = one(root, ".app-done-badge");
             const label =
               (slot && slot.getAttribute("data-badge")) ||
               (state ? state.name : "");
@@ -1207,6 +1284,11 @@ function appWidget() {
         if (flowing) show("loading");
         return find(typed[0], typed[1]).then((found) => {
           lastFind = typed;
+          tokens({
+            name: str(found.title),
+            ref: str(found.ref),
+            status: found.status ? (found.status as { name: string }).name : "",
+          });
           showFound(found);
           show("result");
         });
@@ -1306,7 +1388,9 @@ function appWidget() {
         renderCart();
         show("fields");
       } else if (action === "menu") show("menu");
-      else if (action === "confirm") show(menu ? "menu" : "fields");
+      else if (action === "back") {
+        if (pages.length && page > 0) showPage(page - 1);
+      } else if (action === "confirm") show(menu ? "menu" : "fields");
       else if (action === "refresh") refresh(button);
       else if (action === "retry") {
         // Send what they typed again.
