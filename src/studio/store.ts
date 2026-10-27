@@ -38,7 +38,7 @@ import {
   removeNode as removeTreeNode,
   type Node,
 } from "../blocks/model";
-import { accepts, pinnedBy } from "../blocks/lock";
+import { accepts, keepsLocks, pinnedBy } from "../blocks/lock";
 import { toBlocks, upgradeProject } from "../blocks/legacy";
 import { sectionAppForms, sectionCollections } from "../blocks/project";
 import { syncForms } from "../blocks/forms/sync";
@@ -500,16 +500,23 @@ export const useStudio = create<StudioState>((set, get) => ({
     );
     set({ selectedBlock: copy.id });
   },
-  updateNode: (section, id, update, coalesce) =>
+  updateNode: (section, id, update, coalesce) => {
+    const apply = (root: Node) =>
+      root.id === id ? update(root) : (mapNode([root], id, update)[0] ?? root);
+    const root = findSection(get().project, section)?.root;
+    if (!root) return;
+    const next = apply(root);
+    // Locked blocks keep their place and what they hold (lock.ts).
+    if (!keepsLocks(root, next)) return;
     get().commit(
       (p) =>
-        updateTree(p, section, (root) =>
-          root.id === id
-            ? update(root)
-            : (mapNode([root], id, update)[0] ?? root),
-        ),
+        updateTree(p, section, (r) => {
+          const n = r === root ? next : apply(r);
+          return keepsLocks(r, n) ? n : r;
+        }),
       coalesce,
-    ),
+    );
+  },
   insertNode: (section, parent, node, index) => {
     const root = findSection(get().project, section)?.root;
     const target = root && findNode([root], parent);

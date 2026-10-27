@@ -291,13 +291,17 @@ a.blk-box.v-card:hover {
   font-style: italic;
   color: inherit;
 }
-.website :is(.blk-heading, .blk-text, .blk-list) a:not(.blk-text-link) {
+.website
+  :is(.blk-heading, .blk-text, .blk-list, .blk-accordion)
+  a:not(.blk-text-link) {
   color: inherit;
   text-decoration: underline;
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.18em;
 }
-.website :is(.blk-heading, .blk-text, .blk-list) a:not(.blk-text-link):hover {
+.website
+  :is(.blk-heading, .blk-text, .blk-list, .blk-accordion)
+  a:not(.blk-text-link):hover {
   text-decoration-thickness: 0.14em;
 }
 .website .blk-text {

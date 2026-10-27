@@ -20,7 +20,7 @@
  */
 import { Fragment, type ReactNode } from "react";
 import { safeLink } from "./logic/model";
-import type { NodeType, PropValue } from "./model";
+import type { NodeType, Props, PropValue } from "./model";
 
 export interface InlineLink {
   href: string;
@@ -52,6 +52,68 @@ export const RICH_PROPS: Partial<Record<NodeType, string>> = {
 export const richOptionsFor = (type: NodeType): RichOptions => ({
   accent: type === "heading",
 });
+/**
+ * Blocks whose "Question | Answer" lines take formatting in the answer only
+ * (the question is a `<summary>`, which can't hold a link).
+ */
+export const RICH_ANSWERS: Partial<Record<NodeType, string>> = {
+  accordion: "items",
+};
+const asLines = (v: PropValue | undefined) =>
+  Array.isArray(v) ? v : typeof v === "string" ? v.split("\n") : [];
+/** "Question | Answer" split at the first bar (as `pairs` reads it). */
+const answerAt = (line: string) => {
+  const bar = line.indexOf("|");
+  return bar < 0
+    ? null
+    : { question: line.slice(0, bar), answer: line.slice(bar + 1) };
+};
+/** Every string of a block that takes formatting (for links: count, check). */
+export function formattedText(type: NodeType, props: Props): string[] {
+  const rich = RICH_PROPS[type];
+  if (rich) return asLines(props[rich]);
+  const answers = RICH_ANSWERS[type];
+  if (answers)
+    return asLines(props[answers]).flatMap((l) => {
+      const at = answerAt(l);
+      return at ? [at.answer.trim()] : [];
+    });
+  return [];
+}
+/** Every safe address a block's formatted text links to. */
+export const formattedLinks = (type: NodeType, props: Props) =>
+  inlineLinks(formattedText(type, props), richOptionsFor(type));
+/** Props with the links in formatted text rewritten (page renames). */
+export function mapFormattedLinks(
+  type: NodeType,
+  props: Props,
+  fn: (url: string) => string,
+): Props {
+  const o = richOptionsFor(type);
+  const rich = RICH_PROPS[type];
+  if (rich) {
+    const v = props[rich];
+    if (typeof v === "string")
+      return { ...props, [rich]: mapInlineLinks(v, o, fn) };
+    if (Array.isArray(v))
+      return { ...props, [rich]: v.map((line) => mapInlineLinks(line, o, fn)) };
+    return props;
+  }
+  const answers = RICH_ANSWERS[type];
+  const v = answers ? props[answers] : undefined;
+  if (!answers || (typeof v !== "string" && !Array.isArray(v))) return props;
+  const fix = (line: string) => {
+    const at = answerAt(line);
+    if (!at) return line;
+    const answer = mapInlineLinks(at.answer, o, fn);
+    return answer === at.answer ? line : `${at.question}|${answer}`;
+  };
+  return {
+    ...props,
+    [answers]:
+      typeof v === "string" ? v.split("\n").map(fix).join("\n") : v.map(fix),
+  };
+}
 
 const NEW_TAB = ' "new tab"';
 const SPECIAL = "\\*_[]";

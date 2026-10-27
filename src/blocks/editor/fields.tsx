@@ -436,7 +436,11 @@ export function ContentField({
           label={spec.label}
           multiline
           hint={spec.hint}
-          value={Array.isArray(value) ? value.join("\n") : str(value)}
+          value={
+            draft ?? (Array.isArray(value) ? value.join("\n") : str(value))
+          }
+          editingOnCanvas={draft !== undefined}
+          onEditCanvas={onEditCanvas}
           onChange={(text) => onChange(text.split("\n").slice(0, 100))}
         />
       );

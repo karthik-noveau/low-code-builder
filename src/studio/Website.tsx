@@ -1,3 +1,4 @@
+import type { PropValue } from "../blocks/model";
 import {
   Fragment,
   useState,
@@ -1231,7 +1232,7 @@ export function Website({
     section: string,
     node: string,
     key: string,
-    value: string,
+    value: PropValue,
   ) => void;
   exporting?: boolean;
   preview?: boolean;

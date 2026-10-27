@@ -25,6 +25,7 @@ import {
   type Notify,
 } from "./actions";
 import { DataPanel } from "./DataPanel";
+import { childrenLock } from "../lock";
 import { ActionsPanel } from "./ActionsPanel";
 import { hasDataTab } from "../data/bind";
 import { actionLabel } from "../logic/blocks";
@@ -179,28 +180,48 @@ export function NodeInspector({
       ))}
     </div>
   );
+  // Adding or removing a column changes what the block holds (lock.ts).
+  const addLock =
+    node.type === "columns"
+      ? childrenLock(root, node.id, [], section.name)
+      : null;
+  const removeLock =
+    node.type === "columns"
+      ? childrenLock(root, node.id, columns.slice(-1), section.name)
+      : null;
   const columnCount = node.type === "columns" && (
-    <div className="node-count">
-      <span>
-        <strong>{columns.length} columns</strong> side by side, stacked on
-        phones
-      </span>
-      <IconButton
-        icon="minus"
-        label="Remove the last column"
-        disabled={columns.length <= 2}
-        onClick={() => {
-          setColumns(columns.length - 1);
-          notify("Column removed", undoAction);
-        }}
-      />
-      <IconButton
-        icon="plus"
-        label="Add a column"
-        disabled={columns.length >= 4}
-        onClick={() => setColumns(columns.length + 1)}
-      />
-    </div>
+    <>
+      <div className="node-count">
+        <span>
+          <strong>{columns.length} columns</strong> side by side, stacked on
+          phones
+        </span>
+        <IconButton
+          icon="minus"
+          label="Remove the last column"
+          disabled={columns.length <= 2 || !!removeLock}
+          onClick={() => {
+            if (removeLock) return notify(removeLock);
+            setColumns(columns.length - 1);
+            notify("Column removed", undoAction);
+          }}
+        />
+        <IconButton
+          icon="plus"
+          label="Add a column"
+          disabled={columns.length >= 4 || !!addLock}
+          onClick={() => {
+            if (addLock) return notify(addLock);
+            setColumns(columns.length + 1);
+          }}
+        />
+      </div>
+      {(addLock || (removeLock && columns.length > 2)) && (
+        <p className="node-empty-note">
+          <Icon name="lock" size={12} /> {addLock ?? removeLock}
+        </p>
+      )}
+    </>
   );
   const inside = container && (
     <Group id="inside" title={`Inside (${node.children?.length ?? 0})`} open>

@@ -459,12 +459,13 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     icon: "checklist",
     category: "basic",
     description: "Points with ticks, bullets or numbers",
+    inline: "items",
     fields: [
       {
         key: "items",
         label: "Points",
         kind: "lines",
-        hint: "One per line. **bold**, __italic__, [words](/page).",
+        hint: "One per line. **bold**, __italic__, [words](/page). Or double-click a point on the page to type.",
       },
       {
         key: "marker",
@@ -622,7 +623,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
         key: "items",
         label: "Questions and answers",
         kind: "lines",
-        hint: "One per line: Question | Answer",
+        hint: "One per line: Question | Answer. Answers take **bold**, __italic__, [words](/page).",
       },
     ],
     props: () => ({

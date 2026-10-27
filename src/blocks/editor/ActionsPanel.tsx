@@ -490,6 +490,10 @@ function ClickEditor({
   const variables = page.variables ?? [];
   const forms = project.app?.forms.filter((f) => f.kind === "submit") ?? [];
   const bound = node.bind && ("url" in node.bind || "link" in node.bind);
+  // New dialogs go at the end of this section, which a lock keeps as it is.
+  const dialogLock = section.root?.locked
+    ? `${section.name} is locked. Unlock it in Layers to add a dialog to it.`
+    : null;
 
   /** Saves the steps (one undo step), dropping the block's old "Goes to" link. */
   const save = (
@@ -565,6 +569,7 @@ function ClickEditor({
     }
     if (kind === "openDialog") {
       // No dialog on the page yet: one is added to this section.
+      if (dialogLock) return notify(dialogLock);
       const dialog = createNode("dialog", { title: "A short title" });
       dialog.name = "Dialog";
       const list = [...saved];
@@ -696,6 +701,7 @@ function ClickEditor({
                   const app = project.app;
                   const form = app?.forms.find((f) => f.id === formId);
                   if (!app || !form) return;
+                  if (dialogLock) return notify(dialogLock);
                   const dialog = createNode("dialog", { title: form.name });
                   dialog.name = `${form.name} (dialog)`;
                   dialog.children = [newFormBlock(app, form)];
@@ -2087,7 +2093,7 @@ function mapTree(
 function addToRoot(p: Project, section: string, node: Node): Project {
   const fix = (list: Section[]) =>
     list.map((s) =>
-      s.id === section && s.root
+      s.id === section && s.root && !s.root.locked
         ? {
             ...s,
             root: { ...s.root, children: [...(s.root.children ?? []), node] },

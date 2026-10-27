@@ -17,7 +17,7 @@ import {
 } from "../model";
 import { BLOCKS, canHold, createNode, nodeLabel } from "../registry";
 import { presetById } from "../presets";
-import { freeName, renameVar } from "../logic/model";
+import { freeName, renameVar, varsUsed } from "../logic/model";
 import { accepts, lockNotice } from "../lock";
 
 /** What an Add panel item would put down, shown on the canvas while it's hovered. */
@@ -293,6 +293,70 @@ export function revealSection<T extends string | undefined>(id: T): T {
       ),
     );
   return id;
+}
+
+/** The three lists sections live in: the shared header, the open page, the shared footer. */
+export type SectionList = "header" | "page" | "footer";
+/** Which list a section is in (the open page's, or the shared header or footer). */
+export function sectionListOf(id: string): SectionList | undefined {
+  const { project, activePage } = useStudio.getState();
+  if (project.header.some((s) => s.id === id)) return "header";
+  if (project.footer.some((s) => s.id === id)) return "footer";
+  const page = project.pages.find((p) => p.id === activePage);
+  return page?.sections.some((s) => s.id === id) ? "page" : undefined;
+}
+/**
+ * Drops a dragged section into `list` before or after `target` (the end of
+ * the list without one), for Layers and the Pages list. Moving between lists
+ * changes where it shows: every page (header, footer) or only this page,
+ * said in a notification with Undo. A locked section stays put, and one that
+ * uses the page's values stays on its page. True when it moved.
+ */
+export function placeSectionAt(
+  moved: string,
+  list: SectionList,
+  notify: Notify,
+  target?: string,
+  zone: "before" | "after" = "after",
+): boolean {
+  const store = useStudio.getState();
+  const { project } = store;
+  const page = project.pages.find((p) => p.id === store.activePage);
+  const section = findSection(project, moved);
+  const from = sectionListOf(moved);
+  if (!page || !section || !from || moved === target) return false;
+  if (section.root?.locked) {
+    notify(lockNotice(section.root, section.root.id, "move")!);
+    return false;
+  }
+  if (from === "page" && list !== "page" && varsUsed(section.root).size) {
+    notify(
+      `${section.name} uses this page’s values, so it stays on ${page.name}.`,
+    );
+    return false;
+  }
+  const lists = {
+    header: project.header,
+    page: page.sections,
+    footer: project.footer,
+  };
+  const rest = lists[list].filter((x) => x.id !== moved);
+  const at = target ? rest.findIndex((x) => x.id === target) : -1;
+  const index = at < 0 ? rest.length : at + (zone === "before" ? 0 : 1);
+  if (from === list && lists[list].findIndex((x) => x.id === moved) === index)
+    return false;
+  if (!store.placeSection(moved, list, index)) return false;
+  notify(
+    from === list
+      ? `${section.name} moved`
+      : list === "header"
+        ? `${section.name} now shows at the top of every page`
+        : list === "footer"
+          ? `${section.name} now shows at the bottom of every page`
+          : `${section.name} now shows on ${page.name} only`,
+    undoAction,
+  );
+  return true;
 }
 
 /** Whether the selected block can move up/down among its siblings. */

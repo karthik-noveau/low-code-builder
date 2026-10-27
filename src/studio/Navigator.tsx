@@ -1,9 +1,14 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type DragEvent, type ReactNode } from "react";
 import { useStudio } from "./store";
 import { Icon } from "./Icon";
 import { IconButton } from "./ui";
 import { ActionMenu } from "./ActionMenu";
 import { sectionMeta, type Section } from "./model";
+import {
+  placeSectionAt,
+  type Notify,
+  type SectionList,
+} from "../blocks/editor/actions";
 
 export function Navigator({
   view = "pages",
@@ -55,14 +60,18 @@ export function Navigator({
   onReview: () => void;
   issueCount: number;
   onClose: () => void;
-  notify: (message: string) => void;
+  notify: Notify;
 }) {
   const store = useStudio();
   const { project } = store;
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<string | null>(null);
+  /** The section being dragged, and where it would land. */
   const [dragging, setDragging] = useState<string | null>(null);
-  const [over, setOver] = useState<string | null>(null);
+  const [over, setOver] = useState<{
+    row: string;
+    zone: "before" | "after";
+  } | null>(null);
   const search = query.trim().toLowerCase();
   const matches = (section: Section) =>
     `${section.name} ${section.title} ${section.body}`
@@ -82,51 +91,83 @@ export function Navigator({
     if (pageId && pageId !== store.activePage) navigate(pageId);
     onSelect(id);
   };
+  const endDrag = () => {
+    setDragging(null);
+    setOver(null);
+  };
+  /** Drops the dragged section into a list (see placeSectionAt) and selects it. */
+  const place = (
+    list: SectionList,
+    target?: string,
+    zone?: "before" | "after",
+  ) => {
+    const moved = dragging;
+    endDrag();
+    if (moved && placeSectionAt(moved, list, notify, target, zone))
+      onSelect(moved);
+  };
+  /** The end of a list (or an empty one) while a section is dragged. */
+  const listEnd = (list: SectionList, label: string) => {
+    const id = `end:${list}`;
+    return (
+      <div
+        className={`layers-list-end outline-drop-end ${over?.row === id ? "is-over" : ""}`}
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (over?.row !== id) setOver({ row: id, zone: "after" });
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            setOver((o) => (o?.row === id ? null : o));
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          place(list);
+        }}
+      >
+        {label}
+      </div>
+    );
+  };
   const row = (
     s: Section,
     index: number,
     sections: Section[],
     pageId?: string,
+    /** The list it can be dragged within and out of (the open page's or a shared one). */
+    list?: SectionList,
   ) => (
     <div
       key={s.id}
-      className={`outline-row ${store.selected === s.id ? "selected" : ""} ${hovered === s.id ? "is-hovered" : ""} ${s.hidden ? "is-hidden" : ""} ${over === s.id ? "drop-target" : ""}`}
+      className={`outline-row ${store.selected === s.id ? "selected" : ""} ${hovered === s.id ? "is-hovered" : ""} ${s.hidden ? "is-hidden" : ""} ${dragging === s.id ? "is-dragging" : ""} ${over?.row === s.id ? `drop-${over.zone}` : ""}`}
       onPointerEnter={() => onHover?.(s.id)}
       onPointerLeave={() => onHover?.(null)}
-      draggable={!!pageId && !search}
+      draggable={!!list && !search}
       onDragStart={(event) => {
         if (s.root?.locked) {
           event.preventDefault();
           notify("Locked. Unlock it in Layers to move it.");
           return;
         }
-        setDragging(s.id);
         event.dataTransfer.setData("text/forma-section", s.id);
         event.dataTransfer.effectAllowed = "move";
+        // After the browser has taken the drag image: drop targets appear.
+        setTimeout(() => setDragging(s.id));
       }}
-      onDragEnd={() => {
-        setDragging(null);
-        setOver(null);
-      }}
-      onDragOver={(event) => {
-        if (
-          pageId &&
-          dragging &&
-          sections.some((section) => section.id === dragging)
-        ) {
-          event.preventDefault();
-          setOver(s.id);
-        }
+      onDragEnd={endDrag}
+      onDragOver={(event: DragEvent) => {
+        if (!list || !dragging) return;
+        event.preventDefault();
+        const r = event.currentTarget.getBoundingClientRect();
+        const zone =
+          r.height && event.clientY - r.top < r.height / 2 ? "before" : "after";
+        if (over?.row !== s.id || over.zone !== zone)
+          setOver({ row: s.id, zone });
       }}
       onDrop={(event) => {
+        if (!list || !dragging) return;
         event.preventDefault();
-        if (pageId)
-          store.reorderSection(
-            event.dataTransfer.getData("text/forma-section"),
-            s.id,
-          );
-        setDragging(null);
-        setOver(null);
+        place(list, s.id, over?.row === s.id ? over.zone : "after");
       }}
     >
       <button
@@ -363,9 +404,18 @@ export function Navigator({
                 {expanded && (
                   <div className="page-outline">
                     {sections.map((s) =>
-                      row(s, page.sections.indexOf(s), page.sections, page.id),
+                      row(
+                        s,
+                        page.sections.indexOf(s),
+                        page.sections,
+                        page.id,
+                        active ? "page" : undefined,
+                      ),
                     )}
-                    {!page.sections.length && !search && (
+                    {active &&
+                      dragging &&
+                      listEnd("page", `Drop here: only on ${page.name}`)}
+                    {!page.sections.length && !search && !dragging && (
                       <p className="outline-empty">
                         Your page is a blank canvas.
                       </p>
@@ -389,17 +439,27 @@ export function Navigator({
             <button onClick={() => setQuery("")}>Clear search</button>
           </div>
         )}
-        {shared.length > 0 && (
+        {(shared.length > 0 || dragging) && (
           <div className="navigator-shared">
             <div className="navigator-group-label">
               <span>Shared sections</span>
               <span className="shared-caption">All pages</span>
             </div>
-            {shared.map((s) => {
-              const list = project.header.includes(s)
-                ? project.header
-                : project.footer;
-              return row(s, list.indexOf(s), list);
+            {(["header", "footer"] as const).map((list) => {
+              const all = project[list];
+              return [
+                ...all
+                  .filter((s) => !search || matches(s))
+                  .map((s) => row(s, all.indexOf(s), all, undefined, list)),
+                dragging && (
+                  <Fragment key={`end:${list}`}>
+                    {listEnd(
+                      list,
+                      `Drop here: ${list === "header" ? "top" : "bottom"} of every page`,
+                    )}
+                  </Fragment>
+                ),
+              ];
             })}
           </div>
         )}

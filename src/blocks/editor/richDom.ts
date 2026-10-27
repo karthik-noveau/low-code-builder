@@ -318,3 +318,22 @@ export function linkFromInput(input: string): string {
     return `https://${v}`;
   return v;
 }
+
+/**
+ * Whether the caret is on the first (`up`) or last line of the element, so
+ * ↑/↓ would leave it. Without layout (no caret box) it counts as on the edge.
+ */
+export function caretOnEdgeLine(el: HTMLElement, up: boolean): boolean {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return true;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(up);
+  const caret = Array.from(range.getClientRects()).find((r) => r.height > 0);
+  const box = el.getBoundingClientRect();
+  if (!caret || !box.height) return true;
+  const line =
+    parseFloat(getComputedStyle(el).lineHeight) || caret.height || 16;
+  return up
+    ? caret.top - box.top < line * 0.75
+    : box.bottom - caret.bottom < line * 0.75;
+}

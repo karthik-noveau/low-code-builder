@@ -314,8 +314,8 @@ read API in `backend/apps.ts`.
 `TextToolbar.tsx` (tools and the link box).
 
 - **Markup** inside the existing string props of heading (`text`), text
-  (`text`) and list items (`items`), so the model, storage, validation and
-  old drafts are unchanged:
+  (`text`), list items (`items`) and accordion answers, so the model,
+  storage, validation and old drafts are unchanged:
   `**bold**`, `__italic__`, `[words](/page)`, `[words](https://… "new tab")`
   and, in headings only, `*accent*` (unchanged rules). Buttons, badges and
   other text stay plain (a link can't hold a link).
@@ -345,3 +345,14 @@ read API in `backend/apps.ts`.
   On save the DOM is read back into canonical markup; literal markers typed
   as text are escaped only when they would otherwise format something.
 
+- **Lists** are typed on the page too (`editor/TypedList.tsx`, helpers in
+  `listItems.ts`): Enter splits a point, Backspace at the start joins it to
+  the one before (an empty one goes), ↑/↓ move between points. The prop keeps
+  one point per line and the whole edit is one undo step.
+- **Locks and the Inspector.** Controls that add or remove a block's
+  children (Columns' add/remove column) follow `lock.ts` (`childrenLock`)
+  and are disabled with the lock note; the store refuses such changes too
+  (`keepsLocks`).
+- **Pages view** drags sections between the shared header/footer lists and
+  the page's list with `placeSectionAt` (editor/actions.ts), the same rules,
+  toasts and Undo as Layers.

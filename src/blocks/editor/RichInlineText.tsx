@@ -25,6 +25,7 @@ import {
   type Run,
 } from "../richtext";
 import {
+  caretOnEdgeLine,
   fillRich,
   linkAt,
   rangeHas,
@@ -68,6 +69,8 @@ export function RichInlineText({
   onDraft,
   attrs,
   render,
+  caret,
+  lineKeys,
 }: {
   as: "span" | "div" | "h1" | "h2" | "h3" | "h4" | "p";
   value: string;
@@ -78,16 +81,36 @@ export function RichInlineText({
   onCommit: (text: string) => void;
   onActivate?: () => void;
   onStartEdit?: () => void;
-  onFinishEdit?: () => void;
+  /** Typing ended: saved (after onCommit) or cancelled, with the typed text. */
+  onFinishEdit?: (end: { cancelled: boolean; text: string }) => void;
   onDraft?: (text: string) => void;
   attrs?: Record<string, unknown>;
   /** How the text looks while not being typed into. */
   render: (value: string) => ReactNode;
+  /** Where the caret starts when typing begins (default: the end). */
+  caret?: number;
+  /**
+   * One line of a list (a list point): Enter, Backspace at the start and ↑/↓
+   * on the first or last line go to this instead of the text (it never holds
+   * a line break). True when it took the key: typing here then stops without
+   * saving or finishing, as the list carries on in another line.
+   */
+  lineKeys?: (
+    key: "enter" | "backspace" | "up" | "down",
+    at: { runs: Run[]; selection: [number, number] },
+  ) => boolean;
 }) {
   const element = useRef<HTMLElement | null>(null);
-  const latest = useRef({ value, options, onCommit, onFinishEdit, onDraft });
+  const latest = useRef({
+    value,
+    options,
+    onCommit,
+    onFinishEdit,
+    onDraft,
+    caret,
+  });
   useLayoutEffect(() => {
-    latest.current = { value, options, onCommit, onFinishEdit, onDraft };
+    latest.current = { value, options, onCommit, onFinishEdit, onDraft, caret };
   });
   const pointer = useRef<[number, number] | null>(null);
   const finishRef = useRef<() => void>(() => {});
@@ -115,7 +138,8 @@ export function RichInlineText({
     fillRich(el, start);
     el.focus({ preventScroll: true });
     const length = plainText(start).length;
-    const [a, b] = pointer.current ?? [length, length];
+    const at = latest.current.caret ?? length;
+    const [a, b] = pointer.current ?? [at, at];
     pointer.current = null;
     selectOffsets(el, Math.min(a, length), Math.min(b, length));
 
@@ -199,6 +223,7 @@ export function RichInlineText({
     const finish = () => {
       if (s.finished) return;
       s.finished = true;
+      let text = s.original;
       if (!s.cancelled) {
         const typed = runs();
         if (
@@ -206,10 +231,12 @@ export function RichInlineText({
             normalizeRuns(typed, o()),
             normalizeRuns(parseInline(s.original, o()), o()),
           )
-        )
-          latest.current.onCommit(serializeInline(typed, o()));
+        ) {
+          text = serializeInline(typed, o());
+          latest.current.onCommit(text);
+        }
       }
-      latest.current.onFinishEdit?.();
+      latest.current.onFinishEdit?.({ cancelled: s.cancelled, text });
     };
     finishRef.current = finish;
     historyRef.current = (back) => {
@@ -257,6 +284,38 @@ export function RichInlineText({
       e.preventDefault();
       e.stopPropagation();
     };
+    const el = element.current;
+    if (lineKeys && el && !mod && !e.altKey) {
+      const sel = selectionOffsets(el, options);
+      const runs = readRich(el, options);
+      const up = e.key === "ArrowUp";
+      const name =
+        e.key === "Enter"
+          ? "enter"
+          : e.key === "Backspace" && sel?.[0] === 0 && sel[1] === 0
+            ? "backspace"
+            : (up || e.key === "ArrowDown") &&
+                !e.shiftKey &&
+                sel &&
+                sel[0] === sel[1] &&
+                caretOnEdgeLine(el, up)
+              ? up
+                ? "up"
+                : "down"
+              : null;
+      const length = plainText(runs).length;
+      if (
+        name &&
+        lineKeys(name, { runs, selection: sel ?? [length, length] })
+      ) {
+        stop();
+        // The list carries on in another line; this one is done.
+        if (session.current) session.current.finished = true;
+        return;
+      }
+      // A list point never holds a line break.
+      if (e.key === "Enter") return stop();
+    }
     if (e.key === "Escape") {
       stop();
       if (session.current) session.current.cancelled = true;

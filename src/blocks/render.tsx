@@ -7,13 +7,19 @@ import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "../studio/Icon";
 import { InlineText } from "../studio/InlineText";
 import { RichInlineText } from "./editor/RichInlineText";
+import { TypedList } from "./editor/TypedList";
 import { pageHref, safeImage, type Page, type Project } from "../studio/model";
 import { Ambient } from "../studio/siteParts";
 import { SmartBlock } from "./smart";
 import { BLOCKS } from "./registry";
 import type { Node, PropValue } from "./model";
 import { embedUrl, lines, pairs } from "./text";
-import { inlineLinks, RICH_PROPS, richOptionsFor, richText } from "./richtext";
+import {
+  formattedLinks,
+  RICH_PROPS,
+  richOptionsFor,
+  richText,
+} from "./richtext";
 import { boundProps, type DataItem } from "./data/bind";
 import { ChartBlock, RepeatBlock, StatBlock, TableBlock } from "./data/blocks";
 import { FormBlock, type FormScope } from "./forms/FormBlocks";
@@ -60,7 +66,8 @@ export interface RenderContext {
     typing: string | null;
     onStartTyping: (id: string) => void;
     onFinishTyping: () => void;
-    onCommit: (id: string, key: string, value: string) => void;
+    /** A list's points are saved as one change (TypedList.tsx). */
+    onCommit: (id: string, key: string, value: PropValue) => void;
     onDraft?: (text: string) => void;
     onSelect: (id: string) => void;
   };
@@ -496,22 +503,36 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     case "list": {
       const marker = str(p.marker);
       const Tag = marker === "number" ? "ol" : "ul";
+      const tick =
+        marker === "check" || !marker ? (
+          <Icon name="check" size={16} className="blk-list-check" />
+        ) : null;
+      const render = (item: string) =>
+        richText(item, {
+          href: ctx.href,
+          links: !ctx.inLink && !ctx.miniature,
+          tabIndex: tab,
+        });
+      // Points filled from data aren't typed into (they change with the item).
+      const typed = edit && !(ctx.item && n.bind?.items);
       return (
         <Tag {...attrs} className={cls(`m-${marker || "check"}`)}>
-          {lines(p.items).map((item, i) => (
-            <li key={i}>
-              {marker === "check" || !marker ? (
-                <Icon name="check" size={16} className="blk-list-check" />
-              ) : null}
-              <span>
-                {richText(item, {
-                  href: ctx.href,
-                  links: !ctx.inLink && !ctx.miniature,
-                  tabIndex: tab,
-                })}
-              </span>
-            </li>
-          ))}
+          {typed ? (
+            <TypedList
+              node={n}
+              items={lines(p.items)}
+              edit={edit}
+              marker={tick}
+              render={render}
+            />
+          ) : (
+            lines(p.items).map((item, i) => (
+              <li key={i}>
+                {tick}
+                <span>{render(item)}</span>
+              </li>
+            ))
+          )}
         </Tag>
       );
     }
@@ -690,7 +711,13 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
                 <span>{q}</span>
                 <Icon name="plus" size={16} />
               </summary>
-              <p>{a}</p>
+              <p>
+                {richText(a, {
+                  href: ctx.href,
+                  links: !ctx.inLink && !ctx.miniature,
+                  tabIndex: tab,
+                })}
+              </p>
             </details>
           ))}
         </div>
@@ -737,9 +764,7 @@ function interactiveInside(n: Node): boolean {
       (c.type === "box" && !!c.props.link) ||
       (c.type === "image" && !!c.props.link) ||
       // Links in text (src/blocks/richtext.tsx).
-      (!!RICH_PROPS[c.type] &&
-        inlineLinks(c.props[RICH_PROPS[c.type]!], richOptionsFor(c.type))
-          .length > 0) ||
+      formattedLinks(c.type, c.props).length > 0 ||
       interactiveInside(c),
   );
 }

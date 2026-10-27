@@ -157,7 +157,13 @@ export function CanvasOverlay({
               ? { id: sectionId, rect: sectionRect }
               : undefined,
           typing: typing
-            ? box(site.querySelector(".inline-copy.is-editing"))
+            ? box(
+                // A list's point: the tools go above the whole list, clear of the other points.
+                site
+                  .querySelector(".inline-copy.is-editing")
+                  ?.closest('[data-node-type="list"]') ??
+                  site.querySelector(".inline-copy.is-editing"),
+              )
             : undefined,
           preview: previewLine(site),
         };

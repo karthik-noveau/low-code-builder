@@ -20,24 +20,24 @@ import { findSection, sectionMeta, type Section } from "../../studio/model";
 import { locate, pathTo, type Node } from "../model";
 import { BLOCKS, nodeLabel } from "../registry";
 import { accepts, lockNotice } from "../lock";
-import { varsUsed } from "../logic/model";
 import {
   currentDrag,
   drop,
   endDrag,
   payloadType,
+  placeSectionAt,
   revealSection,
   startDrag,
   undoAction,
   useBlocksUi,
   type DropTarget,
   type Notify,
+  type SectionList,
 } from "./actions";
 import { sectionSlot } from "./dropzone";
 
 type Zone = "before" | "after" | "inside";
-/** The three lists sections live in: the shared header, the page, the shared footer. */
-type List = "header" | "page" | "footer";
+type List = SectionList;
 
 function Rename({
   value,
@@ -488,59 +488,25 @@ export function Layers({
       undoAction,
     );
   };
-  const listOf = (id: string): List | undefined =>
-    project.header.some((s) => s.id === id)
-      ? "header"
-      : project.footer.some((s) => s.id === id)
-        ? "footer"
-        : page.sections.some((s) => s.id === id)
-          ? "page"
-          : undefined;
-  const sections = {
-    header: project.header,
-    page: page.sections,
-    footer: project.footer,
-  };
-  /**
-   * Drops the dragged section into `list` before or after `target` (the end
-   * of the list without one). Moving between lists changes where it shows:
-   * every page (header, footer) or only this page.
-   */
+  /** Drops the dragged section (see placeSectionAt), then selects it. */
   const placeSection = (
     moved: string,
     list: List,
     target?: string,
     zone: Zone = "after",
   ) => {
-    const section = findSection(project, moved);
-    const from = listOf(moved);
-    if (!section || !from || moved === target) return;
-    if (section.root?.locked)
-      return notify(lockNotice(section.root, section.root.id, "move")!);
-    if (from === "page" && list !== "page" && varsUsed(section.root).size)
-      return notify(
-        `${section.name} uses this page’s values, so it stays on ${page.name}.`,
-      );
-    const rest = sections[list].filter((x) => x.id !== moved);
-    const at = target ? rest.findIndex((x) => x.id === target) : -1;
-    const index = at < 0 ? rest.length : at + (zone === "before" ? 0 : 1);
     if (
-      from === list &&
-      sections[list].findIndex((x) => x.id === moved) === index
+      !placeSectionAt(
+        moved,
+        list,
+        notify,
+        target,
+        zone === "before" ? "before" : "after",
+      )
     )
       return;
-    if (!store.placeSection(moved, list, index)) return;
-    notify(
-      from === list
-        ? `${section.name} moved`
-        : list === "header"
-          ? `${section.name} now shows at the top of every page`
-          : list === "footer"
-            ? `${section.name} now shows at the bottom of every page`
-            : `${section.name} now shows on ${page.name} only`,
-      undoAction,
-    );
-    if (section.root) onSelectNode(moved, section.root.id);
+    const section = findSection(useStudio.getState().project, moved);
+    if (section?.root) onSelectNode(moved, section.root.id);
     else onSelectSection(moved);
     revealSection(moved);
   };

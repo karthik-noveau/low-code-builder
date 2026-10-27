@@ -315,9 +315,12 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       target.node && root ? findNode([root], target.node) : undefined;
     if (node) store.select(target.section, node.id);
     const inline = node && BLOCKS[node.type].inline;
+    const typed = inline ? node.props[inline] : undefined;
     setDraftText(
       node
-        ? String((inline && node.props[inline]) ?? "")
+        ? Array.isArray(typed)
+          ? typed.join("\n")
+          : String(typed ?? "")
         : (findSection(store.project, target.section)?.[target.field] ?? ""),
     );
     setEditingText(target);
