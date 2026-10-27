@@ -205,14 +205,15 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
             text: (s) => withVars(s, ctx),
           })
         : withVars(v, ctx);
+    // "{year}" shows the current year (copyright lines); typing shows "{year}".
+    const year = (v: string) =>
+      v.replaceAll("{year}", String(new Date().getFullYear()));
     if (!edit || bound) {
       const Tag = as;
-      // "{year}" shows the current year (copyright lines).
-      const text = value.replaceAll("{year}", String(new Date().getFullYear()));
       // A clickable heading or text: its words are the link or button.
       const words = wordsClick
-        ? clickable(click, "blk-text-link", render(text))
-        : render(text);
+        ? clickable(click, "blk-text-link", render(year(value)))
+        : render(year(value));
       return (
         <Tag
           className={className}
@@ -235,7 +236,7 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
       onFinishEdit: edit.onFinishTyping,
       onDraft: edit.onDraft,
       attrs: { ...attrs, ...extra },
-      render,
+      render: (v: string) => render(year(v)),
     };
     return rich ? (
       <RichInlineText {...common} options={richOptionsFor(n.type)} />
