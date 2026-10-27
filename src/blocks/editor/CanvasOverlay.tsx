@@ -29,7 +29,9 @@ import {
   moveSibling,
   placeFor,
   removeSelected,
+  selectionLock,
   startDrag,
+  toggleLocked,
   undoAction,
   useBlocksUi,
   type Notify,
@@ -466,6 +468,12 @@ export function CanvasOverlay({
               >
                 <Icon name={isRoot ? "panel" : def!.icon} size={12} />
                 <span>{label(node!.id)}</span>
+                {node!.locked && (
+                  <span className="blocks-locked" title="Locked">
+                    <Icon name="lock" size={11} />
+                    <span className="sr-only">Locked</span>
+                  </span>
+                )}
                 <LogicMarks node={node!} />
                 {path.length > 1 && <Icon name="down" size={11} />}
               </button>
@@ -530,6 +538,12 @@ export function CanvasOverlay({
                   aria-label="Drag to move"
                   data-tip="Drag to move"
                   onDragStart={(e) => {
+                    const locked = selectionLock("move");
+                    if (locked) {
+                      e.preventDefault();
+                      notify(locked);
+                      return;
+                    }
                     startDrag(
                       { kind: "node", section: section!.id, id: node!.id },
                       e.dataTransfer,
@@ -549,7 +563,11 @@ export function CanvasOverlay({
                 aria-label={isRoot ? "Move section up" : "Move up"}
                 data-tip={isRoot ? "Move section up" : "Move up · Alt ↑"}
                 disabled={!moves?.up}
-                onClick={() => moveSibling(-1)}
+                onClick={() => {
+                  const locked = selectionLock("move");
+                  if (locked) notify(locked);
+                  else moveSibling(-1);
+                }}
               >
                 <Icon name="up" size={14} />
               </button>
@@ -559,7 +577,11 @@ export function CanvasOverlay({
                 aria-label={isRoot ? "Move section down" : "Move down"}
                 data-tip={isRoot ? "Move section down" : "Move down · Alt ↓"}
                 disabled={!moves?.down}
-                onClick={() => moveSibling(1)}
+                onClick={() => {
+                  const locked = selectionLock("move");
+                  if (locked) notify(locked);
+                  else moveSibling(1);
+                }}
               >
                 <Icon name="down" size={14} />
               </button>
@@ -569,12 +591,36 @@ export function CanvasOverlay({
                 aria-label="Duplicate"
                 data-tip="Duplicate · ⌘D"
                 onClick={() => {
+                  const locked = selectionLock("duplicate");
+                  if (locked) return notify(locked);
                   duplicateSelected();
                   const s = useStudio.getState();
                   if (s.selected) onPick(s.selected, s.selectedBlock ?? "");
                 }}
               >
                 <Icon name="copy" size={14} />
+              </button>
+              <button
+                type="button"
+                className={`blocks-tool ${node!.locked ? "is-on" : ""}`}
+                aria-label={node!.locked ? "Unlock" : "Lock"}
+                aria-pressed={!!node!.locked}
+                data-tip={
+                  node!.locked
+                    ? "Unlock to move or delete it"
+                    : "Lock its place and what’s inside"
+                }
+                onClick={() => {
+                  const now = toggleLocked();
+                  notify(
+                    now
+                      ? `${label(node!.id)} locked. Text and settings stay editable.`
+                      : `${label(node!.id)} unlocked`,
+                    undoAction,
+                  );
+                }}
+              >
+                <Icon name={node!.locked ? "lock" : "unlock"} size={14} />
               </button>
               <button
                 type="button"
@@ -594,10 +640,13 @@ export function CanvasOverlay({
               </button>
               <button
                 type="button"
-                className="blocks-tool danger"
+                className={`blocks-tool danger ${selectionLock("delete") ? "is-blocked" : ""}`}
                 aria-label="Delete"
-                data-tip="Delete · Del"
+                aria-disabled={selectionLock("delete") ? true : undefined}
+                data-tip={selectionLock("delete") ?? "Delete · Del"}
                 onClick={() => {
+                  const locked = selectionLock("delete");
+                  if (locked) return notify(locked);
                   const name = removeSelected();
                   const s = useStudio.getState();
                   if (s.selected) onPick(s.selected, s.selectedBlock ?? "");
@@ -609,6 +658,7 @@ export function CanvasOverlay({
             </div>
             {def?.container &&
               onAddBlock &&
+              !node!.locked &&
               sel.height > (isRoot ? 140 : 56) &&
               !dragging &&
               !preview && (

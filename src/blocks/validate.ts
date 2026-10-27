@@ -12,6 +12,13 @@ import {
 } from "./model";
 import { BLOCKS, canHold } from "./registry";
 import { conditionValid, onValid, safeLink } from "./logic/model";
+import {
+  inlineLinks,
+  mapInlineLinks,
+  MAX_INLINE_LINKS,
+  RICH_PROPS,
+  richOptionsFor,
+} from "./richtext";
 
 export const MAX_DEPTH = 12;
 export const MAX_NODES = 600;
@@ -159,7 +166,14 @@ export function rootValid(root: unknown): root is Node {
       (node.name !== undefined &&
         (typeof node.name !== "string" || node.name.length > 80)) ||
       (node.hidden !== undefined && typeof node.hidden !== "boolean") ||
+      (node.locked !== undefined && typeof node.locked !== "boolean") ||
       !propsValid(node.props) ||
+      // Links inside text: a few per block (each checked by safeLink).
+      (!!RICH_PROPS[node.type] &&
+        inlineLinks(
+          node.props[RICH_PROPS[node.type]!],
+          richOptionsFor(node.type),
+        ).length > MAX_INLINE_LINKS) ||
       !bindValid(node.bind) ||
       // Clicks and "show only when" (src/blocks/logic/model.ts).
       !onValid(node.on, node.type) ||
@@ -217,6 +231,15 @@ export function mapNodeLinks(root: Node, fn: (url: string) => string): Node {
   for (const key of ["url", "link"])
     if (typeof props[key] === "string" && props[key])
       props[key] = fn(props[key] as string);
+  // Links inside text ("[words](/menu)").
+  const rich = RICH_PROPS[root.type];
+  if (rich) {
+    const o = richOptionsFor(root.type);
+    const v = props[rich];
+    if (typeof v === "string") props[rich] = mapInlineLinks(v, o, fn);
+    else if (Array.isArray(v))
+      props[rich] = v.map((line) => mapInlineLinks(line, o, fn));
+  }
   if (root.type === "menu" || root.type === "social")
     if (Array.isArray(props.links))
       props.links = props.links.map((line) => {

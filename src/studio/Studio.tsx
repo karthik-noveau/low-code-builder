@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Icon } from "./Icon";
 import { IconButton, Modal, Field, type NotifyAction } from "./ui";
+import { LOCK_HINT } from "../blocks/lock";
 import { Website } from "./Website";
 import { Inspector, type MediaTarget } from "./Inspector";
 import { DataManager } from "./DataManager";
@@ -55,6 +56,8 @@ import {
   moveSibling,
   paste,
   removeSelected,
+  revealSection,
+  selectionLock,
   selectFirstChild,
   selectParent,
   selectSibling,
@@ -138,6 +141,24 @@ async function readImage(file: File): Promise<string> {
   context.drawImage(img, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/webp", 0.88);
 }
+/**
+ * Below this width the Add panel, Pages/Layers and the right-hand panel
+ * don't all fit beside a useful canvas (at 1440 px under 530 px of it would
+ * show): the right panel steps aside while the Add panel is open and comes
+ * back when it closes.
+ */
+const ROOMY = 1600;
+/** Whether the window is at least `px` wide, following resizes. */
+function useWideWindow(px: number) {
+  const [wide, setWide] = useState(() => window.innerWidth >= px);
+  useEffect(() => {
+    const check = () => setWide(window.innerWidth >= px);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [px]);
+  return wide;
+}
+
 export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const store = useStudio();
   const { project } = store;
@@ -183,10 +204,12 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   /** The left panel: the site map, the page's layers, or the Add panel. */
   const [leftView, setLeftView] = useState<"pages" | "layers">("pages");
   const [adding, setAdding] = useState(false);
+  const roomy = useWideWindow(ROOMY);
+  /** The right-hand panel is out of the way while adding (narrow windows). */
+  const drawerAway = adding && !roomy;
   const [addTab, setAddTab] = useState<AddTab>("sections");
   const reviewItems = reviewProject(project);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All sections");
   const [template, setTemplate] = useState<TemplateId>(project.template);
   const [pageName, setPageName] = useState("");
   const [mediaTarget, setMediaTarget] = useState<MediaTarget | null>(null);
@@ -279,11 +302,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   };
   const focusSection = (id: string) => {
     selectCanvasSection(id);
-    requestAnimationFrame(() =>
-      document
-        .querySelector(`[data-section-id="${CSS.escape(id)}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
-    );
+    revealSection(id);
   };
   const startTextEdit = (target: TextEditTarget) => {
     store.select(target.section);
@@ -424,6 +443,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       };
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
+        const locked = selectionLock("delete");
+        if (locked) return notify(locked);
         const name = removeSelected();
         notify(`${name} deleted`, undoAction);
       } else if (e.key === "Tab" && !mod && !e.altKey) {
@@ -444,6 +465,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         }
       } else if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
+        const locked = selectionLock("duplicate");
+        if (locked) return notify(locked);
         duplicateSelected();
         notify("Duplicated", undoAction);
       } else if (mod && e.key.toLowerCase() === "c") {
@@ -457,7 +480,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           );
       } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
         e.preventDefault();
-        moveSibling(e.key === "ArrowUp" ? -1 : 1);
+        const locked = selectionLock("move");
+        if (locked) notify(locked);
+        else moveSibling(e.key === "ArrowUp" ? -1 : 1);
       }
     };
     const finishTextEdit = () => {
@@ -570,18 +595,6 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       setBusy(false);
     }
   };
-  const availableSections = (
-    Object.entries(sectionMeta) as [
-      SectionType,
-      (typeof sectionMeta)[SectionType],
-    ][]
-  ).filter(
-    ([, m]) =>
-      (category === "All sections" || m.category === category) &&
-      `${m.label} ${m.description}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
   const openUtility = (next: Panel) => {
     setPreview(false);
     setPanel(next);
@@ -621,7 +634,6 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const openSavedSections = () => {
     setInsertAfter(undefined);
     setSearch("");
-    setCategory("Saved sections");
     setDialog("library");
   };
   const commands: StudioCommand[] = [
@@ -975,7 +987,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         </div>
       </header>
       <div
-        className={`studio-workspace ${!preview && (inspectorOpen || panel !== "sections") ? "has-inspector" : ""}`}
+        className={`studio-workspace ${!preview && !drawerAway && (inspectorOpen || panel !== "sections") ? "has-inspector" : ""}`}
       >
         {!preview && adding && (
           <AddPanel
@@ -1004,6 +1016,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               <Layers
                 onSelectSection={focusSection}
                 onSelectNode={selectNode}
+                notify={notify}
               />
             }
             onNavigate={navigate}
@@ -1233,7 +1246,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           )}
         </main>
         {!preview && inspectorOpen && panel === "sections" && (
-          <div className="context-drawer">
+          <div className={`context-drawer ${drawerAway ? "is-away" : ""}`}>
             <Inspector
               key={`${store.selected ?? store.activePage}-${selectedField ?? "section"}-${inspectorSession}`}
               focusField={selectedField}
@@ -1279,7 +1292,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           </div>
         )}
         {!preview && panel !== "sections" && (
-          <div className="context-drawer utility-drawer">
+          <div
+            className={`context-drawer utility-drawer ${drawerAway ? "is-away" : ""}`}
+          >
             <Sidebar
               panel={panel}
               setPanel={setPanel}
@@ -1448,7 +1463,10 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       {toast && (
         <div className="studio-toast" role="status">
           <span>
-            <Icon name="check" size={16} />
+            <Icon
+              name={toast.text.includes(LOCK_HINT) ? "lock" : "check"}
+              size={16}
+            />
           </span>
           {toast.text}
           {toast.action && (
@@ -1472,16 +1490,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
       {dialog === "library" && (
         <Modal
           wide
-          title="Add a section"
-          subtitle={
-            category === "Saved sections"
-              ? "Reuse your content and design. Each insertion creates an independent copy."
-              : insertAfter === "start"
-                ? "Your new section will start this page."
-                : insertAfter
-                  ? `Your new section goes right after ${findSection(project, insertAfter)?.name ?? "the selected section"}.`
-                  : "Choose a building block. We’ll add it to the end of this page."
-          }
+          title="Saved sections"
+          subtitle="Reuse your content and design. Each insertion creates an independent copy."
           onClose={closeDialog}
         >
           <div className="library-placement">
@@ -1512,147 +1522,99 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search sections…"
-                aria-label="Search sections"
+                placeholder="Search saved sections…"
+                aria-label="Search saved sections"
               />
               <kbd>⌕</kbd>
             </label>
+            {/* New sections come from the Add panel (prebuilt blocks sections). */}
+            <button
+              type="button"
+              className="library-browse"
+              onClick={() => {
+                setDialog(null);
+                openLibrary(insertAfter);
+              }}
+            >
+              <Icon name="plus" size={15} />
+              Browse all sections
+            </button>
           </div>
-          <div className="library-layout">
-            <nav>
-              {[
-                "All sections",
-                "Saved sections",
-                "Essentials",
-                "Commerce",
-                "Social proof",
-                "Forms",
-                "Navigation",
-              ].map((c) => (
-                <button
-                  className={category === c ? "selected" : ""}
-                  key={c}
-                  onClick={() => setCategory(c)}
-                >
-                  {c}
-                  <span>
-                    {c === "Saved sections"
-                      ? project.savedSections?.length || 0
-                      : Object.values(sectionMeta).filter(
-                          (m) => c === "All sections" || m.category === c,
-                        ).length}
-                  </span>
-                </button>
-              ))}
-            </nav>
+          <div className="library-layout is-saved">
             <div className="section-library">
-              {availableSections.map(([type, meta]) => (
-                <button
-                  className="section-tile"
-                  key={type}
-                  onClick={() => {
-                    const id = store.addSection(type, insertAfter);
-                    setDialog(null);
-                    setPanel("sections");
-                    focusSection(id);
-                    notify(`${meta.label} added`);
-                  }}
-                >
-                  <div className={`section-mini mini-${type}`}>
-                    <SectionMini type={type} />
-                    <span className="tile-plus">
-                      <Icon name="plus" size={16} />
-                    </span>
-                  </div>
-                  <h3>{meta.label}</h3>
-                  <p>{meta.description}</p>
-                </button>
-              ))}
-              {category === "Saved sections" &&
-                (project.savedSections ?? [])
-                  .filter((section) =>
-                    `${section.name} ${section.title}`
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-                  )
-                  .map((section) => (
-                    <div className="saved-section-card" key={section.id}>
-                      <button
-                        className="section-tile"
-                        onClick={() => {
-                          const id = store.insertSavedSection(
-                            section.id,
-                            insertAfter,
-                          );
-                          if (!id) return;
-                          setDialog(null);
-                          setPanel("sections");
-                          focusSection(id);
-                          notify(
-                            `${section.name} added as an independent copy`,
-                          );
-                        }}
-                      >
-                        <div className={`section-mini mini-${section.type}`}>
-                          {section.image ? (
-                            <img
-                              className="saved-section-image"
-                              src={safeImage(section.image)}
-                              alt=""
-                            />
-                          ) : (
-                            <SectionMini type={section.type} />
-                          )}
-                          <span className="tile-plus">
-                            <Icon name="plus" size={16} />
-                          </span>
-                        </div>
-                        <h3>{section.name}</h3>
-                        <p>
-                          {section.title ||
-                            sectionMeta[section.type].description}
-                        </p>
-                      </button>
-                      <div className="saved-section-meta">
-                        <span>{sectionMeta[section.type].label}</span>
-                        <IconButton
-                          icon="trash"
-                          label={`Remove saved ${section.name}`}
-                          onClick={() => {
-                            store.removeSavedSection(section.id);
-                            notify(
-                              "Removed from library. Use Undo to restore it.",
-                            );
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-              {category === "Saved sections" &&
-                !(project.savedSections ?? []).some((section) =>
+              {(project.savedSections ?? [])
+                .filter((section) =>
                   `${section.name} ${section.title}`
                     .toLowerCase()
                     .includes(search.toLowerCase()),
-                ) && (
-                  <div className="empty-results">
-                    <Icon name="folder" size={30} />
-                    <h3>
-                      {search
-                        ? "No matching saved sections"
-                        : "Keep your best sections"}
-                    </h3>
-                    <p>
-                      {search
-                        ? "Try another name or clear the search."
-                        : "Open a section’s actions and choose Save to library. Reuse its content and design on any page."}
-                    </p>
+                )
+                .map((section) => (
+                  <div className="saved-section-card" key={section.id}>
+                    <button
+                      className="section-tile"
+                      onClick={() => {
+                        const id = store.insertSavedSection(
+                          section.id,
+                          insertAfter,
+                        );
+                        if (!id) return;
+                        setDialog(null);
+                        setPanel("sections");
+                        focusSection(id);
+                        notify(`${section.name} added as an independent copy`);
+                      }}
+                    >
+                      <div className={`section-mini mini-${section.type}`}>
+                        {section.image ? (
+                          <img
+                            className="saved-section-image"
+                            src={safeImage(section.image)}
+                            alt=""
+                          />
+                        ) : (
+                          <SectionMini type={section.type} />
+                        )}
+                        <span className="tile-plus">
+                          <Icon name="plus" size={16} />
+                        </span>
+                      </div>
+                      <h3>{section.name}</h3>
+                      <p>
+                        {section.title || sectionMeta[section.type].description}
+                      </p>
+                    </button>
+                    <div className="saved-section-meta">
+                      <span>{sectionMeta[section.type].label}</span>
+                      <IconButton
+                        icon="trash"
+                        label={`Remove saved ${section.name}`}
+                        onClick={() => {
+                          store.removeSavedSection(section.id);
+                          notify(
+                            "Removed from library. Use Undo to restore it.",
+                          );
+                        }}
+                      />
+                    </div>
                   </div>
-                )}
-              {category !== "Saved sections" && !availableSections.length && (
+                ))}
+              {!(project.savedSections ?? []).some((section) =>
+                `${section.name} ${section.title}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
+              ) && (
                 <div className="empty-results">
-                  <Icon name="search" size={30} />
-                  <h3>No matching sections</h3>
-                  <p>Try a different word or category.</p>
+                  <Icon name="folder" size={30} />
+                  <h3>
+                    {search
+                      ? "No matching saved sections"
+                      : "Keep your best sections"}
+                  </h3>
+                  <p>
+                    {search
+                      ? "Try another name or clear the search."
+                      : "Open a section’s actions and choose Save to library. Reuse its content and design on any page."}
+                  </p>
                 </div>
               )}
             </div>

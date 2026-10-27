@@ -91,6 +91,7 @@ const editor: Record<string, string> = {
   keyboard: "M3 6h18v12H3V6Zm4 4h.01M11 10h.01M15 10h.01M7 14h10",
   parent: "M14 9 9 4 4 9M9 4v10a6 6 0 0 0 6 6h5",
   wrap: "M3 3h18v18H3V3Zm5 5h8v8H8V8Z",
+  unlock: "M6 10h12v11H6V10Zm2 0V6a4 4 0 0 1 7.7-1.5",
   collapseAll: "m7 20 5-5 5 5M7 4l5 5 5-5",
   expandAll: "m7 15 5 5 5-5M7 9l5-5 5 5",
   stacked: "M5 4h14v6H5V4Zm0 10h14v6H5v-6Z",

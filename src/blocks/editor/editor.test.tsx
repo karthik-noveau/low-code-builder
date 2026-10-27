@@ -15,7 +15,13 @@ import { Studio } from "../../studio/Studio";
 import { createNode } from "../registry";
 import { PRESETS } from "../presets";
 import type { Node } from "../model";
-import { placeFor } from "./actions";
+import {
+  insertBlock,
+  placeFor,
+  scrollIntoCanvas,
+  selectionLock,
+} from "./actions";
+import { rootValid } from "../validate";
 
 vi.mock("../../cloud/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../cloud/client")>()),
@@ -419,5 +425,171 @@ describe("Add panel search and keyboard", () => {
     expect(
       within(panel).getByRole("heading", { name: "Recently added" }),
     ).toBeTruthy();
+  });
+});
+
+describe("locked blocks", () => {
+  const lock = (section: string, id: string) =>
+    useStudio
+      .getState()
+      .updateNode(section, id, (n) => ({ ...n, locked: true }));
+  it("can't be moved, deleted or added to, but stay editable", () => {
+    const { section, heading, row } = setup();
+    lock(section, row.id);
+    const store = useStudio.getState();
+    const button = row.children![0];
+    expect(rootValid(rootOf(section))).toBe(true);
+    // Its place, and what it holds, stay put.
+    store.moveNode(section, row.id, section, rootOf(section).id, 0);
+    store.removeNode(section, row.id);
+    store.removeNode(section, button.id);
+    store.moveNode(section, button.id, section, rootOf(section).id, 0);
+    store.moveNode(section, heading.id, section, row.id, 0);
+    expect(types(rootOf(section))).toEqual(["heading", "text", "row"]);
+    expect(types(rootOf(section).children![2])).toEqual(["button"]);
+    // New blocks go beside it instead of inside.
+    expect(placeFor(rootOf(section), row.id, "button")).toEqual({
+      parent: rootOf(section).id,
+      index: 3,
+    });
+    // Text and settings still change.
+    store.updateNode(section, button.id, (n) => ({
+      ...n,
+      props: { ...n.props, label: "Book" },
+    }));
+    expect(rootOf(section).children![2].children![0].props.label).toBe("Book");
+    useStudio.getState().select(section, row.id);
+    expect(selectionLock("move")).toBe(
+      "Locked. Unlock it in Layers to move it.",
+    );
+    expect(selectionLock("duplicate")).toBeNull();
+    useStudio.getState().select(section, button.id);
+    expect(selectionLock("delete")).toBe(
+      "Row is locked. Unlock it in Layers to delete what’s inside.",
+    );
+    // A locked section's root keeps the section.
+    lock(section, rootOf(section).id);
+    useStudio.getState().removeSection(section);
+    expect(findSection(useStudio.getState().project, section)).toBeTruthy();
+  });
+  it("says why on the keyboard, and locks from Layers in one undo step", () => {
+    const { section, text } = setup();
+    render(<Studio />);
+    fireEvent.click(screen.getByRole("tab", { name: "Layers" }));
+    const layers = screen.getByLabelText(/^Layers of/);
+    const before = useStudio.getState().past.length;
+    fireEvent.click(within(layers).getByRole("button", { name: "Lock Text" }));
+    expect(rootOf(section).children![1].locked).toBe(true);
+    expect(useStudio.getState().past.length).toBe(before + 1);
+    expect(
+      within(layers).getByRole("button", { name: "Unlock Text" }),
+    ).toBeTruthy();
+    act(() => useStudio.getState().select(section, text.id));
+    fireEvent.keyDown(document.body, { key: "Delete" });
+    fireEvent.keyDown(document.body, { key: "ArrowUp", altKey: true });
+    expect(types(rootOf(section))).toEqual(["heading", "text", "row"]);
+    expect(document.querySelector(".studio-toast")?.textContent).toContain(
+      "Unlock it in Layers to move it",
+    );
+    act(() => useStudio.getState().undo());
+    expect(rootOf(section).children![1].locked).toBeUndefined();
+  });
+  it("refuses a lock that isn't true or false", () => {
+    const { root } = setup();
+    expect(rootValid({ ...root, locked: "yes" } as unknown as Node)).toBe(
+      false,
+    );
+  });
+});
+
+describe("sections between header, page and footer", () => {
+  it("moves a page section into the shared header and back in one undo step each", () => {
+    const { section } = setup();
+    const store = useStudio.getState();
+    const header = store.project.header.length;
+    const before = store.past.length;
+    expect(store.placeSection(section, "header", header)).toBe(true);
+    let p = useStudio.getState().project;
+    expect(p.header.at(-1)?.id).toBe(section);
+    expect(p.pages[0].sections.some((s) => s.id === section)).toBe(false);
+    expect(useStudio.getState().past.length).toBe(before + 1);
+    useStudio.getState().placeSection(section, "page", 0);
+    p = useStudio.getState().project;
+    expect(p.pages[0].sections[0].id).toBe(section);
+    expect(p.header.some((s) => s.id === section)).toBe(false);
+    useStudio.getState().undo();
+    expect(useStudio.getState().project.header.at(-1)?.id).toBe(section);
+    // A locked section stays where it is.
+    useStudio.getState().updateNode(section, rootOf(section).id, (n) => ({
+      ...n,
+      locked: true,
+    }));
+    expect(useStudio.getState().placeSection(section, "footer", 0)).toBe(false);
+  });
+});
+
+describe("Layers section drag", () => {
+  it("drags a page section into the header with a notice and Undo", async () => {
+    const { section } = setup();
+    render(<Studio />);
+    fireEvent.click(screen.getByRole("tab", { name: "Layers" }));
+    const layers = screen.getByLabelText(/^Layers of/);
+    const rowOf = (name: string) =>
+      within(layers).getByRole("button", { name }).closest(".layer-row")!;
+    const dataTransfer = { setData: () => {}, types: [] as string[] };
+    const header = useStudio.getState().project.header;
+    fireEvent.dragStart(rowOf("Intro"), { dataTransfer });
+    await act(() => new Promise((r) => setTimeout(r)));
+    // Every list takes it while dragging, even an empty one.
+    expect(within(layers).getAllByText(/^Drop here/)).toHaveLength(3);
+    const target = rowOf(header.at(-1)!.name);
+    fireEvent.dragOver(target, { dataTransfer, clientY: 1 });
+    fireEvent.drop(target, { dataTransfer, clientY: 1 });
+    const p = useStudio.getState().project;
+    expect(p.header.at(-1)?.id).toBe(section);
+    expect(p.pages[0].sections.some((s) => s.id === section)).toBe(false);
+    expect(document.querySelector(".studio-toast")?.textContent).toContain(
+      "Intro now shows at the top of every page",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(useStudio.getState().project.pages[0].sections.at(-1)?.id).toBe(
+      section,
+    );
+  });
+});
+
+describe("after adding", () => {
+  it("scrolls the canvas to the new block", async () => {
+    const { section, text } = setup();
+    useStudio.getState().select(section, text.id);
+    render(<Studio />);
+    const scroller = document.querySelector<HTMLElement>(".canvas-scroll")!;
+    const scrollTo = vi.fn();
+    scroller.scrollTo = scrollTo as unknown as typeof scroller.scrollTo;
+    // The canvas shows 600px; every block sits below the fold.
+    let blockTop = 1400;
+    const rect = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        return this === scroller
+          ? new DOMRect(0, 0, 800, 600)
+          : new DOMRect(0, blockTop, 600, 100);
+      });
+    let id: string | undefined;
+    act(() => {
+      id = insertBlock("image");
+    });
+    await vi.waitFor(() => expect(scrollTo).toHaveBeenCalled());
+    // Centred: 1400 - (600 - 100) / 2.
+    expect(scrollTo.mock.calls.at(-1)![0]).toMatchObject({ top: 1150 });
+    expect(useStudio.getState().selectedBlock).toBe(id);
+    // Already in view: nothing to do.
+    scrollTo.mockClear();
+    blockTop = 200;
+    const el = scroller.querySelector(`[data-node-id="${CSS.escape(id!)}"]`);
+    expect(el).toBeTruthy();
+    expect(scrollIntoCanvas(el)).toBe(false);
+    expect(scrollTo).not.toHaveBeenCalled();
+    rect.mockRestore();
   });
 });

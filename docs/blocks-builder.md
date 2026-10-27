@@ -20,6 +20,7 @@ interface Node {
   mobile?: Style;            // overrides at ≤ 480px
   children?: Node[];         // containers only
   hidden?: boolean;
+  locked?: boolean;          // editor only: kept in place (src/blocks/lock.ts)
   bind?: Binding;            // data blocks: where records come from      (phase 4)
   on?: { click?: Action };   // what happens on click                     (phase 5)
   when?: Condition;          // shown only when…                          (phase 5)
@@ -65,20 +66,43 @@ plus a renderer case.
   Hovering or focusing an item shows "Adds here" on the canvas. Click or
   Enter inserts (blocks at the selection, sections at the chosen position);
   drag drops at the indicated place; ↑/↓ move through items. `A` opens it.
+  Below 1600 px wide the right-hand panel steps aside while it's open (and
+  comes back when it closes), so the canvas keeps its desktop width; the
+  flyout overlays the canvas edge. The Saved sections dialog lists only
+  saved sections, with "Browse all sections" for the Add panel.
+- **After adding or moving** a block or section (Add panel, drag and drop,
+  Layers, paste, duplicate, Alt ↑/↓) it is selected and the canvas scrolls
+  to it (`reveal` in `actions.ts`), smoothly unless the owner prefers less
+  motion; nothing scrolls when it's already in view.
 - **Canvas** (`CanvasOverlay.tsx`): click selects the deepest block, drawn
   with a blue outline and a name tag (click it for the blocks it sits in) and
   a toolbar (select parent, drag, move, duplicate, more, delete) that sits
   above the block, flips below it, or goes inside when there's no room. "+"
   buttons sit between sections and inside the selected layout block.
-  Double-click edits text in place with text tools (accent words in headings,
-  bold, italic, size, alignment; whole-block, per screen size). Right-click
+  Double-click edits text in place with text tools: bold, italic and link on
+  the selected words (see "Formatted text"), accent words in headings; with
+  nothing selected bold and italic apply to the whole block, like size and
+  alignment (per screen size). Right-click
   (or More) opens the block menu (`BlockMenu.tsx`): edit text, duplicate,
   copy, paste, move, put in a box/row, select parent, hide, delete. Drag a
   block to move it, with before/after/inside drop lines. A blank page shows
   `FirstRun.tsx`: add a section, templates, popular sections, first blocks.
 - **Layers**: the page's block tree with nesting guides; select, rename
-  (double-click/F2), hide, drag to reorder, right-click for the block menu,
-  expand/collapse all; device icons mark blocks hidden on tablet or phone.
+  (double-click/F2), hide, lock, drag to reorder, right-click for the block
+  menu, expand/collapse all; device icons mark blocks hidden on tablet or
+  phone. Sections drag between "Top of every page" (`project.header`), the
+  page and "Bottom of every page" (`project.footer`): into the header or
+  footer it shows on every page, out of it only on this page, said in a
+  notification with Undo (`placeSection` in the store, one step). A section
+  that uses page values stays on its page.
+- **Lock** (`src/blocks/lock.ts`, `node.locked`; a section locks by its
+  root): a locked block can't be moved, dragged, deleted or put in a box,
+  and nothing is added to or taken out of it (new blocks go beside it);
+  its text, style and settings stay editable, and it can be duplicated.
+  Lock or unlock it from Layers (a lock on hover, kept visible while
+  locked), the block menu or the toolbar; the name tag shows a lock.
+  Attempts say "Locked. Unlock it in Layers to move it." The store refuses
+  these changes too, so every path is covered.
 - **Inspector** (`NodeInspector.tsx`): content blocks open on Content
   (registry fields), layout blocks on Layout (their settings, an "Arrange"
   control — direction, a 3 × 3 position grid, fill/spread/wrap, space
@@ -89,6 +113,8 @@ plus a renderer case.
   with theme swatches, a hex field and a readability hint. Rows changed for
   tablet/phone are blue, groups show how many, and the device switch has a
   dot. Group open/closed state is remembered. Data blocks add a Data tab.
+- **Pages** (the site map, `Navigator.tsx`) keeps the Layers and Inspector
+  rhythm: 8px steps, 16px side padding, 28px rows and buttons, 12px text.
 - **Feedback**: deletes, moves, wraps and duplicates show a notification
   with Undo; every action is one undo step.
 - Keyboard (`?` shows the sheet, `ShortcutSheet.tsx`): Tab/Shift+Tab next or
@@ -134,6 +160,8 @@ long text) stays classic.
   bottom bar, drawn at the end of the page). `src/blocks/project.ts` answers
   site-wide questions across both kinds: placed app forms, orbits, tab bar.
 - Ids are derived from the section id, so converting twice gives the same tree.
+- The thanks page visitors land on after a request (`renderThanksPage`) is
+  a blocks section with the custom look, its heading the page's H1.
 - Parity: every template page renders the same as before at 1280 and 390 px
   (section heights equal; pixel differences under ~1%, from 1 px rounding).
 
@@ -278,3 +306,42 @@ read API in `backend/apps.ts`.
   editing, only in Preview.
 - **Sections** ("Interactive"): tabs, monthly/yearly pricing, Book now in a
   dialog, dismissible announcement, limited-time offer, WhatsApp contact.
+
+## Formatted text
+
+`src/blocks/richtext.tsx` (markup, parser, React drawing),
+`src/blocks/editor/richDom.ts` and `RichInlineText.tsx` (typing),
+`TextToolbar.tsx` (tools and the link box).
+
+- **Markup** inside the existing string props of heading (`text`), text
+  (`text`) and list items (`items`), so the model, storage, validation and
+  old drafts are unchanged:
+  `**bold**`, `__italic__`, `[words](/page)`, `[words](https://… "new tab")`
+  and, in headings only, `*accent*` (unchanged rules). Buttons, badges and
+  other text stay plain (a link can't hold a link).
+- **Why this syntax.** Familiar (Markdown-like) when seen in the Inspector,
+  and it can't change ordinary text: markers only count in pairs on one line,
+  hugging words and not inside a word (`2**3**4`, `** x **`, `Save **20%`
+  stay literal); a single `_` never counts (emails, handles, `snake_case`);
+  a link needs `](` and a link-shaped address. `\` before `\ * _ [ ]` keeps
+  the character literal. Every template and prebuilt section renders exactly
+  as before (tested).
+- **Links** become `<a>` only if `safeLink` accepts them (http(s), `/page`,
+  `#section`, `tel:`, `mailto:`); others show their words. External and
+  new-tab links get `rel="noopener noreferrer"`. Inside a linked or clickable
+  card or a clickable heading/text, links show as words. At most 20 links per
+  block (`MAX_INLINE_LINKS`, checked in `validate.ts`); page renames rewrite
+  them (`mapNodeLinks`), and Review site checks them like button links.
+- **Drawing**: real `<strong>`, `<em class="blk-i">` (italic; a heading's
+  plain `<em>` is its accent) and `<a>`, as React elements (never HTML), the
+  same in the editor and the published HTML (no script).
+- **Typing** is WYSIWYG: the text shows formatted while typed. Select words
+  and press ⌘B / ⌘I / ⌘K (or the toolbar buttons); formatting covers whole
+  words (a selection grows to the words it touches) and toggles off when the
+  words already have it. The link box takes an address (`www.…` gets
+  `https://`, emails `mailto:`, phone numbers `tel:`) or a site page, "Open
+  in new tab" and Remove link. Paste arrives as plain text. ⌘Z/⇧⌘Z undo
+  within the typing session; the whole edit is one undo step afterwards.
+  On save the DOM is read back into canonical markup; literal markers typed
+  as text are escaped only when they would otherwise format something.
+

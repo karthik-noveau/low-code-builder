@@ -625,7 +625,7 @@ describe("page and section workflows", () => {
     );
     fireEvent.click(screen.getByRole("menuitem", { name: "Save to library" }));
     fireEvent.click(screen.getByRole("button", { name: "Saved sections 1" }));
-    const library = screen.getByRole("dialog", { name: "Add a section" });
+    const library = screen.getByRole("dialog", { name: "Saved sections" });
     fireEvent.click(
       within(library).getByRole("button", { name: /Image banner Good things/ }),
     );

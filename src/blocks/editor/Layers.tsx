@@ -2,9 +2,10 @@
  * Layers: everything on the open page as a tree — the shared header, the
  * page's sections and the footer. Blocks sections open into their blocks;
  * classic sections are a single row. Select (synced with the canvas),
- * rename (double-click or F2), show/hide, drag to reorder, right-click for
- * the block menu, expand or collapse everything. Guides show the nesting;
- * small device icons mark blocks hidden on tablets or phones.
+ * rename (double-click or F2), show/hide, lock, drag to reorder (sections
+ * also between the header, the page and the footer), right-click for the
+ * block menu, expand or collapse everything. Guides show the nesting; small
+ * device icons mark blocks hidden on tablets or phones.
  */
 import {
   useEffect,
@@ -17,19 +18,26 @@ import { Icon } from "../../studio/Icon";
 import { useStudio } from "../../studio/store";
 import { findSection, sectionMeta, type Section } from "../../studio/model";
 import { locate, pathTo, type Node } from "../model";
-import { BLOCKS, canHold, nodeLabel } from "../registry";
+import { BLOCKS, nodeLabel } from "../registry";
+import { accepts, lockNotice } from "../lock";
+import { varsUsed } from "../logic/model";
 import {
   currentDrag,
   drop,
   endDrag,
   payloadType,
+  revealSection,
   startDrag,
+  undoAction,
   useBlocksUi,
   type DropTarget,
+  type Notify,
 } from "./actions";
 import { sectionSlot } from "./dropzone";
 
 type Zone = "before" | "after" | "inside";
+/** The three lists sections live in: the shared header, the page, the shared footer. */
+type List = "header" | "page" | "footer";
 
 function Rename({
   value,
@@ -63,9 +71,11 @@ function Rename({
 export function Layers({
   onSelectSection,
   onSelectNode,
+  notify = () => {},
 }: {
   onSelectSection: (id: string) => void;
   onSelectNode: (section: string, node: string) => void;
+  notify?: Notify;
 }) {
   const store = useStudio();
   const { project, selected, selectedBlock } = store;
@@ -76,6 +86,8 @@ export function Layers({
   const [dropAt, setDropAt] = useState<{ row: string; zone: Zone } | null>(
     null,
   );
+  /** The section being dragged by its row (it can change lists). */
+  const [movingSection, setMovingSection] = useState<string | null>(null);
 
   // The selection's section and ancestors open (once per new selection), so
   // its row is in view.
@@ -164,8 +176,8 @@ export function Layers({
     const at = locate([root], n.id);
     const middle = rel > 0.25 && rel < 0.75;
     if (
-      canHold(n.type, type) &&
-      (middle || n === root || !at?.parent || !canHold(at.parent.type, type))
+      accepts(n, type) &&
+      (middle || n === root || !at?.parent || !accepts(at.parent, type))
     )
       return {
         zone: "inside",
@@ -176,7 +188,7 @@ export function Layers({
           index: rel < 0.5 && n !== root ? 0 : (n.children?.length ?? 0),
         },
       };
-    if (!at?.parent || !canHold(at.parent.type, type)) return null;
+    if (!at?.parent || !accepts(at.parent, type)) return null;
     return {
       zone: half,
       target: {
@@ -224,6 +236,8 @@ export function Layers({
     name,
     isSelected,
     hidden,
+    locked,
+    onLock,
     hiddenOn = [],
     logic,
     kids,
@@ -241,6 +255,9 @@ export function Layers({
     name: string;
     isSelected: boolean;
     hidden: boolean;
+    /** Locked in place (src/blocks/lock.ts); onLock toggles it. */
+    locked?: boolean;
+    onLock?: () => void;
     /** Screen sizes it's hidden on (tablet, phone). */
     hiddenOn?: ("tablet" | "mobile")[];
     /** Has a click (lightning) or a "show only when" (src/blocks/logic). */
@@ -259,7 +276,7 @@ export function Layers({
     return (
       <div className="layer" key={id} role="none">
         <div
-          className={`layer-row ${isSelected ? "selected" : ""} ${hidden ? "is-hidden" : ""} ${hoverId && hover === hoverId ? "is-hovered" : ""} ${dropAt?.row === id ? `drop-${dropAt.zone}` : ""}`}
+          className={`layer-row ${isSelected ? "selected" : ""} ${hidden ? "is-hidden" : ""} ${locked ? "is-locked" : ""} ${hoverId && hover === hoverId ? "is-hovered" : ""} ${dropAt?.row === id ? `drop-${dropAt.zone}` : ""}`}
           style={
             {
               paddingLeft: 4 + depth * 14,
@@ -379,6 +396,22 @@ export function Layers({
               </span>
             </span>
           )}
+          {onLock && (
+            <button
+              type="button"
+              className="layer-lock"
+              aria-label={`${locked ? "Unlock" : "Lock"} ${name}`}
+              aria-pressed={!!locked}
+              title={
+                locked
+                  ? "Locked: it can’t be moved or deleted. Unlock it"
+                  : "Lock its place and what’s inside"
+              }
+              onClick={onLock}
+            >
+              <Icon name={locked ? "lock" : "unlock"} size={13} />
+            </button>
+          )}
           <button
             type="button"
             className="layer-eye"
@@ -405,6 +438,8 @@ export function Layers({
         name: nodeLabel(n),
         isSelected: selected === s.id && selectedBlock === n.id,
         hidden: !!n.hidden,
+        locked: !!n.locked,
+        onLock: () => toggleLock(s, n),
         logic: { click: !!n.on?.click?.length, when: !!n.when },
         hiddenOn: (["tablet", "mobile"] as const).filter((d) =>
           d === "tablet"
@@ -426,13 +461,90 @@ export function Layers({
             ...x,
             hidden: !x.hidden || undefined,
           })),
-        drag: (e) =>
-          startDrag({ kind: "node", section: s.id, id: n.id }, e.dataTransfer),
+        drag: (e) => {
+          const locked = s.root && lockNotice(s.root, n.id, "move", s.name);
+          if (locked) {
+            e.preventDefault();
+            notify(locked);
+            return;
+          }
+          startDrag({ kind: "node", section: s.id, id: n.id }, e.dataTransfer);
+        },
         drops: dropProps(n.id, s, n),
         hoverId: n.id,
       }),
     );
-  const sectionRow = (s: Section, list: Section[]) =>
+  /** Locks or unlocks a block (a section by its root): one undo step. */
+  const toggleLock = (s: Section, n: Node) => {
+    const label = n === s.root ? s.name : nodeLabel(n);
+    store.updateNode(s.id, n.id, (x) => ({
+      ...x,
+      locked: !x.locked || undefined,
+    }));
+    notify(
+      n.locked
+        ? `${label} unlocked`
+        : `${label} locked. Text and settings stay editable.`,
+      undoAction,
+    );
+  };
+  const listOf = (id: string): List | undefined =>
+    project.header.some((s) => s.id === id)
+      ? "header"
+      : project.footer.some((s) => s.id === id)
+        ? "footer"
+        : page.sections.some((s) => s.id === id)
+          ? "page"
+          : undefined;
+  const sections = {
+    header: project.header,
+    page: page.sections,
+    footer: project.footer,
+  };
+  /**
+   * Drops the dragged section into `list` before or after `target` (the end
+   * of the list without one). Moving between lists changes where it shows:
+   * every page (header, footer) or only this page.
+   */
+  const placeSection = (
+    moved: string,
+    list: List,
+    target?: string,
+    zone: Zone = "after",
+  ) => {
+    const section = findSection(project, moved);
+    const from = listOf(moved);
+    if (!section || !from || moved === target) return;
+    if (section.root?.locked)
+      return notify(lockNotice(section.root, section.root.id, "move")!);
+    if (from === "page" && list !== "page" && varsUsed(section.root).size)
+      return notify(
+        `${section.name} uses this page’s values, so it stays on ${page.name}.`,
+      );
+    const rest = sections[list].filter((x) => x.id !== moved);
+    const at = target ? rest.findIndex((x) => x.id === target) : -1;
+    const index = at < 0 ? rest.length : at + (zone === "before" ? 0 : 1);
+    if (
+      from === list &&
+      sections[list].findIndex((x) => x.id === moved) === index
+    )
+      return;
+    if (!store.placeSection(moved, list, index)) return;
+    notify(
+      from === list
+        ? `${section.name} moved`
+        : list === "header"
+          ? `${section.name} now shows at the top of every page`
+          : list === "footer"
+            ? `${section.name} now shows at the bottom of every page`
+            : `${section.name} now shows on ${page.name} only`,
+      undoAction,
+    );
+    if (section.root) onSelectNode(moved, section.root.id);
+    else onSelectSection(moved);
+    revealSection(moved);
+  };
+  const sectionRow = (s: Section, list: List) =>
     row({
       id: s.id,
       depth: 0,
@@ -442,6 +554,8 @@ export function Layers({
         selected === s.id &&
         (!s.root || !selectedBlock || selectedBlock === s.root.id),
       hidden: !!s.hidden,
+      locked: !!s.root?.locked,
+      onLock: s.root ? () => toggleLock(s, s.root!) : undefined,
       kids: s.root?.children?.length
         ? nodeRows(s, s.root.children, 1)
         : undefined,
@@ -455,28 +569,41 @@ export function Layers({
         : undefined,
       onRename: (name) => store.updateSection(s.id, { name }),
       onHide: () => store.updateSection(s.id, { hidden: !s.hidden }),
-      // Sections reorder among their own list (Navigator does the same).
+      // Sections move within their list or to another one (header, page, footer).
       drag: (e) => {
+        if (s.root?.locked) {
+          e.preventDefault();
+          notify(lockNotice(s.root, s.root.id, "move")!);
+          return;
+        }
         e.dataTransfer.setData("text/forma-section", s.id);
         e.dataTransfer.effectAllowed = "move";
+        // After the browser has taken the drag image (see startDrag).
+        setTimeout(() => setMovingSection(s.id));
       },
       drops: {
         ...dropProps(s.id, s, s.root),
         onDragOver: (e: DragEvent) => {
-          if (e.dataTransfer.types.includes("text/forma-section")) {
+          if (movingSection) {
             e.preventDefault();
-            setDropAt({ row: s.id, zone: "before" });
+            e.stopPropagation();
+            const r = e.currentTarget.getBoundingClientRect();
+            const zone: Zone =
+              r.height && e.clientY - r.top < r.height / 2 ? "before" : "after";
+            if (dropAt?.row !== s.id || dropAt.zone !== zone)
+              setDropAt({ row: s.id, zone });
             return;
           }
           dropProps(s.id, s, s.root).onDragOver(e);
         },
         onDrop: (e: DragEvent) => {
-          const moved = e.dataTransfer.getData("text/forma-section");
-          if (moved) {
+          if (movingSection) {
             e.preventDefault();
+            e.stopPropagation();
+            const zone = dropAt?.row === s.id ? dropAt.zone : "after";
             setDropAt(null);
-            if (list.some((x) => x.id === moved))
-              store.reorderSection(moved, s.id);
+            setMovingSection(null);
+            placeSection(movingSection, list, s.id, zone);
             return;
           }
           dropProps(s.id, s, s.root).onDrop(e);
@@ -485,13 +612,40 @@ export function Layers({
       hoverId: s.root?.id,
     });
 
-  const groups: [string, Section[]][] = [
-    ["Top of every page", project.header],
-    [page.name, page.sections],
-    ["Bottom of every page", project.footer],
+  const groups: [List, string, Section[]][] = [
+    ["header", "Top of every page", project.header],
+    ["page", page.name, page.sections],
+    ["footer", "Bottom of every page", project.footer],
   ];
+  /** The end of a list (or an empty one) while a section is dragged. */
+  const listEnd = (list: List) => ({
+    onDragOver: (e: DragEvent) => {
+      if (!movingSection) return;
+      e.preventDefault();
+      if (dropAt?.row !== `end:${list}`)
+        setDropAt({ row: `end:${list}`, zone: "inside" });
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as globalThis.Node | null))
+        setDropAt((d) => (d?.row === `end:${list}` ? null : d));
+    },
+    onDrop: (e: DragEvent) => {
+      if (!movingSection) return;
+      e.preventDefault();
+      setDropAt(null);
+      setMovingSection(null);
+      placeSection(movingSection, list);
+    },
+  });
   return (
-    <div className="layers" aria-label={`Layers of ${page.name}`}>
+    <div
+      className={`layers ${movingSection ? "is-moving-section" : ""}`}
+      aria-label={`Layers of ${page.name}`}
+      onDragEnd={() => {
+        setMovingSection(null);
+        setDropAt(null);
+      }}
+    >
       <div className="layers-tools">
         <span>Right-click a layer for more</span>
         <button
@@ -511,13 +665,27 @@ export function Layers({
           <Icon name="collapseAll" size={13} />
         </button>
       </div>
-      {groups.map(([title, list]) =>
-        list.length ? (
-          <div className="layers-group" key={title}>
+      {groups.map(([list, title, items]) =>
+        items.length || movingSection ? (
+          <div
+            className="layers-group"
+            key={list}
+            {...(items.length ? {} : listEnd(list))}
+          >
             <div className="navigator-group-label">
               <span>{title}</span>
             </div>
-            {list.map((s) => sectionRow(s, list))}
+            {items.map((s) => sectionRow(s, list))}
+            {movingSection && (
+              <div
+                className={`layers-list-end ${dropAt?.row === `end:${list}` ? "is-over" : ""}`}
+                {...(items.length ? listEnd(list) : {})}
+              >
+                {list === "page"
+                  ? `Drop here: only on ${page.name}`
+                  : `Drop here: ${list === "header" ? "top" : "bottom"} of every page`}
+              </div>
+            )}
           </div>
         ) : null,
       )}

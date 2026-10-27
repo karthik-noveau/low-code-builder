@@ -20,6 +20,7 @@ import { DeviceBar, Group, StylePanel } from "./StylePanel";
 import {
   duplicateSelected,
   removeSelected,
+  selectionLock,
   undoAction,
   type Notify,
 } from "./actions";
@@ -225,11 +226,23 @@ export function NodeInspector({
           Nothing inside yet. Add a block, or drag one here from the page.
         </p>
       )}
-      {onAddBlock && node.type !== "columns" && (
-        <button type="button" className="node-add-inside" onClick={onAddBlock}>
-          <Icon name="plus" size={14} />
-          Add a block inside
-        </button>
+      {node.locked ? (
+        <p className="node-empty-note">
+          <Icon name="lock" size={12} /> Locked. Unlock it in Layers to add or
+          remove blocks inside.
+        </p>
+      ) : (
+        onAddBlock &&
+        node.type !== "columns" && (
+          <button
+            type="button"
+            className="node-add-inside"
+            onClick={onAddBlock}
+          >
+            <Icon name="plus" size={14} />
+            Add a block inside
+          </button>
+        )
       )}
     </Group>
   );
@@ -397,6 +410,8 @@ export function NodeInspector({
         <button
           className="danger-text"
           onClick={() => {
+            const locked = selectionLock("delete");
+            if (locked) return notify(locked);
             removeSelected();
             notify(`${name} deleted`, undoAction);
           }}
@@ -418,6 +433,8 @@ export function NodeInspector({
           icon="copy"
           label={isRoot ? "Duplicate section" : "Duplicate block"}
           onClick={() => {
+            const locked = selectionLock("duplicate");
+            if (locked) return notify(locked);
             duplicateSelected();
             notify(
               isRoot ? "Section duplicated" : "Block duplicated",

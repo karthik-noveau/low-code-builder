@@ -18,6 +18,7 @@ import {
 import { BLOCKS, canHold, createNode, nodeLabel } from "../registry";
 import { presetById } from "../presets";
 import { freeName, renameVar } from "../logic/model";
+import { accepts, lockNotice } from "../lock";
 
 /** What an Add panel item would put down, shown on the canvas while it's hovered. */
 export type InsertPreview =
@@ -81,20 +82,20 @@ export function placeFor(
 ): { parent: string; index: number } | undefined {
   const node = findNode([root], selected) ?? root;
   const inside = () =>
-    canHold(node.type, type)
+    accepts(node, type)
       ? { parent: node.id, index: node.children?.length ?? 0 }
       : undefined;
   if (prefer === "inside" && inside()) return inside();
   for (let id = node.id; ;) {
     const at = locate([root], id);
     if (!at?.parent) break;
-    if (canHold(at.parent.type, type))
+    if (accepts(at.parent, type))
       return { parent: at.parent.id, index: at.index + 1 };
     id = at.parent.id;
   }
   return (
     inside() ??
-    (canHold(root.type, type)
+    (accepts(root, type)
       ? { parent: root.id, index: root.children?.length ?? 0 }
       : undefined)
   );
@@ -129,7 +130,9 @@ export function insertAtSelection(
   if (sel.root) {
     const place = placeFor(sel.root, sel.node.id, node.type, prefer);
     if (place)
-      return studio.insertNode(sel.section.id, place.parent, node, place.index);
+      return reveal(
+        studio.insertNode(sel.section.id, place.parent, node, place.index),
+      );
   }
   if (BLOCKS[node.type].parents) return;
   const root = createNode("section");
@@ -146,7 +149,7 @@ function addSectionWith(root: Node, after?: string) {
   const first = findSection(useStudio.getState().project, id)?.root
     ?.children?.[0];
   if (first) useStudio.getState().select(id, first.id);
-  return first?.id;
+  return reveal(first?.id);
 }
 
 /** Adds a new block of `type` at the selection. */
@@ -173,11 +176,13 @@ export function insertPreset(id: string, after?: string) {
     if (name !== v.name) root = renameVar(root, v.name, name);
     return { ...v, name };
   });
-  return studio.addBlocksSection(
-    root,
-    preset.name,
-    shared ? undefined : after,
-    variables,
+  return revealSection(
+    studio.addBlocksSection(
+      root,
+      preset.name,
+      shared ? undefined : after,
+      variables,
+    ),
   );
 }
 
@@ -194,11 +199,12 @@ export function selectParent() {
 /** Moves the selected block one place up (-1) or down (1) among its siblings. */
 export function moveSibling(offset: -1 | 1) {
   const sel = blockSelection();
-  if (!sel.root) return false;
+  if (!sel.root || selectionLock("move")) return false;
   const studio = useStudio.getState();
   if (sel.node === sel.root) {
     studio.moveSection(sel.section.id, offset);
     studio.select(sel.section.id, sel.root.id);
+    revealSection(sel.section.id);
     return true;
   }
   const at = locate([sel.root], sel.node.id);
@@ -211,7 +217,82 @@ export function moveSibling(offset: -1 | 1) {
     at.parent.id,
     next,
   );
+  reveal(sel.node.id);
   return true;
+}
+
+/**
+ * Why the selected block can't be moved, deleted or duplicated (it, or the
+ * block it sits in, is locked), or null when it can. See src/blocks/lock.ts.
+ */
+export function selectionLock(doing: "move" | "delete" | "duplicate") {
+  const sel = blockSelection();
+  if (!sel.root) return null;
+  return lockNotice(sel.root, sel.node.id, doing, sel.section.name);
+}
+
+/** Locks or unlocks the selected block (or section). Returns whether it's locked now. */
+export function toggleLocked() {
+  const sel = blockSelection();
+  if (!sel.root) return;
+  const locked = !sel.node.locked;
+  useStudio.getState().updateNode(sel.section.id, sel.node.id, (n) => ({
+    ...n,
+    locked: locked || undefined,
+  }));
+  return locked;
+}
+
+const reducedMotion = () =>
+  typeof matchMedia === "function" &&
+  matchMedia("(prefers-reduced-motion: reduce)").matches;
+/**
+ * Scrolls the canvas so `el` is in view (after an add or a move), smoothly
+ * unless the owner prefers less motion. Nothing happens when it's already
+ * fully visible; otherwise short blocks are centred and tall ones start near
+ * the top, below the toolbar.
+ */
+export function scrollIntoCanvas(el: Element | null | undefined) {
+  const scroller = el?.closest<HTMLElement>(".canvas-scroll");
+  if (!el || !scroller) return false;
+  const box = el.getBoundingClientRect();
+  const view = scroller.getBoundingClientRect();
+  const margin = 48;
+  if (box.top >= view.top + margin && box.bottom <= view.bottom - margin / 2)
+    return false;
+  const offset =
+    box.height < view.height - margin * 2
+      ? (view.height - box.height) / 2
+      : margin;
+  scroller.scrollTo({
+    top: scroller.scrollTop + box.top - view.top - offset,
+    behavior: reducedMotion() ? "auto" : "smooth",
+  });
+  return true;
+}
+/** After the canvas has drawn it, scrolls the block `id` into view. Returns `id`. */
+export function reveal<T extends string | undefined>(id: T): T {
+  if (id && typeof requestAnimationFrame === "function")
+    requestAnimationFrame(() =>
+      scrollIntoCanvas(
+        document.querySelector(
+          `.canvas-scroll [data-node-id="${CSS.escape(id)}"]`,
+        ),
+      ),
+    );
+  return id;
+}
+/** The same for a whole section. */
+export function revealSection<T extends string | undefined>(id: T): T {
+  if (id && typeof requestAnimationFrame === "function")
+    requestAnimationFrame(() =>
+      scrollIntoCanvas(
+        document.querySelector(
+          `.canvas-scroll [data-section-id="${CSS.escape(id)}"]`,
+        ),
+      ),
+    );
+  return id;
 }
 
 /** Whether the selected block can move up/down among its siblings. */
@@ -293,7 +374,12 @@ export function canWrap(type: "box" | "row") {
   const sel = blockSelection();
   if (!sel.root || sel.node === sel.root) return false;
   const parent = locate([sel.root], sel.node.id)?.parent;
-  return !!parent && canHold(parent.type, type) && canHold(type, sel.node.type);
+  return (
+    !!parent &&
+    accepts(parent, type) &&
+    canHold(type, sel.node.type) &&
+    !sel.node.locked
+  );
 }
 
 /** Puts the selected block inside a new box or row, and selects that. */
@@ -340,7 +426,7 @@ export function rememberRecent(item: string) {
 
 export function removeSelected() {
   const sel = blockSelection();
-  if (!sel.root) return "";
+  if (!sel.root || selectionLock("delete")) return "";
   const label = sel.node === sel.root ? sel.section.name : nodeLabel(sel.node);
   useStudio.getState().removeNode(sel.section.id, sel.node.id);
   return label;
@@ -348,8 +434,14 @@ export function removeSelected() {
 
 export function duplicateSelected() {
   const sel = blockSelection();
-  if (!sel.root) return;
-  return useStudio.getState().duplicateNode(sel.section.id, sel.node.id);
+  if (!sel.root || selectionLock("duplicate")) return;
+  if (sel.node === sel.root) {
+    useStudio.getState().duplicateSection(sel.section.id);
+    return revealSection(useStudio.getState().selected ?? undefined);
+  }
+  return reveal(
+    useStudio.getState().duplicateNode(sel.section.id, sel.node.id),
+  );
 }
 
 export function copySelected() {
@@ -366,10 +458,12 @@ export function paste() {
   const studio = useStudio.getState();
   const sel = blockSelection();
   if (clip.type === "section")
-    return studio.addBlocksSection(
-      clip,
-      "Section",
-      sectionAfter(studio.project, studio.activePage, sel.section),
+    return revealSection(
+      studio.addBlocksSection(
+        clip,
+        "Section",
+        sectionAfter(studio.project, studio.activePage, sel.section),
+      ),
     );
   return insertAtSelection(cloneNode(clip), "after");
 }
@@ -429,11 +523,13 @@ export function drop(payload: DragPayload, target: DropTarget) {
   }
   if (payload.kind === "preset") return;
   if (payload.kind === "block")
-    return studio.insertNode(
-      target.section,
-      target.parent,
-      createNode(payload.type),
-      target.index,
+    return reveal(
+      studio.insertNode(
+        target.section,
+        target.parent,
+        createNode(payload.type),
+        target.index,
+      ),
     );
   const root = findSection(studio.project, payload.section)?.root;
   const at = root && locate([root], payload.id);
@@ -458,5 +554,5 @@ export function drop(payload: DragPayload, target: DropTarget) {
     target.parent,
     index,
   );
-  return payload.id;
+  return reveal(payload.id);
 }

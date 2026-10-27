@@ -342,6 +342,7 @@ export function ContentField({
           value={draft ?? str(value)}
           multiline={spec.kind === "longText"}
           placeholder={spec.placeholder}
+          hint={spec.kind === "longText" ? spec.hint : undefined}
           editingOnCanvas={draft !== undefined}
           onEditCanvas={onEditCanvas}
           maxLength={5000}

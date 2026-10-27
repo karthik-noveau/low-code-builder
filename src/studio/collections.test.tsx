@@ -282,7 +282,12 @@ describe("visitor actions", () => {
     expect(renderItemPage(project, c, c.items[0])).not.toContain(
       "site-request",
     );
-    expect(renderThanksPage(project)).toContain("it’s on its way");
+    // The thanks page is built from blocks, with one main heading.
+    const thanks = renderThanksPage(project);
+    expect(thanks).toContain("it’s on its way");
+    expect(thanks).toContain("lk-custom");
+    expect(thanks.match(/<h1/g)).toHaveLength(1);
+    expect(thanks).toContain('<meta name="robots" content="noindex">');
   });
   it("flags actions that can't be shown", () => {
     const project = createProject();

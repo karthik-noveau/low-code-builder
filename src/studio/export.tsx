@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { Website } from "./Website";
 import { createSection } from "./templates";
+import { createNode } from "../blocks/registry";
+import type { Node, NodeType, Style } from "../blocks/model";
 import {
-  createBlock,
   slugify,
   pageHref,
   replaceSectionImages,
@@ -137,21 +138,52 @@ export function renderItemPage(
 }
 /** Where visitors land after sending a request from a published site. */
 export function renderThanksPage(project: Project) {
-  const heading = createBlock("heading");
-  heading.text = "Thanks — it’s on its way";
-  const text = createBlock("text");
-  text.text =
-    "We’ve received it and will be in touch at the email address you gave us.";
-  const button = createBlock("button");
-  button.text = "Back to the website";
-  button.url = `/${project.pages[0].slug}`;
+  // Built from blocks, with the custom section's look (looks.css `lk-custom`).
+  // Fixed ids keep every release's markup the same.
+  let n = 0;
+  const block = (type: NodeType, props: Node["props"], style?: Style) => {
+    const node = { ...createNode(type), id: `thanks-${n++}` };
+    node.props = { ...node.props, ...props };
+    if (style) node.style = style;
+    return node;
+  };
+  const root = block(
+    "section",
+    { tag: "section", tone: "default", look: "custom" },
+    { padding: [64, 0, 64, 0], textAlign: "center" },
+  );
+  root.children = [
+    // The page's main heading, at the custom section's heading size.
+    block(
+      "heading",
+      { text: "Thanks — it’s on its way", level: "1" },
+      { fontSize: "3xl", letterSpacing: -1 },
+    ),
+    block(
+      "text",
+      {
+        text: "We’ve received it and will be in touch at the email address you gave us.",
+        variant: "body",
+      },
+      { fontSize: "14" },
+    ),
+    block("button", {
+      label: "Back to the website",
+      url: `/${project.pages[0].slug}`,
+      variant: "primary",
+      size: "md",
+      icon: "arrowUpRight",
+    }),
+  ];
   const page: Page = {
     id: "thanks",
     name: "Thanks",
     slug: "thanks",
     title: `Thank you — ${project.name}`,
     description: "",
-    sections: [createSection("custom", { blocks: [heading, text, button] })],
+    sections: [
+      { ...createSection("blocks", { name: "Thanks", root }), id: "thanks" },
+    ],
   };
   return renderPage(project, page).replace(
     "<title>",

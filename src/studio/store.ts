@@ -38,7 +38,7 @@ import {
   removeNode as removeTreeNode,
   type Node,
 } from "../blocks/model";
-import { canHold } from "../blocks/registry";
+import { accepts, pinnedBy } from "../blocks/lock";
 import { toBlocks, upgradeProject } from "../blocks/legacy";
 import { sectionAppForms, sectionCollections } from "../blocks/project";
 import { syncForms } from "../blocks/forms/sync";
@@ -181,6 +181,15 @@ interface StudioState {
   duplicateSection: (id: string) => void;
   moveSection: (id: string, offset: number) => void;
   reorderSection: (id: string, target: string) => void;
+  /**
+   * Puts a section into the shared header or footer, or the open page's
+   * sections, at `index` (counted without it). False when it's locked.
+   */
+  placeSection: (
+    id: string,
+    list: "header" | "page" | "footer",
+    index: number,
+  ) => boolean;
   addPage: (name: string) => void;
   duplicatePage: (id: string) => string | undefined;
   movePage: (id: string, offset: number) => void;
@@ -504,7 +513,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   insertNode: (section, parent, node, index) => {
     const root = findSection(get().project, section)?.root;
     const target = root && findNode([root], parent);
-    if (!target || !canHold(target.type, node.type)) return;
+    if (!target || !accepts(target, node.type)) return;
     get().commit((p) =>
       updateTree(p, section, (r) => insertNode([r], parent, node, index)[0]),
     );
@@ -518,7 +527,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     const dest = findSection(p, to)?.root;
     const target = dest && findNode([dest], parent);
     if (!node || !target || node.id === source.id) return;
-    if (!canHold(target.type, node.type)) return;
+    // Locked blocks stay put, and locked containers keep what they hold.
+    if (!accepts(target, node.type) || pinnedBy(source, id)) return;
     get().commit((current) =>
       from === to
         ? updateTree(
@@ -539,6 +549,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (!root) return;
     // The section node itself goes with its section.
     if (root.id === id) return get().removeSection(section);
+    if (pinnedBy(root, id)) return;
     const parent = locate([root], id)?.parent;
     get().commit((p) =>
       updateTree(p, section, (r) => removeTreeNode([r], id)[0]),
@@ -813,10 +824,12 @@ export const useStudio = create<StudioState>((set, get) => ({
     set({ selected: section.id });
     return section.id;
   },
-  removeSection: (id) =>
+  removeSection: (id) => {
+    if (findSection(get().project, id)?.root?.locked) return;
     get().commit((p) =>
       mapSections(p, (sections) => sections.filter((s) => s.id !== id)),
-    ),
+    );
+  },
   duplicateSection: (id) => {
     const source = findSection(get().project, id);
     if (!source) return;
@@ -831,7 +844,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     );
     set({ selected: copy.id });
   },
-  moveSection: (id, offset) =>
+  moveSection: (id, offset) => {
+    if (findSection(get().project, id)?.root?.locked) return;
     get().commit((p) =>
       mapSections(p, (sections) => {
         const index = sections.findIndex((s) => s.id === id);
@@ -843,8 +857,10 @@ export const useStudio = create<StudioState>((set, get) => ({
         next.splice(target, 0, s);
         return next;
       }),
-    ),
-  reorderSection: (id, target) =>
+    );
+  },
+  reorderSection: (id, target) => {
+    if (findSection(get().project, id)?.root?.locked) return;
     get().commit((p) =>
       mapSections(p, (sections) => {
         const from = sections.findIndex((s) => s.id === id);
@@ -855,7 +871,32 @@ export const useStudio = create<StudioState>((set, get) => ({
         next.splice(to, 0, s);
         return next;
       }),
-    ),
+    );
+  },
+  placeSection: (id, list, index) => {
+    const section = findSection(get().project, id);
+    if (!section || section.root?.locked) return false;
+    const active = get().activePage;
+    const put = (sections: Section[]) => {
+      const next = [...sections];
+      next.splice(Math.max(0, Math.min(index, next.length)), 0, section);
+      return next;
+    };
+    get().commit((p) => {
+      const rest = mapSections(p, (sections) =>
+        sections.filter((s) => s.id !== id),
+      );
+      if (list === "header") return { ...rest, header: put(rest.header) };
+      if (list === "footer") return { ...rest, footer: put(rest.footer) };
+      return {
+        ...rest,
+        pages: rest.pages.map((pg) =>
+          pg.id === active ? { ...pg, sections: put(pg.sections) } : pg,
+        ),
+      };
+    });
+    return true;
+  },
   addPage: (name) => {
     const p = get().project;
     const stem = slugify(name);

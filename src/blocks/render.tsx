@@ -6,12 +6,14 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "../studio/Icon";
 import { InlineText } from "../studio/InlineText";
+import { RichInlineText } from "./editor/RichInlineText";
 import { pageHref, safeImage, type Page, type Project } from "../studio/model";
 import { Ambient } from "../studio/siteParts";
 import { SmartBlock } from "./smart";
 import { BLOCKS } from "./registry";
 import type { Node, PropValue } from "./model";
-import { embedUrl, emphasis, lines, pairs } from "./text";
+import { embedUrl, lines, pairs } from "./text";
+import { inlineLinks, RICH_PROPS, richOptionsFor, richText } from "./richtext";
 import { boundProps, type DataItem } from "./data/bind";
 import { ChartBlock, RepeatBlock, StatBlock, TableBlock } from "./data/blocks";
 import { FormBlock, type FormScope } from "./forms/FormBlocks";
@@ -49,6 +51,8 @@ export interface RenderContext {
   onToggleTheme?: () => void;
   /** The Add panel's miniatures, drawn inside a button: nothing clickable. */
   miniature?: boolean;
+  /** Drawing inside a link: links in text show as their words. */
+  inLink?: boolean;
   /** Set in the editor (not preview). */
   edit?: {
     selected: string | null;
@@ -180,17 +184,28 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     const value = str(p[key]);
     // Text filled from data isn't typed into (it changes with the item).
     const bound = !!(ctx.item && n.bind?.[key]);
+    // Headings and text take bold, italic and links (src/blocks/richtext.tsx).
+    const rich = RICH_PROPS[n.type] === key && !bound;
+    const wordsClick =
+      click && !edit && (n.type === "text" || n.type === "heading");
     const render = (v: string) =>
-      withVars(v, ctx, n.type === "heading" ? emphasis : undefined);
+      rich
+        ? richText(v, {
+            ...richOptionsFor(n.type),
+            href: ctx.href,
+            links: !wordsClick && !ctx.inLink && !ctx.miniature,
+            tabIndex: tab,
+            text: (s) => withVars(s, ctx),
+          })
+        : withVars(v, ctx);
     if (!edit || bound) {
       const Tag = as;
       // "{year}" shows the current year (copyright lines).
       const text = value.replaceAll("{year}", String(new Date().getFullYear()));
       // A clickable heading or text: its words are the link or button.
-      const words =
-        click && !edit && (n.type === "text" || n.type === "heading")
-          ? clickable(click, "blk-text-link", render(text))
-          : render(text);
+      const words = wordsClick
+        ? clickable(click, "blk-text-link", render(text))
+        : render(text);
       return (
         <Tag
           className={className}
@@ -201,22 +216,24 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
         </Tag>
       );
     }
-    return (
-      <InlineText
-        as={as}
-        value={value}
-        className={className}
-        enabled
-        editing={edit.typing === n.id}
-        label={`Edit ${BLOCKS[n.type].label.toLowerCase()} text`}
-        onCommit={(v) => edit.onCommit(n.id, key, v)}
-        onActivate={() => edit.onSelect(n.id)}
-        onStartEdit={() => edit.onStartTyping(n.id)}
-        onFinishEdit={edit.onFinishTyping}
-        onDraft={edit.onDraft}
-        attrs={{ ...attrs, ...extra }}
-        render={render}
-      />
+    const common = {
+      as,
+      value,
+      className,
+      editing: edit.typing === n.id,
+      label: `Edit ${BLOCKS[n.type].label.toLowerCase()} text`,
+      onCommit: (v: string) => edit.onCommit(n.id, key, v),
+      onActivate: () => edit.onSelect(n.id),
+      onStartEdit: () => edit.onStartTyping(n.id),
+      onFinishEdit: edit.onFinishTyping,
+      onDraft: edit.onDraft,
+      attrs: { ...attrs, ...extra },
+      render,
+    };
+    return rich ? (
+      <RichInlineText {...common} options={richOptionsFor(n.type)} />
+    ) : (
+      <InlineText {...common} enabled />
     );
   };
   const link = (url: string) => ({
@@ -285,7 +302,7 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
               {...linkAttrs(click, ctx)}
               className={cls()}
             >
-              {children}
+              <Nodes nodes={kids} ctx={{ ...ctx, inLink: true }} />
             </a>
           );
         return (
@@ -306,7 +323,7 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
       if (href && !edit)
         return (
           <a {...link(href)} className={cls()}>
-            {children}
+            <Nodes nodes={kids} ctx={{ ...ctx, inLink: true }} />
           </a>
         );
       return (
@@ -486,7 +503,13 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
               {marker === "check" || !marker ? (
                 <Icon name="check" size={16} className="blk-list-check" />
               ) : null}
-              <span>{item}</span>
+              <span>
+                {richText(item, {
+                  href: ctx.href,
+                  links: !ctx.inLink && !ctx.miniature,
+                  tabIndex: tab,
+                })}
+              </span>
             </li>
           ))}
         </Tag>
@@ -713,6 +736,10 @@ function interactiveInside(n: Node): boolean {
       ].includes(c.type) ||
       (c.type === "box" && !!c.props.link) ||
       (c.type === "image" && !!c.props.link) ||
+      // Links in text (src/blocks/richtext.tsx).
+      (!!RICH_PROPS[c.type] &&
+        inlineLinks(c.props[RICH_PROPS[c.type]!], richOptionsFor(c.type))
+          .length > 0) ||
       interactiveInside(c),
   );
 }

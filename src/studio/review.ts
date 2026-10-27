@@ -7,6 +7,7 @@ import {
 } from "./payments";
 import { appIssues, appSectionProblem, type AppTarget } from "../apps/issues";
 import { appFormsIn, shownNodes } from "../blocks/project";
+import { inlineLinks, RICH_PROPS, richOptionsFor } from "../blocks/richtext";
 
 export interface ReviewItem {
   id: string;
@@ -125,6 +126,15 @@ export function reviewProject(project: Project): ReviewItem[] {
             String((n.type === "button" ? n.props.url : n.props.link) ?? ""),
           )
           .filter((url) => url.trim() !== OWNER_LINK),
+        // Links inside text ("[words](/menu)").
+        ...nodes.flatMap((n) =>
+          RICH_PROPS[n.type]
+            ? inlineLinks(
+                n.props[RICH_PROPS[n.type]!],
+                richOptionsFor(n.type),
+              ).map((l) => l.href)
+            : [],
+        ),
       ];
       if (
         links.some(

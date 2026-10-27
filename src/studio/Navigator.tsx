@@ -95,6 +95,11 @@ export function Navigator({
       onPointerLeave={() => onHover?.(null)}
       draggable={!!pageId && !search}
       onDragStart={(event) => {
+        if (s.root?.locked) {
+          event.preventDefault();
+          notify("Locked. Unlock it in Layers to move it.");
+          return;
+        }
         setDragging(s.id);
         event.dataTransfer.setData("text/forma-section", s.id);
         event.dataTransfer.effectAllowed = "move";
@@ -133,6 +138,7 @@ export function Navigator({
       >
         <Icon name={sectionMeta[s.type].icon} size={14} />
         <span>{s.name}</span>
+        {s.root?.locked && <Icon name="lock" size={12} />}
         {s.hidden && <Icon name="eyeOff" size={12} />}
       </button>
       <ActionMenu
@@ -164,19 +170,20 @@ export function Navigator({
           {
             label: "Move up",
             icon: "up",
-            disabled: index === 0,
+            disabled: index === 0 || !!s.root?.locked,
             run: () => store.moveSection(s.id, -1),
           },
           {
             label: "Move down",
             icon: "down",
-            disabled: index === sections.length - 1,
+            disabled: index === sections.length - 1 || !!s.root?.locked,
             run: () => store.moveSection(s.id, 1),
           },
           {
             label: "Delete section",
             icon: "trash",
             danger: true,
+            disabled: !!s.root?.locked,
             run: () => {
               store.removeSection(s.id);
               notify("Section deleted. Use Undo to restore it.");
@@ -258,7 +265,10 @@ export function Navigator({
         <Icon name="plus" size={17} />
         <span>Add section</span>
       </button>
-      <div className="navigator-scroll" hidden={view === "layers"}>
+      <div
+        className="navigator-scroll navigator-pages-view"
+        hidden={view === "layers"}
+      >
         <div className="navigator-group-label">
           <span>{search ? "Search results" : "Pages"}</span>
           <button

@@ -17,7 +17,13 @@ import { LOGIC_BLOCKS } from "./logic/registry";
 
 export type FieldSpec =
   | { key: string; label: string; kind: "text"; placeholder?: string }
-  | { key: string; label: string; kind: "longText"; placeholder?: string }
+  | {
+      key: string;
+      label: string;
+      kind: "longText";
+      placeholder?: string;
+      hint?: string;
+    }
   | { key: string; label: string; kind: "link" }
   | { key: string; label: string; kind: "image" }
   | { key: string; label: string; kind: "icon" }
@@ -291,7 +297,12 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     description: "A title; *stars* colour words in the accent",
     inline: "text",
     fields: [
-      { key: "text", label: "Text", kind: "longText" },
+      {
+        key: "text",
+        label: "Text",
+        kind: "longText",
+        hint: "**bold**, __italic__, [words](/page), *accent*. Or select words while typing on the page.",
+      },
       {
         key: "level",
         label: "Level",
@@ -313,7 +324,12 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     description: "A paragraph, a lead line or a small label",
     inline: "text",
     fields: [
-      { key: "text", label: "Text", kind: "longText" },
+      {
+        key: "text",
+        label: "Text",
+        kind: "longText",
+        hint: "**bold**, __italic__, [words](/page). Or select words while typing on the page.",
+      },
       {
         key: "variant",
         label: "Style",
@@ -444,7 +460,12 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     category: "basic",
     description: "Points with ticks, bullets or numbers",
     fields: [
-      { key: "items", label: "Points", kind: "lines", hint: "One per line." },
+      {
+        key: "items",
+        label: "Points",
+        kind: "lines",
+        hint: "One per line. **bold**, __italic__, [words](/page).",
+      },
       {
         key: "marker",
         label: "Marker",

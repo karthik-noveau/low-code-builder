@@ -147,6 +147,8 @@ export interface Node {
   mobile?: Style;
   children?: Node[];
   hidden?: boolean;
+  /** Kept in place in the editor: not moved, deleted or added to (src/blocks/lock.ts). */
+  locked?: boolean;
   /**
    * Inside a repeat: props filled from the current item, prop key → source
    * ("field:<id>", "item:link", "item:title", "item:index"). See

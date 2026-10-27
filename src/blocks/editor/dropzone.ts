@@ -8,7 +8,8 @@
 import { useStudio } from "../../studio/store";
 import { findSection } from "../../studio/model";
 import { contains, findNode, pathTo, type Node } from "../model";
-import { canHold, nodeLabel } from "../registry";
+import { nodeLabel } from "../registry";
+import { accepts } from "../lock";
 import { payloadType, type DragPayload, type DropTarget } from "./actions";
 
 export interface Rect {
@@ -125,7 +126,7 @@ export function findDrop(
     const chain = id ? pathTo([section.root], id).reverse() : [section.root];
     for (const [i, cur] of chain.entries()) {
       if (moving && contains(moving, cur.id)) continue;
-      if (!canHold(cur.type, type)) continue;
+      if (!accepts(cur, type)) continue;
       const el = nodeElement(website, cur.id);
       const box = rectOf(el);
       if (!box) continue;
@@ -134,7 +135,7 @@ export function findDrop(
       const edge = Math.min(12, box.width / 5, box.height / 5);
       const nearEdge =
         parent &&
-        canHold(parent.type, type) &&
+        accepts(parent, type) &&
         (x - box.left < edge ||
           box.left + box.width - x < edge ||
           y - box.top < edge ||

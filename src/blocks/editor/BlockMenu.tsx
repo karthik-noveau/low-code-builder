@@ -19,7 +19,9 @@ import {
   paste,
   removeSelected,
   selectParent,
+  selectionLock,
   toggleHidden,
+  toggleLocked,
   undoAction,
   useBlocksUi,
   wrapSelected,
@@ -108,6 +110,13 @@ export function BlockMenu({
     if (s.selected) onPick(s.selected, s.selectedBlock ?? "");
   };
   const inline = BLOCKS[node.type].inline;
+  /** Runs `run` unless a lock stops it, in which case it says why. */
+  const unlocked =
+    (doing: "move" | "delete" | "duplicate", run: () => void) => () => {
+      const locked = selectionLock(doing);
+      if (locked) notify(locked);
+      else run();
+    };
   const groups: Item[][] = [
     [
       ...(inline && onEditText
@@ -124,11 +133,11 @@ export function BlockMenu({
         label: "Duplicate",
         icon: "copy",
         keys: `${MOD}D`,
-        run: () => {
+        run: unlocked("duplicate", () => {
           duplicateSelected();
           reselect();
           notify(`${name} duplicated`, undoAction);
-        },
+        }),
       },
       {
         label: "Copy",
@@ -156,20 +165,20 @@ export function BlockMenu({
         icon: "up",
         keys: `${ALT}↑`,
         disabled: !moves.up,
-        run: () => {
+        run: unlocked("move", () => {
           moveSibling(-1);
           notify(`${name} moved up`, undoAction);
-        },
+        }),
       },
       {
         label: "Move down",
         icon: "down",
         keys: `${ALT}↓`,
         disabled: !moves.down,
-        run: () => {
+        run: unlocked("move", () => {
           moveSibling(1);
           notify(`${name} moved down`, undoAction);
-        },
+        }),
       },
       ...(isRoot
         ? []
@@ -178,21 +187,21 @@ export function BlockMenu({
               label: "Put in a box",
               icon: "wrap",
               disabled: !canWrap("box"),
-              run: () => {
+              run: unlocked("move", () => {
                 wrapSelected("box");
                 reselect();
                 notify(`${name} is now inside a box`, undoAction);
-              },
+              }),
             },
             {
               label: "Put in a row",
               icon: "sideBySide",
               disabled: !canWrap("row"),
-              run: () => {
+              run: unlocked("move", () => {
                 wrapSelected("row");
                 reselect();
                 notify(`${name} is now inside a row`, undoAction);
-              },
+              }),
             },
           ]),
     ],
@@ -222,6 +231,19 @@ export function BlockMenu({
           );
         },
       },
+      {
+        label: node.locked ? "Unlock" : "Lock",
+        icon: node.locked ? "unlock" : "lock",
+        run: () => {
+          const now = toggleLocked();
+          notify(
+            now
+              ? `${name} locked. Text and settings stay editable.`
+              : `${name} unlocked`,
+            undoAction,
+          );
+        },
+      },
     ],
     [
       {
@@ -229,11 +251,11 @@ export function BlockMenu({
         icon: "trash",
         keys: "Del",
         danger: true,
-        run: () => {
+        run: unlocked("delete", () => {
           const label = removeSelected();
           reselect();
           notify(`${label} deleted`, undoAction);
-        },
+        }),
       },
     ],
   ].filter((g) => g.length);

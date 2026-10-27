@@ -1,9 +1,8 @@
 /**
- * Reading block content: "one per line" lists, "Label | target" pairs,
- * *accent* words in headings and video links. Shared by the renderer and
- * anything else that shows block text.
+ * Reading block content: "one per line" lists, "Label | target" pairs and
+ * video links. Shared by the renderer and anything else that shows block
+ * text. Bold, italic, links and *accent* words: richtext.tsx.
  */
-import type { ReactNode } from "react";
 import type { PropValue } from "./model";
 
 export const lines = (v: PropValue | undefined) =>
@@ -16,13 +15,6 @@ export const pairs = (v: PropValue | undefined) =>
     const [a, ...rest] = l.split("|");
     return [a.trim(), rest.join("|").trim()] as const;
   });
-
-/** Text wrapped in *asterisks* is shown in the accent colour. */
-export function emphasis(value: string): ReactNode[] {
-  return value
-    .split(/\*([^*\n]+)\*/)
-    .map((part, n) => (n % 2 ? <em key={n}>{part}</em> : part));
-}
 
 /** A YouTube or Vimeo page link as its privacy-friendly embed address. */
 export function embedUrl(url: string) {

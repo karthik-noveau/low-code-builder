@@ -2739,3 +2739,316 @@ html body .studio.canvas-first:not(.is-preview) .canvas-device.device-mobile {
     padding: 24px 16px;
   }
 }
+
+/* Narrow windows: the right-hand panel steps aside while the Add panel is
+   open (Studio.tsx, ROOMY), so the canvas keeps its desktop width. */
+html body .studio.canvas-first .context-drawer.is-away {
+  display: none;
+}
+
+/* Saved sections dialog: search beside "Browse all sections" (the Add panel). */
+html body .studio.canvas-first .library-search:has(.library-browse) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html
+  body
+  .studio.canvas-first
+  .library-search:has(.library-browse)
+  .search-box {
+  flex: 1;
+}
+.library-browse {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.library-browse:hover {
+  background: var(--ui-surface-alt);
+}
+
+/* Pages view: the same rhythm as Layers and the Inspector — 8px steps,
+   16px side padding, 28px rows and buttons, 12px text. */
+html body .studio.canvas-first .site-navigator {
+  --nav-pad: 16px;
+}
+html
+  body
+  .studio.canvas-first
+  .site-navigator:not(.add-flyout)
+  .navigator-search {
+  height: 32px;
+  min-height: 32px;
+  margin: 0 var(--nav-pad) 8px;
+  padding: 0 8px;
+  gap: 8px;
+  border-radius: 8px;
+}
+html
+  body
+  .studio.canvas-first
+  .site-navigator:not(.add-flyout)
+  .navigator-search
+  input {
+  font-size: 12px;
+}
+html body .studio.canvas-first .site-navigator > .navigator-insert {
+  height: 32px;
+  min-height: 32px;
+  margin: 0 var(--nav-pad) 16px;
+  padding: 0 8px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view {
+  padding: 0 8px 16px;
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-group-label {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 8px;
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-new-page {
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-page-row {
+  min-height: 28px;
+  height: auto;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+html body .studio.canvas-first .navigator-pages-view .page-disclosure {
+  width: 20px;
+  height: 24px;
+  border-radius: 4px;
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-page-select {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 4px;
+  gap: 8px;
+  font-size: 12px;
+}
+html
+  body
+  .studio.canvas-first
+  .navigator-pages-view
+  .navigator-page-select
+  strong {
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view .page-outline {
+  margin: 0 0 8px 14px;
+  padding-left: 8px;
+}
+html body .studio.canvas-first .navigator-pages-view .outline-row {
+  min-height: 28px;
+  padding: 0 2px 0 0;
+  border-radius: 6px;
+}
+html body .studio.canvas-first .navigator-pages-view .outline-select {
+  min-height: 28px;
+  padding: 0 4px;
+  gap: 8px;
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view .outline-select span {
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view .outline-add {
+  min-height: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0 4px;
+  gap: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-shared {
+  margin-top: 8px;
+}
+html body .studio.canvas-first .site-navigator .navigator-tools {
+  padding: 8px;
+}
+html body .studio.canvas-first .site-navigator .navigator-tools button {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 8px;
+  gap: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+html body .studio.canvas-first .site-navigator .navigator-resource-row {
+  gap: 0;
+}
+html body .studio.canvas-first .site-navigator .navigator-bottom {
+  padding: 8px;
+}
+html body .studio.canvas-first .site-navigator .review-link {
+  height: 28px;
+  padding: 0 8px;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* Locks: Layers, the canvas name tag and the toolbar (src/blocks/lock.ts). */
+.layer-lock {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ui-muted);
+}
+.layer-lock:hover {
+  background: var(--ui-border);
+  color: var(--ui-ink);
+}
+.layer-row.is-locked .layer-lock {
+  color: var(--ui-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .layer-row:not(:hover, :focus-within, .is-locked) .layer-lock {
+    opacity: 0;
+  }
+}
+.layers-list-end {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 4px 0 0;
+  padding: 0 8px;
+  border: 1px dashed var(--ui-border);
+  border-radius: 6px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.layers-list-end.is-over,
+.layers-group:not(:has(.layer)) .layers-list-end.is-over {
+  border-color: #2563eb;
+  background: color-mix(in srgb, #2563eb 8%, transparent);
+  color: var(--ui-ink);
+}
+.blocks-locked {
+  display: inline-flex;
+  opacity: 0.85;
+}
+.blocks-tool.is-on {
+  color: #93c5fd;
+}
+/* The text tools' link box (TextToolbar.tsx). */
+.text-link-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 3;
+  display: grid;
+  gap: 10px;
+  width: 280px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--blk-bar);
+  color: #fafafa;
+  font-size: 12px;
+  box-shadow:
+    0 12px 32px -8px rgb(0 0 0 / 50%),
+    0 0 0 1px rgb(255 255 255 / 8%);
+}
+.text-link-field {
+  display: grid;
+  gap: 4px;
+}
+.text-link-field > span {
+  color: rgb(250 250 250 / 70%);
+  font-weight: 500;
+}
+.text-link-field :is(input, select) {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+  color: #fff;
+  font: inherit;
+}
+.text-link-field select option {
+  color: #18181b;
+}
+.text-link-field :is(input, select):focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 0;
+}
+.text-link-field input[aria-invalid="true"] {
+  border-color: #f87171;
+}
+.text-link-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.text-link-error {
+  margin: 0;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+.text-link-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.text-link-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-right: auto;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #fca5a5;
+  font: inherit;
+}
+.text-link-remove:hover {
+  background: rgb(220 38 38 / 22%);
+}
+html body .studio.canvas-first .navigator-pages-view .navigator-pages {
+  gap: 0;
+}
+html body .studio.canvas-first .navigator-pages-view .outline-row,
+html body .studio.canvas-first .navigator-pages-view .navigator-page-row {
+  height: 28px;
+}
+html body .studio.canvas-first .navigator-pages-view .action-menu-trigger {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+html body .studio.canvas-first .site-navigator .review-link {
+  min-height: 28px;
+}
+
+/* A tool the lock refuses: dimmed, still clickable to say why. */
+.blocks-tool.is-blocked {
+  opacity: 0.4;
+}
