@@ -99,6 +99,12 @@ const editor: Record<string, string> = {
   textBigger: "M3 17 7 7l4 10M4.5 13.5h5M15 12h6M18 9v6",
   paste: "M9 4h6v3H9V4ZM7 5H5v16h14V5h-2",
   dots: "M5 12h.01M12 12h.01M19 12h.01",
+  window: "M3 5h18v14H3V5Zm0 4h18M17 7h.01",
+  calendar: "M4 6h16v15H4V6Zm0 5h16M8 3v5m8-5v5",
+  message: "M4 5h16v11H9l-5 4V5Zm4 5h.01M12 10h.01M16 10h.01",
+  toggle:
+    "M7 7h10a5 5 0 0 1 0 10H7A5 5 0 0 1 7 7Zm10 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  scroll: "M12 4v14m-5-5 5 5 5-5M5 21h14",
 };
 /**
  * The rewards-site set (a 24px, 1.7 stroke family), drawn exactly as the

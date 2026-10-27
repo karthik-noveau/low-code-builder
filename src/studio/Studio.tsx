@@ -64,6 +64,10 @@ import {
 } from "../blocks/editor/actions";
 import { ShortcutSheet } from "../blocks/editor/ShortcutSheet";
 import { FirstRun } from "../blocks/editor/FirstRun";
+import { PreviewAsControl } from "../blocks/editor/PreviewAs";
+import { pageHasStates } from "../blocks/logic/project";
+import { previewState, usePreviewAs } from "../blocks/logic/preview";
+import { useShallow } from "zustand/react/shallow";
 import { findNode } from "../blocks/model";
 import { BLOCKS } from "../blocks/registry";
 import { PRESETS } from "../blocks/presets";
@@ -164,6 +168,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
     (i) => i.id === itemView?.item && !i.hidden,
   );
   const [preview, setPreview] = useState(false);
+  // "Preview as" (page values, address, theme, day) for the canvas.
+  const previewAs = usePreviewAs(useShallow(previewState));
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorSession, setInspectorSession] = useState(0);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -909,6 +915,9 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
               </select>
               <Icon name="down" size={12} />
             </div>
+            {pageHasStates(project, page) && !editingText && (
+              <PreviewAsControl project={project} page={page} />
+            )}
           </div>
         )}
         <div className="header-actions">
@@ -1191,6 +1200,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                   )
                 }
                 preview={preview}
+                previewAs={previewAs}
               />
             </div>
             {!preview && page.sections.length > 0 && (

@@ -13,6 +13,7 @@ import {
 } from "./model";
 import { DATA_BLOCKS } from "./data/registry";
 import { FORM_BLOCKS } from "./forms/registry";
+import { LOGIC_BLOCKS } from "./logic/registry";
 
 export type FieldSpec =
   | { key: string; label: string; kind: "text"; placeholder?: string }
@@ -46,7 +47,8 @@ export type FieldSpec =
   /** Field blocks: a field of the enclosing form's table (forms/FormSettings.tsx). */
   | { key: string; label: string; kind: "formField" };
 
-export type Category = "layout" | "basic" | "media" | "site" | "form" | "data";
+export type Category =
+  "layout" | "basic" | "media" | "site" | "form" | "data" | "logic";
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: "layout", label: "Layout" },
   { id: "basic", label: "Basic" },
@@ -54,6 +56,7 @@ export const CATEGORIES: { id: Category; label: string }[] = [
   { id: "site", label: "Site" },
   { id: "form", label: "Form" },
   { id: "data", label: "Forms and data" },
+  { id: "logic", label: "Interactive" },
 ];
 /**
  * Classic looks: the styles of the fixed section types sections were built
@@ -737,6 +740,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
   },
   ...DATA_BLOCKS,
   ...FORM_BLOCKS,
+  ...LOGIC_BLOCKS,
 };
 
 /** A new block with its defaults (and default children, with fresh ids). */
@@ -755,6 +759,8 @@ export function createNode(type: NodeType, props: Props = {}): Node {
 export function canHold(parent: NodeType, child: NodeType) {
   const def = BLOCKS[parent];
   if (!def.container || child === "section") return false;
+  // A dialog opens on its own, never from inside another one.
+  if (child === "dialog" && parent === "dialog") return false;
   if (def.accepts) return def.accepts.includes(child);
   const only = BLOCKS[child].parents;
   return !only || only.includes(parent);

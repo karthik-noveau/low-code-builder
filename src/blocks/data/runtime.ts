@@ -92,6 +92,50 @@ function dataWidget() {
           }
         } else if (v.indexOf(OPEN) >= 0) el.setAttribute(attr, swap(v));
       }
+    // "Show only when" an item field…: checked per row (src/blocks/logic).
+    for (const el of [root].concat(all(root, "[data-item-when]"))) {
+      const raw = el.getAttribute("data-item-when");
+      if (!raw) continue;
+      el.removeAttribute("data-item-when");
+      let cond: { match?: string; rules?: Rule[] } = {};
+      try {
+        cond = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      const rules = Array.isArray(cond.rules) ? cond.rules : [];
+      const results = rules.map((r) => holds(value(String(r.field)), r));
+      const ok =
+        !results.length ||
+        (cond.match === "any"
+          ? results.indexOf(true) >= 0
+          : results.indexOf(false) < 0);
+      if (!ok) el.hidden = true;
+    }
+  }
+  type Rule = { field?: string; op?: string; value?: string };
+  /** One item rule: is, is not, is filled in, is empty, more / less than. */
+  function holds(actual: string, r: Rule) {
+    const a = String(actual || "")
+      .trim()
+      .toLowerCase();
+    const b = String(r.value || "")
+      .trim()
+      .toLowerCase();
+    const num = (v: string) => {
+      const c = v.replace(/[^0-9.-]/g, "");
+      return c ? Number(c) : NaN;
+    };
+    if (r.op === "set") return a !== "";
+    if (r.op === "empty") return a === "";
+    if (r.op === "not") return a !== b;
+    if (r.op === "gt" || r.op === "lt") {
+      const x = num(a);
+      const y = num(b);
+      if (x !== x || y !== y) return false;
+      return r.op === "gt" ? x > y : x < y;
+    }
+    return a === b;
   }
 
   function list(root: HTMLElement) {

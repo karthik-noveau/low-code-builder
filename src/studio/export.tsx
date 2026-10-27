@@ -9,6 +9,7 @@ import {
   sectionImages,
   type Project,
   type Page,
+  type Section,
 } from "./model";
 import {
   collectionImages,
@@ -26,6 +27,13 @@ import formsCss from "../blocks/forms/forms.css?raw";
 import { appFormsIn } from "../blocks/project";
 import { SITE_SCRIPT, needsSiteScript } from "./siteScript";
 import { needsDataScript } from "../blocks/data/project";
+import {
+  logicConfig,
+  logicConfigTag,
+  needsLogicScript,
+  sectionsUseLogic,
+} from "../blocks/logic/project";
+import { LOGIC_SCRIPT } from "../blocks/logic/runtime";
 import type { AppForm } from "../apps/model";
 const escape = (value: string) =>
   value.replace(
@@ -74,6 +82,21 @@ function appHead(project: Project, appApi?: string) {
       : "")
   );
 }
+/**
+ * Pages with clicks, conditions or page values load logic.js and carry its
+ * config as JSON (never run as script: the page's CSP is `script-src 'self'`).
+ */
+function logicParts(project: Project, page: Page, sections: Section[]) {
+  if (!sectionsUseLogic(sections, page)) return { head: "", body: "" };
+  const config = logicConfig(sections, page, (id) => {
+    const target = project.pages.find((p) => p.id === id);
+    return target ? pageHref(target.slug) : undefined;
+  });
+  return {
+    head: '<script src="logic.js" defer></script>',
+    body: logicConfigTag(config),
+  };
+}
 /** Options for a published page: form endpoints and where OWNER_LINK goes. */
 type RenderOptions = { inbox?: string; appApi?: string; owner?: string };
 export function renderPage(
@@ -81,7 +104,12 @@ export function renderPage(
   page: Page,
   options: RenderOptions = {},
 ) {
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}</body></html>`;
+  const logic = logicParts(project, page, [
+    ...project.header,
+    ...page.sections,
+    ...project.footer,
+  ]);
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`;
 }
 /** An item's own page. It lives one folder down, so <base> keeps every relative link working. */
 export function renderItemPage(
@@ -95,7 +123,13 @@ export function renderItemPage(
     .replace(/\s+/g, " ")
     .slice(0, 160);
   const title = `${itemTitle(collection, item)} — ${project.name}`;
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}</head><body>${renderToStaticMarkup(<Website project={project} page={project.pages[0]} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}</body></html>`.replace(
+  // Item pages show the header and footer only (with no page values).
+  const logic = logicParts(
+    project,
+    { ...project.pages[0], variables: undefined },
+    [...project.header, ...project.footer],
+  );
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={{ ...project.pages[0], variables: undefined }} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`.replace(
     // <base href="../"> would send in-page "#" links to the home page.
     /href="#/g,
     `href="${itemHref(collection, item)}#`,
@@ -187,6 +221,7 @@ export async function buildSiteArchive(project: Project) {
       renderItemPage(portable, collection, item),
     );
   if (needsSiteScript(portable)) zip.file("app.js", SITE_SCRIPT);
+  if (needsLogicScript(portable)) zip.file("logic.js", LOGIC_SCRIPT);
   zip.file(
     "styles.css",
     `html,body{margin:0;padding:0}body{min-width:320px}*{box-sizing:border-box}\n${websiteCss}\n${blocksCss}\n${looksCss}\n${formsCss}`,

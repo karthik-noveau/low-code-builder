@@ -3,7 +3,7 @@
  * site. In the editor every block carries data-node-id (the canvas selects by
  * it) and text blocks edit in place.
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "../studio/Icon";
 import { InlineText } from "../studio/InlineText";
 import { pageHref, safeImage, type Page, type Project } from "../studio/model";
@@ -15,6 +15,15 @@ import { embedUrl, emphasis, lines, pairs } from "./text";
 import { boundProps, type DataItem } from "./data/bind";
 import { ChartBlock, RepeatBlock, StatBlock, TableBlock } from "./data/blocks";
 import { FormBlock, type FormScope } from "./forms/FormBlocks";
+import {
+  clickOf,
+  gate,
+  linkAttrs,
+  withVars,
+  type Click,
+  type LogicContext,
+} from "./logic/blocks";
+import { DialogBlock } from "./logic/Dialog";
 
 export interface RenderContext {
   project: Project;
@@ -35,6 +44,8 @@ export interface RenderContext {
   item?: DataItem;
   /** Inside a form block: its form, table and which step (src/blocks/forms). */
   form?: FormScope;
+  /** Page values, "Preview as" and the open dialog (src/blocks/logic). */
+  logic?: LogicContext;
   onToggleTheme?: () => void;
   /** The Add panel's miniatures, drawn inside a button: nothing clickable. */
   miniature?: boolean;
@@ -118,9 +129,13 @@ export function Nodes({ nodes, ctx }: { nodes: Node[]; ctx: RenderContext }) {
 }
 
 export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
+  // "Show only when…": left out, or (published) drawn in its starting state.
+  const shown = gate(n, ctx);
+  if (!shown) return null;
   // Bound props (inside a repeat) come from the current item.
   const p = boundProps(n, ctx.item);
   const edit = ctx.edit;
+  const click = clickOf(n, ctx);
   const tab = edit ? -1 : undefined;
   const variant = str(p.variant);
   const cls = (...extra: (string | false | undefined)[]) =>
@@ -131,11 +146,16 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
       variant && `v-${variant}`,
       edit?.selected === n.id && "is-node-selected",
       n.hidden && "is-node-hidden",
+      shown.faded && "is-cond-off",
+      click?.on && "is-on",
+      click?.on === false && "is-off",
       ...extra,
     ]
       .filter(Boolean)
       .join(" ");
-  const attrs = edit ? { "data-node-id": n.id, "data-node-type": n.type } : {};
+  const attrs = edit
+    ? { "data-node-id": n.id, "data-node-type": n.type }
+    : shown.attrs;
   const kids = n.children ?? [];
   const children =
     kids.length || !edit ? (
@@ -160,16 +180,24 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     const value = str(p[key]);
     // Text filled from data isn't typed into (it changes with the item).
     const bound = !!(ctx.item && n.bind?.[key]);
+    const render = (v: string) =>
+      withVars(v, ctx, n.type === "heading" ? emphasis : undefined);
     if (!edit || bound) {
       const Tag = as;
       // "{year}" shows the current year (copyright lines).
-      const shown = value.replaceAll(
-        "{year}",
-        String(new Date().getFullYear()),
-      );
+      const text = value.replaceAll("{year}", String(new Date().getFullYear()));
+      // A clickable heading or text: its words are the link or button.
+      const words =
+        click && !edit && (n.type === "text" || n.type === "heading")
+          ? clickable(click, "blk-text-link", render(text))
+          : render(text);
       return (
-        <Tag className={className} {...(bound ? attrs : {})} {...extra}>
-          {n.type === "heading" ? emphasis(shown) : shown}
+        <Tag
+          className={className}
+          {...(bound || !edit ? attrs : {})}
+          {...extra}
+        >
+          {words}
         </Tag>
       );
     }
@@ -187,7 +215,7 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
         onFinishEdit={edit.onFinishTyping}
         onDraft={edit.onDraft}
         attrs={{ ...attrs, ...extra }}
-        render={n.type === "heading" ? emphasis : undefined}
+        render={render}
       />
     );
   };
@@ -195,6 +223,25 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     href: ctx.href(url),
     tabIndex: tab,
   });
+  /**
+   * The element a click runs on, outside the editor: a real link when it
+   * goes somewhere, otherwise a button the logic script (or Preview) runs.
+   */
+  const clickable = (
+    c: Click,
+    className: string,
+    content: ReactNode,
+    more: Record<string, unknown> = {},
+  ) =>
+    c.href ? (
+      <a {...more} {...c.attrs} {...linkAttrs(c, ctx)} className={className}>
+        {content}
+      </a>
+    ) : (
+      <button {...more} {...c.attrs} type="button" className={className}>
+        {content}
+      </button>
+    );
 
   switch (n.type) {
     case "section": {
@@ -227,6 +274,34 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
       );
     }
     case "box": {
+      if (click && !edit) {
+        // A whole clickable card: a link when nothing inside it is clickable
+        // (links can't hold links), otherwise a button-like box.
+        if (click.href && !interactiveInside(n))
+          return (
+            <a
+              {...attrs}
+              {...click.attrs}
+              {...linkAttrs(click, ctx)}
+              className={cls()}
+            >
+              {children}
+            </a>
+          );
+        return (
+          <div
+            {...attrs}
+            {...click.attrs}
+            data-act={ctx.miniature ? undefined : n.id}
+            role={click.href ? "link" : "button"}
+            tabIndex={ctx.miniature ? undefined : 0}
+            aria-label={n.name || undefined}
+            className={cls("is-clickable")}
+          >
+            {children}
+          </div>
+        );
+      }
       const href = str(p.link);
       if (href && !edit)
         return (
@@ -278,6 +353,12 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     case "formSteps":
     case "formRecord":
       return <FormBlock node={n} ctx={ctx} className={cls()} attrs={attrs} />;
+    case "dialog":
+      return (
+        <DialogBlock node={n} ctx={ctx} className={cls()} attrs={attrs}>
+          {children}
+        </DialogBlock>
+      );
     case "heading": {
       const level = ["1", "2", "3", "4"].includes(str(p.level))
         ? str(p.level)
@@ -286,30 +367,48 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     }
     case "text":
       return typed("text", "p", cls());
-    case "badge":
+    case "badge": {
+      const inside = (
+        <>
+          {str(p.icon) && <Icon name={str(p.icon)} size={14} />}
+          {edit
+            ? typed("text", "span", "blk-badge-text")
+            : withVars(str(p.text), ctx)}
+        </>
+      );
+      if (click && !edit) return clickable(click, cls(), inside, attrs);
       return (
         <span {...attrs} className={cls()}>
-          {str(p.icon) && <Icon name={str(p.icon)} size={14} />}
-          {edit ? typed("text", "span", "blk-badge-text") : str(p.text)}
+          {inside}
         </span>
       );
+    }
     case "button": {
       const v = ["primary", "secondary", "ghost", "link"].includes(variant)
         ? variant
         : "primary";
       const icon = str(p.icon) || (v === "link" ? "arrow" : "");
+      const inside = (
+        <>
+          {str(p.iconStart) && <Icon name={str(p.iconStart)} size={16} />}
+          {edit
+            ? typed("label", "span", "blk-button-label")
+            : withVars(str(p.label), ctx)}
+          {icon && <Icon name={icon} size={16} />}
+        </>
+      );
+      const size = `s-${str(p.size) || "md"}`;
+      if (click && !edit) return clickable(click, cls(size), inside, attrs);
       return (
         <a
           {...attrs}
-          {...link(str(p.url))}
-          className={cls(`s-${str(p.size) || "md"}`)}
+          {...(click ? { href: click.href, tabIndex: tab } : link(str(p.url)))}
+          className={cls(size)}
           {...(p.newTab === true && !edit
             ? { target: "_blank", rel: "noopener" }
             : {})}
         >
-          {str(p.iconStart) && <Icon name={str(p.iconStart)} size={16} />}
-          {edit ? typed("label", "span", "blk-button-label") : str(p.label)}
-          {icon && <Icon name={icon} size={16} />}
+          {inside}
         </a>
       );
     }
@@ -333,9 +432,10 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
             style={style}
           />
         ) : null;
+      const linked = !!str(p.link) || !!click;
       const img = (
         <img
-          {...(str(p.link) ? {} : attrs)}
+          {...(linked ? {} : attrs)}
           className={cls()}
           src={src || undefined}
           alt={str(p.alt)}
@@ -343,8 +443,17 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
           style={style}
         />
       );
-      return str(p.link) ? (
-        <a {...attrs} {...link(str(p.link))} className="blk-image-link">
+      if (click && !edit)
+        return clickable(click, "blk-image-link", img, {
+          ...attrs,
+          ...(click.href ? {} : { "aria-label": str(p.alt) || click.label }),
+        });
+      return linked ? (
+        <a
+          {...attrs}
+          {...(click ? { href: click.href, tabIndex: tab } : link(str(p.link)))}
+          className="blk-image-link"
+        >
           {img}
         </a>
       ) : (
@@ -353,13 +462,17 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
     }
     case "icon": {
       const size = typeof p.size === "number" ? p.size : 22;
+      const style = { "--icon-size": `${size}px` } as CSSProperties;
+      const glyph = <Icon name={str(p.icon) || "sparkles"} size={size} />;
+      if (click && !edit)
+        return clickable(click, cls(), glyph, {
+          ...attrs,
+          style,
+          "aria-label": click.label,
+        });
       return (
-        <span
-          {...attrs}
-          className={cls()}
-          style={{ "--icon-size": `${size}px` } as CSSProperties}
-        >
-          <Icon name={str(p.icon) || "sparkles"} size={size} />
+        <span {...attrs} className={cls()} style={style}>
+          {glyph}
         </span>
       );
     }
@@ -578,4 +691,28 @@ export function NodeView({ node: n, ctx }: { node: Node; ctx: RenderContext }) {
         </div>
       );
   }
+}
+
+/** Whether a block holds something clickable (a clickable card can't be a link then). */
+function interactiveInside(n: Node): boolean {
+  return (n.children ?? []).some(
+    (c) =>
+      !!c.on?.click?.length ||
+      [
+        "button",
+        "menu",
+        "social",
+        "accordion",
+        "themeToggle",
+        "form",
+        "appForm",
+        "contactForm",
+        "newsletter",
+        "video",
+        "map",
+      ].includes(c.type) ||
+      (c.type === "box" && !!c.props.link) ||
+      (c.type === "image" && !!c.props.link) ||
+      interactiveInside(c),
+  );
 }

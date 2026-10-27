@@ -195,7 +195,7 @@ async function handler(event) {
   try { live = await kvs.get(match[1]); } catch (_) { return {statusCode: 404}; }
   const explicit = /^releases\\/([a-f0-9-]{36})\\/(.*)$/.exec(match[2]);
   const file = (explicit ? explicit[2] : match[2]) || 'index.html';
-  if (!/^(?:(?:[a-z0-9-]+\\/)?[a-z0-9-]+\\.html|styles\\.css|app\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
+  if (!/^(?:(?:[a-z0-9-]+\\/)?[a-z0-9-]+\\.html|styles\\.css|app\\.js|logic\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
   request.uri = '/sites/' + match[1] + '/releases/' + (explicit ? explicit[1] : live) + '/' + file;
   return request;
 }`;
@@ -281,7 +281,7 @@ export function template() {
             ? {
                 ContentSecurityPolicy: {
                   Override: true,
-                  // Same as the local site server: only Forma's app.js and sw.js run,
+                  // Same as the local site server: only Forma's app.js, logic.js and sw.js run,
                   // talking to the API and (for the offline cache) the site itself.
                   ContentSecurityPolicy: sub(
                     "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${Api.ApiEndpoint}; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'",

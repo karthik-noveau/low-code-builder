@@ -17,6 +17,7 @@ import {
 } from "../model";
 import { BLOCKS, canHold, createNode, nodeLabel } from "../registry";
 import { presetById } from "../presets";
+import { freeName, renameVar } from "../logic/model";
 
 /** What an Add panel item would put down, shown on the canvas while it's hovered. */
 export type InsertPreview =
@@ -160,9 +161,24 @@ export function insertPreset(id: string, after?: string) {
   const preset = presetById(id);
   if (!preset) return;
   const studio = useStudio.getState();
-  const root = preset.build({ project: studio.project });
+  let root = preset.build({ project: studio.project });
   const shared = ["header", "footer"].includes(preset.category);
-  return studio.addBlocksSection(root, preset.name, shared ? undefined : after);
+  // Page values the section uses join the page, renamed if the page already
+  // has one of that name (two sets of tabs keep their own).
+  const page = studio.project.pages.find((p) => p.id === studio.activePage);
+  const taken = (page?.variables ?? []).map((v) => v.name);
+  const variables = (preset.variables?.() ?? []).map((v) => {
+    const name = freeName(v.name, taken);
+    taken.push(name);
+    if (name !== v.name) root = renameVar(root, v.name, name);
+    return { ...v, name };
+  });
+  return studio.addBlocksSection(
+    root,
+    preset.name,
+    shared ? undefined : after,
+    variables,
+  );
 }
 
 /** Selects the selected block's parent. False when there isn't one. */

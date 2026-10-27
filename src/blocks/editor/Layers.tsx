@@ -225,6 +225,7 @@ export function Layers({
     isSelected,
     hidden,
     hiddenOn = [],
+    logic,
     kids,
     onSelect,
     onRename,
@@ -242,6 +243,8 @@ export function Layers({
     hidden: boolean;
     /** Screen sizes it's hidden on (tablet, phone). */
     hiddenOn?: ("tablet" | "mobile")[];
+    /** Has a click (lightning) or a "show only when" (src/blocks/logic). */
+    logic?: { click: boolean; when: boolean };
     kids?: ReactNode;
     onSelect: () => void;
     onRename: (name: string) => void;
@@ -338,6 +341,28 @@ export function Layers({
               <span>{name}</span>
             </button>
           )}
+          {(logic?.click || logic?.when) && (
+            <span
+              className="layer-logic-marks"
+              title={[
+                logic.click && "Does something when clicked",
+                logic.when && "Shown only when a rule is met",
+              ]
+                .filter(Boolean)
+                .join(". ")}
+            >
+              {logic.click && <Icon name="zap" size={11} />}
+              {logic.when && <Icon name="eye" size={11} />}
+              <span className="sr-only">
+                {[
+                  logic.click && "Does something when clicked",
+                  logic.when && "Shown only when a rule is met",
+                ]
+                  .filter(Boolean)
+                  .join(". ")}
+              </span>
+            </span>
+          )}
           {hiddenOn.length > 0 && !hidden && (
             <span
               className="layer-device-marks"
@@ -380,6 +405,7 @@ export function Layers({
         name: nodeLabel(n),
         isSelected: selected === s.id && selectedBlock === n.id,
         hidden: !!n.hidden,
+        logic: { click: !!n.on?.click?.length, when: !!n.when },
         hiddenOn: (["tablet", "mobile"] as const).filter((d) =>
           d === "tablet"
             ? n.tablet?.hidden === true

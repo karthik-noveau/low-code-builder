@@ -17,7 +17,7 @@ import {
 import { Icon } from "../../studio/Icon";
 import { useStudio } from "../../studio/store";
 import { findSection, type Device } from "../../studio/model";
-import { findNode, pathTo } from "../model";
+import { findNode, pathTo, type Node as BlockNode } from "../model";
 import { BLOCKS, nodeLabel } from "../registry";
 import {
   blockSelection,
@@ -425,6 +425,7 @@ export function CanvasOverlay({
               {hoverNode === hoverSection?.root
                 ? hoverSection?.name
                 : nodeLabel(hoverNode!)}
+              <LogicMarks node={hoverNode!} />
             </span>
           </div>
         )}
@@ -465,6 +466,7 @@ export function CanvasOverlay({
               >
                 <Icon name={isRoot ? "panel" : def!.icon} size={12} />
                 <span>{label(node!.id)}</span>
+                <LogicMarks node={node!} />
                 {path.length > 1 && <Icon name="down" size={11} />}
               </button>
               {parentsOpen && (
@@ -726,3 +728,24 @@ const labelStyle = (l: Line, frame: Rect): CSSProperties => ({
   left: Math.max(4, l.x - frame.left),
   top: Math.max(4, l.y - frame.top - (l.vertical ? 0 : 24)),
 });
+
+/** Lightning: does something when clicked. Eye: shown only when a rule is met. */
+function LogicMarks({ node }: { node: BlockNode }) {
+  const click = !!node.on?.click?.length;
+  const when = !!node.when;
+  if (!click && !when) return null;
+  return (
+    <span
+      className="blocks-logic"
+      title={[
+        click && "Does something when clicked",
+        when && "Shown only when a rule is met",
+      ]
+        .filter(Boolean)
+        .join(". ")}
+    >
+      {click && <Icon name="zap" size={11} />}
+      {when && <Icon name="eye" size={11} />}
+    </span>
+  );
+}

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { gzipSync } from "node:zlib";
 import { validateProject } from "../../src/studio/model";
-import { classicProject, createProject } from "../../src/studio/templates";
+import {
+  classicProject,
+  createProject,
+  createSection,
+} from "../../src/studio/templates";
+import { presetById } from "../../src/blocks/presets";
 import { item } from "../../src/studio/sites/kit";
 import {
   liveAppForms,
@@ -153,5 +158,44 @@ describe("smart blocks on the published site", () => {
     expect(tabBarOf(next)?.map((t) => t.url)).toContain("/add");
     const hero = [...walk([next.pages[0].sections[0].root!])];
     expect(hero.find((n) => n.type === "button")?.props.url).toBe("/add");
+  });
+});
+
+describe("logic on the published site (src/blocks/logic)", () => {
+  it("adds logic.js only for sites that use clicks or conditions, and only on those pages", async () => {
+    const p = createProject("blank", "Logic publish");
+    const plain = await compileSite(p, "https://sites.test/r");
+    expect(plain.some((f) => f.name === "logic.js")).toBe(false);
+    // A second page with tabs; the home page stays plain.
+    const tabs = presetById("logic-tabs")!;
+    p.pages.push({
+      id: "offers",
+      name: "Offers",
+      slug: "offers",
+      title: "Offers",
+      description: "",
+      sections: [
+        createSection("blocks", {
+          name: "Tabs",
+          root: tabs.build({ project: p }),
+        }),
+      ],
+      variables: tabs.variables!(),
+    });
+    expect(validateProject(p)).toBe(true);
+    const files = await compileSite(p, "https://sites.test/r");
+    const script = files.find((f) => f.name === "logic.js");
+    expect(script?.type).toBe("text/javascript; charset=utf-8");
+    const source = script!.body.toString();
+    expect(source).not.toMatch(/\beval\(|new Function|innerHTML|insertAdjacentHTML|document\.write/);
+    const home = files.find((f) => f.name === "index.html")!.body.toString();
+    const offers = files.find((f) => f.name === "offers.html")!.body.toString();
+    expect(home).not.toContain("logic.js");
+    expect(home).not.toContain("forma-logic");
+    expect(offers).toContain('<script src="logic.js" defer></script>');
+    // No inline script: every <script> is the file or the JSON config.
+    for (const tag of offers.match(/<script\b[^>]*>/g) ?? [])
+      expect(tag).toMatch(/src="(app|logic)\.js"|type="application\/json"/);
+    expect(offers).toMatch(/data-when="[\w-]+"[^>]*hidden/);
   });
 });

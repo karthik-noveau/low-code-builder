@@ -11,6 +11,7 @@ import {
   type Style,
 } from "./model";
 import { BLOCKS, canHold } from "./registry";
+import { conditionValid, onValid, safeLink } from "./logic/model";
 
 export const MAX_DEPTH = 12;
 export const MAX_NODES = 600;
@@ -160,6 +161,9 @@ export function rootValid(root: unknown): root is Node {
       (node.hidden !== undefined && typeof node.hidden !== "boolean") ||
       !propsValid(node.props) ||
       !bindValid(node.bind) ||
+      // Clicks and "show only when" (src/blocks/logic/model.ts).
+      !onValid(node.on, node.type) ||
+      !conditionValid(node.when) ||
       ![node.style, node.tablet, node.mobile].every(styleValid)
     )
       return false;
@@ -228,9 +232,16 @@ export function mapNodeLinks(root: Node, fn: (url: string) => string): Node {
         ? [label, fn(url), ...rest].filter((x, i) => i < 2 || x).join(" | ")
         : line;
     });
+  // "Open a link" clicks; a link that no longer fits is left as it was.
+  const click = root.on?.click?.map((a) => {
+    if (a.do !== "link") return a;
+    const url = fn(a.url);
+    return safeLink(url) ? { ...a, url } : a;
+  });
   return {
     ...root,
     props,
+    ...(click ? { on: { ...root.on, click } } : {}),
     ...(root.children
       ? { children: root.children.map((c) => mapNodeLinks(c, fn)) }
       : {}),

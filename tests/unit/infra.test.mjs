@@ -87,6 +87,7 @@ describe("cost and deployment invariants", () => {
     // Installable app files are served from the live root, like pages.
     for (const file of [
       "app.js",
+      "logic.js",
       "sw.js",
       "manifest.webmanifest",
       "icon.svg",

@@ -315,7 +315,7 @@ const sitesServer = createServer(async (req, res) => {
     const file = (explicit ? explicit[2] : tail) || "index.html";
     if (
       !idPattern.test(release) ||
-      !/^(?:(?:[a-z0-9-]+\/)?[a-z0-9-]+\.html|styles\.css|app\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
+      !/^(?:(?:[a-z0-9-]+\/)?[a-z0-9-]+\.html|styles\.css|app\.js|logic\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
         file,
       )
     )
@@ -332,7 +332,7 @@ const sitesServer = createServer(async (req, res) => {
         : "no-store",
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin",
-      // Scripts are only Forma's own app.js and sw.js; they talk to the API and,
+      // Scripts are only Forma's own app.js, logic.js and sw.js; they talk to the API and,
       // for the offline cache, the site itself.
       "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${config.apiOrigin}; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'`,
     });

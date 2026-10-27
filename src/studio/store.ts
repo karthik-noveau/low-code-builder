@@ -42,6 +42,7 @@ import { canHold } from "../blocks/registry";
 import { toBlocks, upgradeProject } from "../blocks/legacy";
 import { sectionAppForms, sectionCollections } from "../blocks/project";
 import { syncForms } from "../blocks/forms/sync";
+import type { PageVariable } from "../blocks/logic/model";
 import { collectionUsedBy } from "../apps/edit";
 
 export const STORAGE_KEY = "forma-studio-project-v1";
@@ -135,8 +136,16 @@ interface StudioState {
   ) => void;
   removeNode: (section: string, id: string) => void;
   duplicateNode: (section: string, id: string) => string | undefined;
-  /** Adds a "blocks" section (a prebuilt one, or empty) after `after`, or at the end. */
-  addBlocksSection: (root: Node, name: string, after?: string) => string;
+  /**
+   * Adds a "blocks" section (a prebuilt one, or empty) after `after`, or at
+   * the end, with the page values it uses (added to the current page).
+   */
+  addBlocksSection: (
+    root: Node,
+    name: string,
+    after?: string,
+    variables?: PageVariable[],
+  ) => string;
   /** Adds a collection (from a blueprint, or an imported one) and returns its id. */
   addCollection: (source: Blueprint | Collection) => string;
   updateCollection: (id: string, update: (c: Collection) => Collection) => void;
@@ -548,11 +557,11 @@ export const useStudio = create<StudioState>((set, get) => ({
     const copy = cloneNode(at.siblings[at.index]);
     return get().insertNode(section, at.parent.id, copy, at.index + 1);
   },
-  addBlocksSection: (root, name, after) => {
+  addBlocksSection: (root, name, after, variables) => {
     const section = blocksSection(cloneNode(root), name);
     const tag = root.props.tag;
     const active = get().activePage;
-    get().commit((p) => {
+    const place = (p: Project): Project => {
       if (tag === "header" && !after)
         return { ...p, header: [...p.header, section] };
       if (tag === "footer" && !after)
@@ -575,6 +584,18 @@ export const useStudio = create<StudioState>((set, get) => ({
           );
           return { ...pg, sections };
         }),
+      };
+    };
+    get().commit((p) => {
+      const next = place(p);
+      if (!variables?.length) return next;
+      return {
+        ...next,
+        pages: next.pages.map((pg) =>
+          pg.id === active
+            ? { ...pg, variables: [...(pg.variables ?? []), ...variables] }
+            : pg,
+        ),
       };
     });
     set({ selected: section.id, selectedBlock: section.root!.id });

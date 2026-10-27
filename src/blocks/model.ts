@@ -5,6 +5,7 @@
  * registry.ts; how styles become CSS lives in style.ts. See
  * docs/blocks-builder.md.
  */
+import type { Condition, On } from "./logic/model";
 export const NODE_TYPES = [
   // Layout
   "section",
@@ -53,6 +54,8 @@ export const NODE_TYPES = [
   "formError",
   "formSteps",
   "formRecord",
+  // Logic (src/blocks/logic)
+  "dialog",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -150,8 +153,13 @@ export interface Node {
    * src/blocks/data/bind.ts.
    */
   bind?: Binding;
+  /** What a click does (src/blocks/logic). */
+  on?: On;
+  /** Shown only when this holds (src/blocks/logic). */
+  when?: Condition;
 }
 export type Binding = Record<string, string>;
+export type { Action, Condition, On } from "./logic/model";
 
 export const nodeId = () => crypto.randomUUID();
 
@@ -194,13 +202,37 @@ export function pathTo(nodes: Node[], id: string): Node[] {
 export const contains = (ancestor: Node, id: string) =>
   !!findNode([ancestor], id);
 
-/** A copy with fresh ids throughout (duplicate, paste, insert a preset). */
+/**
+ * A copy with fresh ids throughout (duplicate, paste, insert a preset).
+ * Clicks that open a dialog or scroll to a block inside the copy follow the
+ * copy (src/blocks/logic).
+ */
 export function cloneNode(node: Node): Node {
-  return {
-    ...structuredClone(node),
-    id: nodeId(),
-    children: node.children?.map(cloneNode),
+  const ids = new Map<string, string>();
+  const copy = (n: Node): Node => {
+    const id = nodeId();
+    ids.set(n.id, id);
+    return {
+      ...structuredClone(n),
+      id,
+      children: n.children?.map(copy),
+    };
   };
+  const relink = (n: Node): Node => {
+    const click = n.on?.click?.map((a) =>
+      a.do === "openDialog" && ids.has(a.dialog)
+        ? { ...a, dialog: ids.get(a.dialog)! }
+        : a.do === "scroll" && ids.has(a.target)
+          ? { ...a, target: ids.get(a.target)! }
+          : a,
+    );
+    return {
+      ...n,
+      ...(click ? { on: { ...n.on, click } } : {}),
+      children: n.children?.map(relink),
+    };
+  };
+  return relink(copy(node));
 }
 
 /** Applies `fn` to the node with `id`, returning a new tree (others shared). */
@@ -259,7 +291,6 @@ export function moveNode(
 /** Merges into a style, dropping keys set to undefined so they fall back again. */
 export function mergeStyle(style: Style | undefined, patch: Partial<Style>) {
   const next: Record<string, unknown> = { ...style, ...patch };
-  for (const k of Object.keys(next))
-    if (next[k] === undefined) delete next[k];
+  for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
   return Object.keys(next).length ? (next as Style) : undefined;
 }

@@ -3,7 +3,8 @@
  * purposeful first tab: content blocks open on Content (their registry
  * fields), layout blocks on Layout (their settings, how they arrange what's
  * inside, and a list of what's inside). Style is per screen size
- * (StylePanel). Data blocks also get Data (DataPanel). The section block
+ * (StylePanel). Data blocks also get Data (DataPanel); every block gets
+ * Actions (ActionsPanel: when clicked, show only when, page values). The section block
  * itself stands for its section: its name and visibility are the section's.
  */
 import { useState } from "react";
@@ -23,14 +24,17 @@ import {
   type Notify,
 } from "./actions";
 import { DataPanel } from "./DataPanel";
+import { ActionsPanel } from "./ActionsPanel";
 import { hasDataTab } from "../data/bind";
+import { actionLabel } from "../logic/blocks";
 
-type Tab = "content" | "layout" | "style" | "data";
+type Tab = "content" | "layout" | "style" | "data" | "actions";
 const TAB_NAMES: Record<Tab, string> = {
   content: "Content",
   layout: "Layout",
   style: "Style",
   data: "Data",
+  actions: "Actions",
 };
 
 export function NodeInspector({
@@ -72,6 +76,7 @@ export function NodeInspector({
     container ? "layout" : "content",
     "style",
     ...(dataTab ? (["data"] as const) : []),
+    "actions",
   ];
   // The choice is remembered per block while it stays selected.
   const [chosen, setChosen] = useState<{ id: string; tab: Tab }>();
@@ -117,9 +122,35 @@ export function NodeInspector({
       : nodeLabel(parent)
     : undefined;
 
+  // A block with a click shows it in place of its "Goes to" link.
+  const click = node.on?.click;
+  const clickNote = click?.length ? (
+    <div className="node-click-summary" key="click-summary">
+      <Icon name="zap" size={14} />
+      <span>
+        When clicked:{" "}
+        <strong>
+          {actionLabel(click[0], store.project, root)}
+          {click.length > 1 ? ` + ${click.length - 1} more` : ""}
+        </strong>
+      </span>
+      <button type="button" onClick={() => setTab("actions")}>
+        Change
+      </button>
+    </div>
+  ) : null;
+  const shownFields = def.fields.filter(
+    (spec) =>
+      !click?.length ||
+      !(
+        spec.kind === "link" ||
+        (node.type === "button" && spec.key === "newTab")
+      ),
+  );
   const fields = def.fields.length > 0 && (
     <div className="inspector-group node-fields">
-      {def.fields.map((spec) => (
+      {shownFields.length < def.fields.length && clickNote}
+      {shownFields.map((spec) => (
         <ContentField
           key={spec.key}
           spec={spec}
@@ -307,6 +338,15 @@ export function NodeInspector({
         )}
         {tab === "data" ? (
           <DataPanel section={section} node={node} />
+        ) : tab === "actions" ? (
+          <ActionsPanel
+            section={section}
+            node={node}
+            notify={notify}
+            onSelectNode={(s, n) =>
+              s === section.id ? onSelectNode(n) : store.select(s, n)
+            }
+          />
         ) : tab === "content" ? (
           <>
             {fields}

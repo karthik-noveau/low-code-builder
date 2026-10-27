@@ -8,6 +8,7 @@ import {
   replaceNodeImages,
   rootValid,
 } from "../blocks/validate";
+import { variablesValid, type PageVariable } from "../blocks/logic/model";
 export type SectionType =
   | "announcement"
   | "header"
@@ -175,6 +176,8 @@ export interface Page {
   title: string;
   description: string;
   sections: Section[];
+  /** Values the page remembers while someone is on it (src/blocks/logic). */
+  variables?: PageVariable[];
 }
 export interface Asset {
   id: string;
@@ -661,7 +664,8 @@ export function validateProject(value: unknown): value is Project {
         pg.slug !== "index" &&
         /^(?:|[a-z0-9]+(?:-[a-z0-9]+)*)$/.test(pg.slug) &&
         Array.isArray(pg.sections) &&
-        pg.sections.every(sectionValid),
+        pg.sections.every(sectionValid) &&
+        variablesValid(pg.variables),
     )
   ))
     return false;

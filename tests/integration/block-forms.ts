@@ -26,7 +26,7 @@ let token = "";
 let call: Call;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function publish(project: Project) {
+export async function publish(project: Project) {
   const created = await call("/sites", "POST", { name: project.name });
   expect(created.response.status, JSON.stringify(created.data)).toBe(201);
   const id = created.data.site.id as string;
@@ -59,6 +59,13 @@ async function publish(project: Project) {
   throw new Error("Publishing didn't finish.");
 }
 
+/** Publishing (`publish`) as this account. */
+export function useAccount(owner: string, api: Call) {
+  token = owner;
+  call = api;
+}
+export type { Call };
+
 /** A blank site whose home page holds the booking, contact and tracking form sections. */
 function formsSite() {
   const before = createProject("blank", "Forms test");
@@ -77,8 +84,7 @@ function formsSite() {
 
 /** Publishes a site of block-built forms, then sends and looks up through it. */
 export async function checkBlockForms(owner: string, api: Call) {
-  token = owner;
-  call = api;
+  useAccount(owner, api);
   {
     const project = formsSite();
     const app = project.app!;

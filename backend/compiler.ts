@@ -11,6 +11,8 @@ import { APP_SCRIPT } from "../src/apps/widget";
 import { SITE_SCRIPT, needsSiteScript } from "../src/studio/siteScript";
 import { DATA_SCRIPT } from "../src/blocks/data/runtime";
 import { needsDataScript } from "../src/blocks/data/project";
+import { LOGIC_SCRIPT } from "../src/blocks/logic/runtime";
+import { needsLogicScript } from "../src/blocks/logic/project";
 import {
   collectionImages,
   itemHref,
@@ -306,6 +308,14 @@ export async function compileSite(
         body: Buffer.from(DATA_SCRIPT),
       });
   }
+  // Clicks, conditions and page values: logic.js, loaded only by the pages
+  // that use them (src/blocks/logic).
+  if (needsLogicScript(project))
+    files.push({
+      name: "logic.js",
+      type: "text/javascript; charset=utf-8",
+      body: Buffer.from(LOGIC_SCRIPT),
+    });
   for (const file of files) add(file);
   insist(
     artifacts.reduce((sum, file) => sum + file.body.length, 0) <=

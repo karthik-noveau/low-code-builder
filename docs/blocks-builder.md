@@ -55,7 +55,7 @@ plus a renderer case.
 | Site | logo, menu, theme switch, accordion, social links |
 | Form (phase 3) | form, field, form button, form step, step indicator, after sending, when sending fails, found record |
 | Data (phase 4) | repeat (list/cards), table, stat, chart, record value |
-| Logic (phase 5) | click actions, show-when conditions, dialog |
+| Logic (phase 5) | dialog (pop-up or side panel); click actions and show-when on any block |
 
 ## Editor
 
@@ -240,3 +240,41 @@ read API in `backend/apps.ts`.
   sets up views ("Show on your website: these fields only") and bindings.
 - **Classic smart blocks** `collectionList` and `products` stay as they are
   (exact classic markup; Forma Store fills `products` at publish).
+
+## Logic (phase 5)
+
+`src/blocks/logic/` makes pages interactive without code. It is all data
+(`model.ts`), carried out by the editor's preview and by the published page's
+`logic.js` (`runtime.ts`). Nothing is ever evaluated as code.
+
+- **Click actions** (`node.on.click`, 1–3 run in order) on buttons, images,
+  icons, boxes (cards in a repeat), text, headings and badges: open a page or
+  link, scroll to a section, open or close a dialog, call, WhatsApp, email,
+  copy text (with a "Copied" note), set or toggle a page value, open an app
+  form in a dialog. Navigation, call, WhatsApp and email are drawn as real
+  `<a href>`, so they work without the script.
+- **Show only when** (`node.when`, all/any of up to 4 rules): a page value,
+  a URL query param (`?ref=`), light or dark theme, a date range (resolved at
+  publish and checked again in the browser), or inside a repeat a field of the
+  item. Screen size stays "Hide on this device" in Style. Without the script
+  each block shows its default state.
+- **Page values** (`page.variables`, at most 20; `^[a-z][a-z0-9_]{0,31}$`,
+  text, number or yes/no, optionally remembered on the visitor's device).
+  Text shows one with `{var:name}`; renaming a value updates its uses.
+- **Dialog** (`dialog` container): a centred pop-up or side panel, outside
+  the page flow, opened by actions. It has a labelled title and a close button,
+  keeps focus inside, closes on Esc and returns focus to the opener. In the
+  editor it is listed in Layers and drawn on the canvas while selected.
+- **Security.** Links must be http(s), site-relative, `#section`, `tel:`,
+  `mailto:` or wa.me (`safeLink`; never `javascript:` or `data:`). Lists,
+  names and values are capped in `validate.ts`, and query rules compare
+  strings only. The runtime reads its config from data attributes and
+  writes only with `textContent`, attributes, `hidden` and classes. `logic.js`
+  is served beside `app.js` and loaded only by pages that use logic, under
+  the same `script-src 'self'` policy.
+- **Editor.** An Actions tab ("When clicked", "Show only when…", "Page
+  values"), lightning and condition badges on the canvas, and "Preview as"
+  to see the page with a value, theme, link or date. Clicks never run while
+  editing, only in Preview.
+- **Sections** ("Interactive"): tabs, monthly/yearly pricing, Book now in a
+  dialog, dismissible announcement, limited-time offer, WhatsApp contact.

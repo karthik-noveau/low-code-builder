@@ -43,6 +43,12 @@ import { appSectionProblem } from "../apps/issues";
 import { sectionCollections, tabBarOf } from "../blocks/project";
 import { Nodes, type RenderContext } from "../blocks/render";
 import { treeCss } from "../blocks/style";
+import {
+  NO_PREVIEW,
+  usePageLogic,
+  type LogicContext,
+  type PreviewAs,
+} from "../blocks/logic/blocks";
 import "./website.css";
 import "../blocks/blocks.css";
 import "../blocks/looks.css";
@@ -490,10 +496,13 @@ export function SectionContent({
   dark,
   onToggleTheme,
   blockEdit,
+  logic,
 }: {
   section: Section;
   project: Project;
   exporting?: boolean;
+  /** The page's values, "Preview as" and open dialog (src/blocks/logic). */
+  logic?: LogicContext;
   /** Editor only: selecting and typing into a "blocks" section's blocks. */
   blockEdit?: RenderContext["edit"];
   /** Where links to OWNER_LINK go (the owner's app for this site). */
@@ -1058,6 +1067,7 @@ export function SectionContent({
               dark,
               onToggleTheme,
               edit: blockEdit,
+              logic,
             }}
           />
         ) : null;
@@ -1186,9 +1196,12 @@ export function Website({
   inbox,
   appApi,
   ownerHref,
+  previewAs = NO_PREVIEW,
 }: {
   project: Project;
   page: Page;
+  /** The editor's "Preview as": page values, address, theme and day (src/blocks/logic). */
+  previewAs?: PreviewAs;
   /** Where links to OWNER_LINK ("{owner}") go: the owner's app for this site. */
   ownerHref?: string;
   /** Published sites: the endpoint visitor action forms post to. */
@@ -1236,16 +1249,35 @@ export function Website({
       : visible.find((s) => s.title && !PLAIN_TITLES.has(s.type))?.id;
   const theme = project.theme;
   // The visitor's light/dark choice in preview; until they pick, the device decides.
-  const [mode, setMode] = useState<"light" | "dark">();
+  const [chosen, setMode] = useState<"light" | "dark">();
+  // "Preview as" a theme: the editor's canvas, and where Preview starts.
+  const mode =
+    (!preview || !chosen) && previewAs.theme ? previewAs.theme : chosen;
   const toggleTheme = () =>
-    setMode((current) => {
+    setMode(() => {
       const now =
-        current ??
+        mode ??
         (window.matchMedia?.("(prefers-color-scheme: dark)").matches
           ? "dark"
           : "light");
       return now === "dark" ? "light" : "dark";
     });
+  // Clicks, "show only when" and page values (src/blocks/logic).
+  const { logic, handle, toast } = usePageLogic({
+    page,
+    sections,
+    previewAs: exporting ? NO_PREVIEW : previewAs,
+    preview: preview && !exporting,
+    dark:
+      !!theme.darkToggle &&
+      !exporting &&
+      (mode
+        ? mode === "dark"
+        : !!preview &&
+          typeof window !== "undefined" &&
+          !!window.matchMedia?.("(prefers-color-scheme: dark)").matches),
+    onNavigate: (id) => onNavigate?.(id),
+  });
   const blockCss = treeCss(
     sections.flatMap((s) => (s.type === "blocks" && s.root ? [s.root] : [])),
     !preview,
@@ -1254,6 +1286,7 @@ export function Website({
   const tabs = tabBarOf(project);
   const clickLink = (event: MouseEvent) => {
     if (!preview || exporting) return;
+    if (handle(event)) return;
     const a = (event.target as HTMLElement).closest("a");
     if (!a) return;
     const url = a.getAttribute("href");
@@ -1346,6 +1379,7 @@ export function Website({
             currentPage={item ? undefined : page.id}
             dark={mode === undefined ? undefined : mode === "dark"}
             onToggleTheme={preview && !exporting ? toggleTheme : undefined}
+            logic={logic}
             blockEdit={
               !preview && onEditNode && s.type === "blocks"
                 ? {
@@ -1438,6 +1472,7 @@ export function Website({
         </div>
       )}
       {item && project.footer.filter((s) => !s.hidden).map(renderSection)}
+      {toast}
       {tabs && (
         <TabBar
           tabs={tabs}

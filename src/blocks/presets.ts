@@ -7,8 +7,10 @@
 import type { Project } from "../studio/model";
 import { createNode } from "./registry";
 import type { Node, NodeType, Props, Style } from "./model";
+import type { PageVariable } from "./logic/model";
 import { DATA_PRESETS } from "./data/presets";
 import { FORM_PRESETS } from "./forms/presets";
+import { LOGIC_PRESETS } from "./logic/presets";
 
 export type PresetCategory =
   | "header"
@@ -26,6 +28,7 @@ export type PresetCategory =
   | "contact"
   | "forms"
   | "data"
+  | "interactive"
   | "footer";
 export const PRESET_CATEGORIES: { id: PresetCategory; label: string }[] = [
   { id: "header", label: "Headers" },
@@ -43,6 +46,7 @@ export const PRESET_CATEGORIES: { id: PresetCategory; label: string }[] = [
   { id: "contact", label: "Contact" },
   { id: "forms", label: "Forms" },
   { id: "data", label: "Lists and live data" },
+  { id: "interactive", label: "Interactive" },
   { id: "footer", label: "Footers" },
 ];
 export interface Preset {
@@ -52,6 +56,8 @@ export interface Preset {
   /** One line for the Add panel. */
   description: string;
   build: (ctx: { project: Project }) => Node;
+  /** Page values the section's clicks and conditions use (src/blocks/logic). */
+  variables?: () => PageVariable[];
 }
 
 /** A block with props, style and children in one call. */
@@ -2194,6 +2200,7 @@ export const PRESETS: Preset[] = [
   },
   ...DATA_PRESETS,
   ...FORM_PRESETS,
+  ...LOGIC_PRESETS,
 ];
 
 export const presetById = (id: string) => PRESETS.find((p) => p.id === id);
