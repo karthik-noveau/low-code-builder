@@ -463,6 +463,14 @@
   opacity: var(--shade, 0.25);
   pointer-events: none;
 }
+/* On phones the copy runs the full width, over the light end of the shade:
+   keep that end darker so the white text stays readable. */
+@container (max-width: 480px) {
+  .lk-hero.blk-section::before {
+    background: linear-gradient(90deg, #051c0ef0 0%, #102c15c0 100%);
+    opacity: max(var(--shade, 0.25), 0.45);
+  }
+}
 :is(.lk-hero, .lk-hero-plain, .lk-hero-split) > .blk-inner > .blk-image {
   position: absolute;
   inset: 0;
@@ -742,6 +750,9 @@
     align-items: flex-start;
     gap: 20px;
   }
+  .lk-features .blk-row.blk > .blk {
+    flex-basis: auto;
+  }
   .lk-features .blk-heading.lvl-3 {
     font-size: 11px;
   }
@@ -934,6 +945,12 @@
     flex-direction: column;
     align-items: flex-start;
     margin-bottom: 25px;
+  }
+  :is(.lk-collection, .lk-gallery, .lk-testimonials)
+    > .blk-inner
+    > .blk-row
+    > .blk {
+    flex-basis: auto;
   }
   :is(.lk-collection, .lk-gallery, .lk-testimonials)
     :is(.blk-grid, .blk-products) {

@@ -280,11 +280,14 @@ function KindPicker({
   onPick,
   allowNone,
   label,
+  quiet,
 }: {
   value: Kind | "none";
   onPick: (kind: Kind | "none") => void;
   allowNone: boolean;
   label: string;
+  /** The group title already says it: the label is for screen readers. */
+  quiet?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
@@ -335,7 +338,7 @@ function KindPicker({
   );
   return (
     <div className="ap-kind">
-      <span className="ap-kind-label" id={id}>
+      <span className={quiet ? "sr-only" : "ap-kind-label"} id={id}>
         {label}
       </span>
       <button
@@ -683,6 +686,7 @@ function ClickEditor({
             )}
             <KindPicker
               label={first ? "When clicked" : "Then"}
+              quiet={first && steps <= 1}
               value={kind}
               allowNone={first && steps <= 1}
               onPick={(k) => pick(at, k)}

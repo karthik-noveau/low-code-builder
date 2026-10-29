@@ -349,20 +349,7 @@ export function AddPanel({
       });
   };
   const index = (groups: { id: string; label: string }[]) =>
-    groups.length > 1 && (
-      <nav className="add-index" aria-label="Jump to a category">
-        {groups.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            tabIndex={-1}
-            onClick={() => jump(g.id)}
-          >
-            {g.label}
-          </button>
-        ))}
-      </nav>
-    );
+    groups.length > 1 && <CategoryIndex groups={groups} onJump={jump} />;
   const nothing = (
     <div className="navigator-empty add-empty">
       <Icon name="search" size={18} />
@@ -544,5 +531,70 @@ export function AddPanel({
         <kbd>↓</kbd> to move · <kbd>Enter</kbd> to add · <kbd>Esc</kbd> to close
       </p>
     </aside>
+  );
+}
+
+/**
+ * The sticky category chips. They scroll sideways (the mouse wheel too), and
+ * fade at an edge with more chips past it, so the hidden ones are findable.
+ */
+function CategoryIndex({
+  groups,
+  onJump,
+}: {
+  groups: { id: string; label: string }[];
+  onJump: (id: string) => void;
+}) {
+  const nav = useRef<HTMLElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+  useEffect(() => {
+    const el = nav.current;
+    if (!el) return;
+    const measure = () =>
+      setEdges({
+        start: el.scrollLeft > 1,
+        end: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+      });
+    const wheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    el.addEventListener("wheel", wheel, { passive: false });
+    const resize =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    resize?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      el.removeEventListener("wheel", wheel);
+      resize?.disconnect();
+    };
+  }, [groups.length]);
+  return (
+    <nav
+      ref={nav}
+      className={`add-index ${edges.start ? "more-before" : ""} ${edges.end ? "more-after" : ""}`}
+      aria-label="Jump to a category"
+    >
+      {groups.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.currentTarget.scrollIntoView({
+              block: "nearest",
+              inline: "nearest",
+            });
+            onJump(g.id);
+          }}
+        >
+          {g.label}
+        </button>
+      ))}
+    </nav>
   );
 }

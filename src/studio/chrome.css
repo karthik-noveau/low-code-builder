@@ -256,14 +256,20 @@
   outline: 0;
   box-shadow: none;
   background: var(--ui-accent-soft);
-  color: var(--ui-accent);
+  /* The accent's text shade: readable on the soft tint (4.5:1+). */
+  color: var(--fx-accent-text, var(--ui-accent));
 }
 .studio.canvas-first .outline-row.selected * {
   color: inherit;
 }
 
 @media (max-width: 1440px) {
-  .studio.canvas-first .header-center .zoom-control,
+  .studio.canvas-first .header-center .zoom-control {
+    display: none;
+  }
+}
+/* "Saved" in words where it fits (a lone tick reads as a stray mark). */
+@media (max-width: 1365px) {
   .studio.canvas-first .studio-header .save-indicator span {
     display: none;
   }
@@ -330,4 +336,26 @@
 .studio.canvas-first .muted-note {
   font-size: 13px;
   line-height: 1.55;
+}
+
+/* Dark theme: white on the bright accent and the muted red read below
+   4.5:1, so the Publish button and delete links take deeper/lighter shades. */
+html[data-theme="dark"]
+  .studio.canvas-first
+  .studio-header
+  .header-actions
+  .primary-button:not(:disabled) {
+  background: var(--fx-accent-press);
+  border-color: var(--fx-accent-press);
+}
+html[data-theme="dark"]
+  .studio.canvas-first
+  .studio-header
+  .header-actions
+  .primary-button:hover:not(:disabled) {
+  background: #2f5ae0;
+  border-color: #2f5ae0;
+}
+html[data-theme="dark"] .studio.canvas-first .danger-text {
+  color: #ff8080;
 }

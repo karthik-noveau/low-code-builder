@@ -157,6 +157,15 @@ export function ImageField({
 }
 
 /** A grid of every icon; optional ones can be cleared. */
+/** "arrowUpRight" → "Arrow up right", for the icon picker. */
+const iconLabel = (name: string) => {
+  const words = name
+    .replace(/([a-z])([A-Z0-9])/g, "$1 $2")
+    .toLowerCase()
+    .trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : name;
+};
+
 export function IconField({
   label,
   value,
@@ -190,7 +199,7 @@ export function IconField({
           )}
         </span>
         <span>
-          {value ? `${value[0].toUpperCase()}${value.slice(1)}` : "No icon"}
+          {value ? iconLabel(value) : "No icon"}
         </span>
         <Icon name={open ? "up" : "down"} size={12} />
       </button>
@@ -214,9 +223,9 @@ export function IconField({
             <button
               type="button"
               key={name}
-              aria-label={name}
+              aria-label={iconLabel(name)}
               aria-pressed={value === name}
-              title={name}
+              title={iconLabel(name)}
               onClick={() => {
                 onChange(name);
                 setOpen(false);
@@ -388,6 +397,7 @@ export function ContentField({
           min={spec.min}
           max={spec.max}
           unit={spec.unit ?? ""}
+          zero={spec.zero}
           onChange={onChange}
         />
       );

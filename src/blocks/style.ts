@@ -189,7 +189,13 @@ export function treeCss(roots: Node[], editing = false) {
           inner
         );
       }
-      return d.length ? `${sel}{${d.join(";")}}` : "";
+      // A row stacked into a column: the blocks that share its width
+      // (flex-basis 240px, blocks.css) mustn't become 240px tall.
+      const stacked =
+        n.type === "row" && s.direction === "column"
+          ? `${sel}>.blk{flex-basis:auto}`
+          : "";
+      return (d.length ? `${sel}{${d.join(";")}}` : "") + stacked;
     };
     base.push(rule(n.style));
     at.tablet.push(rule(n.tablet, "tablet"));

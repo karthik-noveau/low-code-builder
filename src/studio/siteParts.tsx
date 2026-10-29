@@ -264,15 +264,19 @@ export function SiteForm({
   const custom = /^https?:\/\//i.test(formAction);
   const endpoint = custom ? formAction : inbox;
   const connected = !!endpoint;
+  // In the editor the form looks the same but never takes input or sends,
+  // and its field and button blocks stay clickable (so they can be selected).
+  const still = editing
+    ? ({ readOnly: true, tabIndex: -1 } as const)
+    : undefined;
   return (
     <form
       {...attrs}
       className={className}
-      inert={editing || undefined}
       action={endpoint}
       method="POST"
       onSubmit={(e) => {
-        if (!connected) e.preventDefault();
+        if (!connected || editing) e.preventDefault();
       }}
     >
       {!custom && inbox && (
@@ -293,6 +297,7 @@ export function SiteForm({
               rows={4}
               placeholder={f.placeholder}
               required
+              {...still}
             />
           ) : (
             <input
@@ -300,6 +305,7 @@ export function SiteForm({
               name={f.name}
               placeholder={f.placeholder}
               required
+              {...still}
             />
           )}
         </label>
@@ -308,7 +314,8 @@ export function SiteForm({
       <button
         {...buttonAttrs}
         className="site-button"
-        type="submit"
+        type={editing ? "button" : "submit"}
+        tabIndex={editing ? -1 : undefined}
         disabled={!connected && exporting}
       >
         {buttonLabel}

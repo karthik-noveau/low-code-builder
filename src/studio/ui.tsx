@@ -156,6 +156,7 @@ export function Range({
   max = 120,
   unit = "px",
   step = 1,
+  zero,
 }: {
   label: string;
   value: number;
@@ -164,14 +165,16 @@ export function Range({
   max?: number;
   unit?: string;
   step?: number;
+  /** What 0 means, shown instead of the number (e.g. "All"). */
+  zero?: string;
 }) {
   return (
     <label className="range-field">
       <span>
         {label}
         <span>
-          {value}
-          <em>{unit}</em>
+          {value === 0 && zero ? zero : value}
+          {!(value === 0 && zero) && <em>{unit}</em>}
         </span>
       </span>
       <input

@@ -50,6 +50,8 @@ const starterNames = new Set([
   "plant-1.jpg",
   "plant-2.jpg",
   "plant-3.jpg",
+  "plant-4.jpg",
+  "books.jpg",
   "interior.jpg",
   "architecture.jpg",
   "restaurant.jpg",

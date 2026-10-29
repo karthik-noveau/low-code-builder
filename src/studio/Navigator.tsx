@@ -468,7 +468,7 @@ export function Navigator({
         <button
           className="navigator-design-kit"
           onClick={onStyles}
-          aria-label="Your design kit Colors, type & personality"
+          title="Colours, fonts and the site's personality"
         >
           <Icon name="palette" size={16} />
           <span className="design-kit-copy">
@@ -498,19 +498,19 @@ export function Navigator({
         )}
         <button onClick={onSaved}>
           <Icon name="folder" size={16} />
-          <span>Saved sections</span>
+          <span>
+            Saved<span className="sr-only"> sections</span>
+          </span>
           <small>{project.savedSections?.length || 0}</small>
         </button>
-        <div className="navigator-resource-row">
-          <button onClick={onMedia}>
-            <Icon name="image" size={15} />
-            Media
-          </button>
-          <button onClick={onTemplates}>
-            <Icon name="grid" size={15} />
-            Templates
-          </button>
-        </div>
+        <button onClick={onMedia}>
+          <Icon name="image" size={16} />
+          <span>Media</span>
+        </button>
+        <button onClick={onTemplates}>
+          <Icon name="grid" size={16} />
+          <span>Templates</span>
+        </button>
       </div>
       <div className="navigator-bottom">
         <button

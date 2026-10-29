@@ -84,19 +84,20 @@ export const DATA_BLOCKS: Record<
       },
       {
         key: "limit",
-        label: "How many at once (0: all)",
+        label: "How many to show",
         kind: "number",
+        zero: "All",
         min: 0,
         max: 24,
       },
       {
         key: "more",
-        label: "“Load more” button (app records)",
+        label: "Show a “Load more” button",
         kind: "toggle",
       },
       {
         key: "moreLabel",
-        label: "Load more button",
+        label: "“Load more” button text",
         kind: "text",
         placeholder: "Load more",
       },

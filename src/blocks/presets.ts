@@ -1582,7 +1582,7 @@ export const PRESETS: Preset[] = [
                     [
                       ["dish.jpg", "A grilled starter platter"],
                       ["salad.jpg", "A fresh salad bowl"],
-                      ["plant-2.jpg", "Shelves of books at a market stall"],
+                      ["books.jpg", "Shelves of books at a market stall"],
                       ["interior.jpg", "A quiet corner with a desk"],
                     ].map(([file, alt]) => image(file, alt, "1/1")),
                     { gap: 16, columns: 2 },

@@ -143,15 +143,23 @@ export function NodeInspector({
   ) : null;
   const shownFields = def.fields.filter(
     (spec) =>
-      !click?.length ||
+      // The photo shade only does something on the image banner look.
+      !(
+        node.type === "section" &&
+        spec.key === "shade" &&
+        node.props.look !== "hero"
+      ) &&
+      // The button's text only matters once there is a button.
+      !(spec.key === "moreLabel" && node.props.more !== true) &&
+      (!click?.length ||
       !(
         spec.kind === "link" ||
         (node.type === "button" && spec.key === "newTab")
-      ),
+      )),
   );
   const fields = def.fields.length > 0 && (
     <div className="inspector-group node-fields">
-      {shownFields.length < def.fields.length && clickNote}
+      {def.fields.some((f) => f.kind === "link") && clickNote}
       {shownFields.map((spec) => (
         <ContentField
           key={spec.key}
@@ -310,10 +318,12 @@ export function NodeInspector({
         <span className="node-heading-text">
           <strong>{name}</strong>
           <small>
-            {isRoot ? "Section" : def.label}
+            {/* The type, unless the name already says it ("Heading · in Copy"
+                reads as "in Copy"). */}
+            {isRoot ? "Section" : name !== def.label && def.label}
             {parent && (
               <>
-                {" · in "}
+                {name !== def.label ? " · in " : "In "}
                 <button
                   type="button"
                   className="node-parent"

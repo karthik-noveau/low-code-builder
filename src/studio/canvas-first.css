@@ -1550,11 +1550,9 @@
 .outline-row.selected .outline-select > svg {
   color: var(--ui-muted);
 }
+/* Hidden: muted, with the eye-off mark (a strike-through reads as deleted). */
 .outline-row.is-hidden .outline-select {
   color: var(--ui-muted);
-}
-.outline-row.is-hidden .outline-select > span {
-  text-decoration: line-through;
 }
 .site-navigator .action-menu-trigger {
   width: 26px;
@@ -1635,8 +1633,7 @@
   padding: 8px 14px;
   background: var(--ui-canvas);
 }
-.navigator-tools > button,
-.navigator-resource-row > button {
+.navigator-tools > button {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1698,13 +1695,6 @@
   height: 15px;
   border: 2px solid var(--ui-canvas);
   box-shadow: 0 0 0 1px #00000010;
-}
-.navigator-resource-row {
-  display: flex;
-  gap: 8px;
-}
-.navigator-resource-row > button {
-  flex: 1;
 }
 .navigator-bottom {
   display: flex;
@@ -2818,8 +2808,7 @@
 .outline-row.selected .outline-select > svg {
   color: var(--ui-ink);
 }
-.navigator-tools > button,
-.navigator-resource-row > button {
+.navigator-tools > button {
   border-radius: 5px;
   font-size: 12px;
 }

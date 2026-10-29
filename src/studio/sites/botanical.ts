@@ -82,7 +82,7 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Snake plant",
     "Plants",
-    "/images/plant-2.jpg",
+    "/images/plant-4.jpg",
     "Thrives on neglect and low light, and cleans the air while you sleep.",
     [["Default", 499, 40]],
   ),

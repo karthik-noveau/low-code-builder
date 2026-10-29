@@ -690,7 +690,6 @@ button.layer-disclosure:hover {
 }
 .layer-row.is-hidden .layer-select > span {
   color: var(--ui-muted);
-  text-decoration: line-through;
 }
 .layer-device-marks {
   display: inline-flex;
@@ -867,6 +866,32 @@ html body .studio.canvas-first .add-placement select {
 }
 .add-index::-webkit-scrollbar {
   display: none;
+}
+/* A fade over the edge where more chips are (sticky, so it stays put). */
+.add-index::before,
+.add-index::after {
+  content: "";
+  position: sticky;
+  z-index: 1;
+  flex: 0 0 40px;
+  align-self: stretch;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.add-index::before {
+  left: -16px;
+  margin-right: -44px;
+  background: linear-gradient(90deg, var(--ui-surface) 30%, transparent);
+}
+.add-index::after {
+  right: -16px;
+  margin-left: -44px;
+  background: linear-gradient(270deg, var(--ui-surface) 30%, transparent);
+}
+.add-index.more-before::before,
+.add-index.more-after::after {
+  opacity: 1;
 }
 .add-index button {
   flex-shrink: 0;
@@ -1408,7 +1433,6 @@ html body .studio.canvas-first .node-inspector .range-field {
 }
 .node-children button.is-hidden > span {
   color: var(--ui-muted);
-  text-decoration: line-through;
 }
 .node-add-inside {
   display: flex;
@@ -2892,8 +2916,24 @@ html body .studio.canvas-first .site-navigator .navigator-tools button {
   border-radius: 6px;
   font-size: 12px;
 }
-html body .studio.canvas-first .site-navigator .navigator-resource-row {
-  gap: 0;
+/* Site tools: two to a row (site styles across), so the site map keeps the
+   height. */
+html body .studio.canvas-first .site-navigator .navigator-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 4px;
+}
+html body .studio.canvas-first .site-navigator .navigator-tools[hidden] {
+  display: none;
+}
+html body .studio.canvas-first .site-navigator .navigator-design-kit {
+  grid-column: 1 / -1;
+}
+.navigator-tools > button > span:not(.theme-dots) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html body .studio.canvas-first .site-navigator .navigator-bottom {
   padding: 8px;
@@ -3051,4 +3091,21 @@ html body .studio.canvas-first .site-navigator .review-link {
 /* A tool the lock refuses: dimmed, still clickable to say why. */
 .blocks-tool.is-blocked {
   opacity: 0.4;
+}
+
+/* Small text buttons keep their look but get a 24px-high hit area (the
+   padding is taken back with a negative margin, so nothing moves). */
+.node-parent,
+.field-canvas-edit,
+.sp-device .device-note button {
+  min-height: 24px;
+  margin-block: -4px;
+  padding-block: 4px;
+}
+.field-canvas-edit {
+  margin-block: -3px;
+}
+html body .studio.canvas-first .navigator-pages-view .page-disclosure {
+  width: 24px;
+  margin-right: -4px;
 }

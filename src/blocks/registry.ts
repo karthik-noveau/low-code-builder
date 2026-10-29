@@ -36,6 +36,8 @@ export type FieldSpec =
       min: number;
       max: number;
       unit?: string;
+      /** What 0 means, shown instead of the number (e.g. "All"). */
+      zero?: string;
     }
   | {
       key: string;
@@ -150,7 +152,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     fields: [
       {
         key: "tag",
-        label: "Landmark",
+        label: "Page region",
         kind: "select",
         options: choice(
           ["section", "Section"],
@@ -182,7 +184,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
       },
       {
         key: "look",
-        label: "Classic style",
+        label: "Preset look",
         kind: "select",
         options: [
           { value: "", label: "None" },
@@ -191,7 +193,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
       },
       {
         key: "shade",
-        label: "Image shade (classic banner)",
+        label: "Darken the photo",
         kind: "number",
         min: 0,
         max: 100,
@@ -295,14 +297,14 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     label: "Heading",
     icon: "type",
     category: "basic",
-    description: "A title; *stars* colour words in the accent",
+    description: "A title for a page or a section",
     inline: "text",
     fields: [
       {
         key: "text",
         label: "Text",
         kind: "longText",
-        hint: "**bold**, __italic__, [words](/page), *accent*. Or select words while typing on the page.",
+        hint: "To make words bold, italic, a link or the accent colour, select them on the page.",
       },
       {
         key: "level",
@@ -329,7 +331,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
         key: "text",
         label: "Text",
         kind: "longText",
-        hint: "**bold**, __italic__, [words](/page). Or select words while typing on the page.",
+        hint: "To make words bold, italic or a link, select them on the page.",
       },
       {
         key: "variant",
@@ -466,7 +468,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
         key: "items",
         label: "Points",
         kind: "lines",
-        hint: "One per line. **bold**, __italic__, [words](/page). Or double-click a point on the page to type.",
+        hint: "One point per line. To format words, double-click a point on the page and select them.",
       },
       {
         key: "marker",
@@ -624,7 +626,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
         key: "items",
         label: "Questions and answers",
         kind: "lines",
-        hint: "One per line: Question | Answer. Answers take **bold**, __italic__, [words](/page).",
+        hint: "One per line, as: Question | Answer",
       },
     ],
     props: () => ({
@@ -745,8 +747,9 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
       },
       {
         key: "limit",
-        label: "How many (0: all)",
+        label: "How many to show",
         kind: "number",
+        zero: "All",
         min: 0,
         max: 100,
       },
