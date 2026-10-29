@@ -284,6 +284,7 @@ function withoutForms(sections: Section[], gone: (form: string) => boolean) {
               (c) =>
                 !(
                   (c.type === "appForm" || c.type === "form") &&
+                  c.props.target !== "inbox" &&
                   gone(String(c.props.form))
                 ),
             )

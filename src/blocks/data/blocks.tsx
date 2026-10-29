@@ -175,7 +175,9 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
   const view =
     ref.kind === "view" ? viewOf(ctx.project.app, ref.id) : undefined;
   const viewRows = useViewRows(ctx, view, size);
-  const cls = `${className} l-${layout}`;
+  // A classic look (converted collection lists: "listing", see looks.css).
+  const look = /^[a-z-]{1,20}$/.test(str(p.look)) ? ` rl-${str(p.look)}` : "";
+  const cls = `${className} l-${layout}${look}`;
   if (!collection && !view)
     return ctx.edit ? (
       <Placeholder

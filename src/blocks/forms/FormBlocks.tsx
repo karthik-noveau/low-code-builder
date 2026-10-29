@@ -51,6 +51,8 @@ import { Nodes, Placeholder, type RenderContext } from "../render";
 import { identityField, IDENTITY, stepKind, type StepKind } from "./model";
 import { recipeById, recipePreview } from "./recipes";
 import { formChildren } from "./sync";
+import { ClassicForm, InboxForm } from "./classic";
+import { isClassicForm, isInboxForm } from "./inbox";
 
 const str = (v: PropValue | undefined) => (typeof v === "string" ? v : "");
 
@@ -158,6 +160,14 @@ export function FormBlock({
           "checklist",
           "Form inside a form",
           "Move it out: a form can’t hold another form.",
+        );
+      if (isInboxForm(n))
+        return (
+          <InboxForm node={n} ctx={ctx} className={className} attrs={attrs} />
+        );
+      if (isClassicForm(n))
+        return (
+          <ClassicForm node={n} ctx={ctx} className={className} attrs={attrs} />
         );
       return (
         <FormRoot node={n} ctx={ctx} className={className} attrs={attrs} />

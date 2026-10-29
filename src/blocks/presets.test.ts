@@ -1,8 +1,9 @@
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createProject } from "../studio/templates";
-import { walk } from "./model";
+import { FONT_SIZES, walk, type Node } from "./model";
 import { PRESET_CATEGORIES, PRESETS, presetById } from "./presets";
 import { Nodes, type RenderContext } from "./render";
 import { treeCss } from "./style";
@@ -47,7 +48,8 @@ describe("prebuilt sections", () => {
       expect(second.some((id) => first.includes(id))).toBe(false);
       for (const n of walk([root]))
         if (n.type === "image") {
-          expect(String(n.props.src)).toMatch(/^\/images\/[\w-]+\.jpg$/);
+          expect(String(n.props.src)).toMatch(/^\/images\/[\w-]+\.(jpg|png)$/);
+          expect(existsSync(`public${String(n.props.src)}`)).toBe(true);
           expect(String(n.props.alt).trim().length).toBeGreaterThan(3);
         }
     },
@@ -87,5 +89,63 @@ describe("prebuilt sections", () => {
     expect(html).toContain("v-stack");
     // Stacked footer links never fold into a menu button.
     expect(html.match(/blk-menu-phone/g)).toBeNull();
+  });
+
+  const images = (root: Node) =>
+    [...walk([root])]
+      .filter((n) => n.type === "image")
+      .map((n) => String(n.props.src));
+  const texts = (root: Node) =>
+    [...walk([root])]
+      .filter((n) => n.type === "text" || n.type === "heading")
+      .map((n) => String(n.props.text));
+
+  it.each([
+    ["testimonials-cards", 3],
+    ["testimonials-quote", 1],
+    ["testimonials-rating", 2],
+    ["team-grid", 4],
+    ["team-list", 4],
+    ["content-quote", 1],
+  ] as const)("%s shows people as photos, not initials", (id, people) => {
+    const root = presetById(id)!.build({ project });
+    const photos = images(root).filter((src) =>
+      /^\/images\/person-\d\.jpg$/.test(src),
+    );
+    expect(photos).toHaveLength(people);
+    // Different people in one section never share a portrait.
+    expect(new Set(photos).size).toBe(people);
+    expect(texts(root).filter((t) => /^[A-Z]{2}$/.test(t))).toEqual([]);
+  });
+
+  it.each(["logos-row", "logos-grid"])(
+    "%s uses swappable placeholder logos, not made-up wordmarks",
+    (id) => {
+      const root = presetById(id)!.build({ project });
+      const logos = images(root);
+      expect(logos.length).toBeGreaterThanOrEqual(5);
+      for (const src of logos)
+        expect(src).toMatch(/^\/images\/logo-placeholder-\d\.png$/);
+      const heights = [...walk([root])]
+        .filter((n) => n.type === "image")
+        .map((n) => n.style?.height);
+      expect(new Set(heights).size).toBe(1);
+      // Only the section's own words: an intro or a short line.
+      expect(texts(root).length).toBeLessThanOrEqual(3);
+    },
+  );
+
+  it("size headings with theme tokens, never fixed pixels", () => {
+    const sizes = FONT_SIZES as readonly string[];
+    for (const preset of PRESETS)
+      for (const n of walk([preset.build({ project })]))
+        if (n.type === "heading")
+          for (const style of [n.style, n.tablet, n.mobile])
+            if (style?.fontSize)
+              expect([
+                preset.id,
+                n.props.text,
+                sizes.includes(style.fontSize),
+              ]).toEqual([preset.id, n.props.text, true]);
   });
 });

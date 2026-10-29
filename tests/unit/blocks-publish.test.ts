@@ -63,18 +63,18 @@ describe("smart blocks on the published site", () => {
     // A hidden block isn't live.
     for (const s of page.sections)
       for (const n of walk(s.root ? [s.root] : []))
-        if (n.type === "appForm" && n.props.form === form.id) n.hidden = true;
+        if (n.type === "form" && n.props.form === form.id) n.hidden = true;
     expect(liveAppForms(p).some((f) => f.id === form.id)).toBe(false);
   });
   it("lists a collection's items, linking to their pages", () => {
     const p = createProject("table");
     const c = p.collections!.find((x) => x.itemPages)!;
     const page = p.pages.find((pg) =>
-      JSON.stringify(pg.sections).includes(`"collection":"${c.id}"`),
+      JSON.stringify(pg.sections).includes(`"collection:${c.id}"`),
     )!;
     const html = renderPage(p, page);
     const first = c.items.find((i) => !i.hidden)!;
-    expect(html).toContain(`href="${c.slug}/${first.slug}.html"`);
+    expect(html).toContain(`href="./${c.slug}/${first.slug}.html"`);
   });
   it("posts contact and signup forms to the inbox, or the owner's endpoint", async () => {
     const p = createProject("botanical");
@@ -95,11 +95,32 @@ describe("smart blocks on the published site", () => {
     expect(files.some((f) => f.name === "thanks.html")).toBe(true);
     for (const s of contact.sections)
       for (const n of walk(s.root ? [s.root] : []))
-        if (n.type === "contactForm")
+        if (n.type === "form" && n.props.kind === "contact")
           n.props.action = "https://example.com/contact";
     html = renderPage(p, contact, { inbox });
     expect(html).toContain('action="https://example.com/contact"');
     expect(inboxConfig(p).forms).toEqual(["newsletter"]);
+  });
+  it("copies the bundled portraits and placeholder logos into the release", async () => {
+    const p = createProject("glow");
+    p.pages[0].sections = ["team-grid", "logos-row"].map((id) =>
+      createSection("blocks", {
+        name: id,
+        root: presetById(id)!.build({ project: p }),
+      }),
+    );
+    const files = await compileSite(p, "/sites/s1/releases/r1");
+    const home = files.find((f) => f.name === "index.html")!.body.toString();
+    expect(home).not.toContain("/images/person-");
+    expect(home).not.toContain("/images/logo-placeholder-");
+    const jpegs = files.filter((f) => /^images\/[\da-f]+\.jpeg$/.test(f.name));
+    const pngs = files.filter((f) => /^images\/[\da-f]+\.png$/.test(f.name));
+    expect(jpegs).toHaveLength(4);
+    expect(pngs).toHaveLength(5);
+    for (const f of pngs) {
+      expect(f.type).toBe("image/png");
+      expect(home).toContain(`/sites/s1/releases/r1/${f.name}`);
+    }
   });
   it("fills products blocks and the header's Shop button from the store", async () => {
     const p = createProject("botanical");
@@ -187,7 +208,9 @@ describe("logic on the published site (src/blocks/logic)", () => {
     const script = files.find((f) => f.name === "logic.js");
     expect(script?.type).toBe("text/javascript; charset=utf-8");
     const source = script!.body.toString();
-    expect(source).not.toMatch(/\beval\(|new Function|innerHTML|insertAdjacentHTML|document\.write/);
+    expect(source).not.toMatch(
+      /\beval\(|new Function|innerHTML|insertAdjacentHTML|document\.write/,
+    );
     const home = files.find((f) => f.name === "index.html")!.body.toString();
     const offers = files.find((f) => f.name === "offers.html")!.body.toString();
     expect(home).not.toContain("logic.js");

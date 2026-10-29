@@ -45,6 +45,19 @@ import {
 } from "./model";
 
 export type AppSectionMode = "live" | "editor" | "export";
+type Attrs = Record<string, string | undefined>;
+/**
+ * A form block with the classic look (src/blocks/forms/FormBlocks.tsx) draws
+ * this markup with its own blocks' words: the buttons' labels, blocks the
+ * owner added inside a step, and (editor) which block each piece is.
+ */
+export interface FormCustom {
+  words?: Partial<Record<"continue" | "confirm" | "change" | "again", string>>;
+  /** The owner's own blocks in a step, drawn before its error line. */
+  extras?: Partial<Record<"identify" | "fields" | "lookup", ReactNode>>;
+  /** Editor attributes for a piece: a field id, "identity", "value", "verify" or "button". */
+  attrs?: (key: string) => Attrs | undefined;
+}
 import type { AppLinks } from "./links";
 
 /** Icons the step screens use that the editor's icon set doesn't have. */
@@ -206,17 +219,20 @@ export function ItemChoice({
   id,
   disabled,
   catalog,
+  attrs,
 }: {
   field: AppField;
   id: string;
   disabled: boolean;
   catalog: Catalog;
+  /** Editor: marks the field as its block (classic-look form blocks). */
+  attrs?: Attrs;
 }) {
   const items = catalog(field.collection)?.items ?? [];
   const error = `${id}-error`;
   if (!items.length || items.length > 8)
     return (
-      <div className="app-field app-wide">
+      <div {...attrs} className="app-field app-wide">
         <label htmlFor={id}>
           {field.name}
           <Optional field={field} />
@@ -244,7 +260,7 @@ export function ItemChoice({
       </div>
     );
   return (
-    <fieldset className="app-field app-wide app-choices">
+    <fieldset {...attrs} className="app-field app-wide app-choices">
       <legend>
         {field.name}
         <Optional field={field} />
@@ -295,7 +311,9 @@ function FieldInput({
   catalog,
   placeholder,
   look,
+  attrs,
 }: {
+  attrs?: Attrs;
   field: AppField;
   prefix: string;
   disabled: boolean;
@@ -308,7 +326,13 @@ function FieldInput({
   const id = `${prefix}-${name ?? field.id}`;
   if (field.type === "item" && !name)
     return (
-      <ItemChoice field={field} id={id} disabled={disabled} catalog={catalog} />
+      <ItemChoice
+        field={field}
+        id={id}
+        disabled={disabled}
+        catalog={catalog}
+        attrs={attrs}
+      />
     );
   const control = inputFor(
     name ? { ...field, id: name, required: true } : field,
@@ -346,7 +370,7 @@ function FieldInput({
   );
   if (field.type === "yesNo" && !name)
     return (
-      <div className="app-field app-check">
+      <div {...attrs} className="app-field app-check">
         <label htmlFor={id}>
           {input}
           <span>{field.name}</span>
@@ -356,7 +380,10 @@ function FieldInput({
       </div>
     );
   return (
-    <div className={`app-field ${field.type === "longText" ? "app-wide" : ""}`}>
+    <div
+      {...attrs}
+      className={`app-field ${field.type === "longText" ? "app-wide" : ""}`}
+    >
       <label htmlFor={id}>
         {field.name}
         {!name && <Optional field={field} />}
@@ -965,11 +992,14 @@ export function AppFormMarkup({
   prefix,
   collections = [],
   links = {},
+  custom = {},
 }: {
   app: App;
   form: AppForm;
   appApi?: string;
   mode: AppSectionMode;
+  /** A classic-look form block's own words and blocks. */
+  custom?: FormCustom;
   /** Makes ids unique on the page (the section id). */
   prefix: string;
   /** The site's collections, which "item" and "items" fields choose from. */
@@ -984,8 +1014,16 @@ export function AppFormMarkup({
   const p = `app-${prefix}`;
   const catalog = makeCatalog(collections);
   const rupees = app.currency === "INR";
-  const button = (label: string, icon = "arrow", wide = false) => (
+  const said = custom.words ?? {};
+  const pick = (key: string) => custom.attrs?.(key);
+  const button = (
+    label: string,
+    icon = "arrow",
+    wide = false,
+    key = "button",
+  ) => (
     <button
+      {...pick(key)}
       className={`site-button app-submit ${wide ? "app-block" : ""}`}
       type="submit"
       disabled={disabled}
@@ -1052,6 +1090,7 @@ export function AppFormMarkup({
         catalog={catalog}
         placeholder={byRef ? `${table.prefix}-1001` : undefined}
         look={keyLook}
+        attrs={pick("value")}
       />
     );
     steps.push(
@@ -1076,11 +1115,13 @@ export function AppFormMarkup({
               disabled={disabled}
               name="verify"
               catalog={catalog}
+              attrs={pick("verify")}
             />
           </div>
         ) : (
           keyInput
         )}
+        {custom.extras?.lookup}
         <ErrorLine />
         {button(
           form.button || (byRef ? "Track" : "Look up"),
@@ -1227,6 +1268,7 @@ export function AppFormMarkup({
             disabled={disabled}
             name="identity"
             catalog={catalog}
+            attrs={pick("identity")}
             look={
               flow
                 ? {
@@ -1238,8 +1280,9 @@ export function AppFormMarkup({
                 : undefined
             }
           />
+          {custom.extras?.identify}
           <ErrorLine />
-          {button("Continue", "arrow", flow)}
+          {button(said.continue || "Continue", "arrow", flow, "continue")}
           {flow && identifyNote}
           {live && flow && <Offline form={form} />}
         </form>,
@@ -1266,7 +1309,7 @@ export function AppFormMarkup({
               type="button"
               data-action="confirm"
             >
-              <span>Yes, continue</span>
+              <span>{said.confirm || "Yes, continue"}</span>
             </button>
             <button
               className="app-ghost app-block"
@@ -1274,7 +1317,7 @@ export function AppFormMarkup({
               data-action="change"
             >
               <StateIcon name="arrowLeft" size={16} />
-              Use a different {word}
+              {said.change || `Use a different ${word}`}
             </button>
           </div>,
           <IdentifyScreens key="screens" form={form} who={who} />,
@@ -1292,11 +1335,11 @@ export function AppFormMarkup({
                 type="button"
                 data-action="confirm"
               >
-                <span>Yes, that’s me</span>
+                <span>{said.confirm || "Yes, that’s me"}</span>
                 <Icon name="check" size={16} />
               </button>
               <button className="app-link" type="button" data-action="change">
-                No, change {who.name.toLowerCase()}
+                {said.change || `No, change ${who.name.toLowerCase()}`}
               </button>
             </div>
           </div>,
@@ -1406,11 +1449,13 @@ export function AppFormMarkup({
                   disabled={disabled}
                   catalog={catalog}
                   look={fieldLook(f)}
+                  attrs={pick(f.id)}
                 />
               ))}
             </div>
           )}
           {capacity && <p className="app-places" aria-live="polite" hidden />}
+          {custom.extras?.fields}
           <label className="site-request-trap" aria-hidden="true">
             Leave empty
             <input name="website" tabIndex={-1} autoComplete="off" />
@@ -1463,7 +1508,7 @@ export function AppFormMarkup({
               type="button"
               data-action="again"
             >
-              <span>Record another</span>
+              <span>{said.again || "Record another"}</span>
             </button>
           </div>
         </div>,
@@ -1476,7 +1521,7 @@ export function AppFormMarkup({
           </span>
           <p className="app-done-text" tabIndex={-1} />
           <button className="app-link" type="button" data-action="again">
-            {cart ? "Place another order" : "Send another"}
+            {said.again || (cart ? "Place another order" : "Send another")}
           </button>
         </div>,
       );

@@ -13,9 +13,21 @@ import {
   type Section,
   type SectionType,
 } from "../studio/model";
-import type { Node, NodeType, Props, Style } from "./model";
+import {
+  walk,
+  type Node,
+  type NodeType,
+  type Props,
+  type Style,
+} from "./model";
 import { BLOCKS } from "./registry";
 import { rootValid } from "./validate";
+import { fieldOf, tableOf } from "../apps/model";
+import { appLinks } from "../apps/links";
+import { identityField } from "./forms/model";
+import { formChildren } from "./forms/sync";
+import { inboxFormNode } from "./forms/inbox";
+import type { Condition } from "./logic/model";
 
 /** Section types whose title isn't the page's main heading (as Website.tsx). */
 const PLAIN_TITLES = new Set<SectionType>([
@@ -920,6 +932,279 @@ function fromBlocks(make: Make, blocks: Block[]): Node[] {
   });
 }
 
+// ------------------------------------------------------------ smart blocks
+
+/** Smart blocks that convert to form and repeat blocks (phases 3–4). */
+const SMART = new Set<NodeType>([
+  "appForm",
+  "contactForm",
+  "newsletter",
+  "collectionList",
+]);
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+/** The block's own place: id, name, styles, visibility, logic. */
+const own = (n: Node): Partial<Node> => {
+  const out: Partial<Node> = { id: n.id };
+  for (const key of [
+    "name",
+    "style",
+    "tablet",
+    "mobile",
+    "hidden",
+    "locked",
+    "on",
+    "when",
+  ] as const)
+    if (n[key] !== undefined) (out as Record<string, unknown>)[key] = n[key];
+  return out;
+};
+/** Gives a converted tree ids derived from the block it replaces. */
+function reId(nodes: Node[], base: string) {
+  let i = 0;
+  for (const n of walk(nodes)) n.id = `${base}-c${(i++).toString(36)}`;
+  return nodes;
+}
+function block(
+  type: NodeType,
+  props: Props = {},
+  children?: Node[],
+  extra: Partial<Node> = {},
+): Node {
+  const def = BLOCKS[type];
+  return {
+    id: "",
+    type,
+    props: { ...def.props(), ...props },
+    ...(def.container ? { children: children ?? [] } : {}),
+    ...extra,
+  };
+}
+const whenSet = (source: string): Condition => ({
+  match: "all",
+  rules: [{ if: "item", field: source, op: "set" }],
+});
+
+/**
+ * An app form block as a form block with the classic look: the form's own
+ * blocks (forms/sync.ts formChildren), worded as the classic form is, with
+ * its title and intro first.
+ */
+function appFormBlock(n: Node, project: Project): Node | undefined {
+  const app = project.app;
+  const form = app?.forms.find((f) => f.id === str(n.props.form));
+  const table = form && app && tableOf(app, form.table);
+  if (!app || !form || !table) return undefined;
+  const link = appLinks(app, project.pages, form, (url) => url).lookup;
+  const kids = formChildren(
+    app,
+    form,
+    link && { url: link.href, label: link.label },
+  );
+  const who = form.kind === "submit" ? identityField(app, form) : undefined;
+  const cart =
+    form.kind === "submit" &&
+    form.fields.some((id) => fieldOf(table, id)?.type === "items");
+  const flow = !!who && !!form.steps && !cart;
+  // The classic form's words where the blocks' defaults differ.
+  for (const k of walk(kids)) {
+    const action = str(k.props.action);
+    if (k.type === "submit" && action === "again")
+      k.props.label = flow
+        ? "Record another"
+        : cart
+          ? "Place another order"
+          : "Send another";
+    if (k.type === "submit" && who && !flow && action === "confirm")
+      k.props.label = "Yes, that’s me";
+    if (k.type === "submit" && who && !flow && action === "change")
+      k.props.label = `No, change ${who.name.toLowerCase()}`;
+    if (k.type === "submit" && cart && action === "submit" && !form.button)
+      k.props.label = "Place order";
+    if (k.type === "formSuccess" && flow)
+      for (const h of k.children ?? [])
+        if (h.type === "heading")
+          h.props.text = form.copy?.doneTitle?.trim() || "Sent";
+  }
+  const crumbs = !!(form.steps || form.highlight);
+  const heading = n.props.heading !== false;
+  const top: Node[] = heading
+    ? [
+        block("heading", {
+          text: form.title,
+          level: str(n.props.level) === "1" ? "1" : "2",
+          part: "title",
+        }),
+        ...(!crumbs && form.intro
+          ? [
+              block("text", {
+                text: form.intro,
+                variant: "lead",
+                part: "intro",
+              }),
+            ]
+          : []),
+      ]
+    : [];
+  return {
+    ...own(n),
+    type: "form",
+    props: { form: form.id, look: "classic" },
+    children: reId([...top, ...kids], n.id),
+  } as Node;
+}
+
+/** A Contact or Email signup block as an inbox form block. */
+function inboxBlock(n: Node): Node {
+  const form = inboxFormNode(
+    n.type === "newsletter" ? "newsletter" : "contact",
+    n.id,
+    str(n.props.label),
+    str(n.props.action),
+  );
+  return { ...form, ...own(n), type: "form" } as Node;
+}
+
+/**
+ * A collection list as a repeat with the classic card (look "listing"):
+ * photo, title and price, subtitle and summary, the whole card linking to
+ * the item's page (or a call-to-action link). Parts show only when the item
+ * has them, as the classic cards do.
+ */
+function listingBlock(n: Node, project: Project): Node | undefined {
+  const c = project.collections?.find((x) => x.id === str(n.props.collection));
+  if (!c) return undefined;
+  const d = c.display;
+  const field = (id: string) => `field:${id}`;
+  const text = (name: string, source: string, variant = "body") =>
+    block("text", { text: "", variant }, undefined, {
+      name,
+      bind: { text: source },
+      when: whenSet(source),
+    });
+  const copy = block(
+    "box",
+    { variant: "plain" },
+    [
+      block(
+        "row",
+        {},
+        [
+          block("heading", { text: "", level: "3" }, undefined, {
+            bind: { text: "item:title" },
+          }),
+          ...(d.price ? [text("Price", field(d.price))] : []),
+        ],
+        { name: "Title" },
+      ),
+      ...(d.subtitle ? [text("Subtitle", field(d.subtitle), "eyebrow")] : []),
+      ...(d.summary && d.summary !== d.subtitle
+        ? [text("Summary", field(d.summary))]
+        : []),
+    ],
+    { name: "Copy" },
+  );
+  const card = block(
+    "box",
+    { variant: "plain" },
+    [
+      ...(d.image
+        ? [
+            block(
+              "image",
+              { src: "", alt: "", fit: "cover", ratio: "auto" },
+              undefined,
+              {
+                bind: { src: field(d.image), alt: "item:title" },
+                when: whenSet(field(d.image)),
+              },
+            ),
+          ]
+        : []),
+      copy,
+      ...(!c.itemPages && d.action && d.actionLabel
+        ? [
+            block(
+              "button",
+              {
+                label: d.actionLabel,
+                url: "",
+                variant: "link",
+                size: "md",
+                icon: "arrow",
+              },
+              undefined,
+              {
+                bind: { url: field(d.action) },
+                when: whenSet(field(d.action)),
+              },
+            ),
+          ]
+        : []),
+    ],
+    {
+      name: "Card",
+      ...(c.itemPages ? { bind: { link: "item:link" } } : {}),
+    },
+  );
+  const columns = Math.max(
+    1,
+    Math.min(4, typeof n.props.columns === "number" ? n.props.columns : 3),
+  );
+  const limit =
+    typeof n.props.limit === "number" ? Math.max(0, n.props.limit) : 0;
+  const base = own(n);
+  return {
+    ...base,
+    type: "repeat",
+    props: {
+      ...BLOCKS.repeat.props(),
+      source: `collection:${c.id}`,
+      layout: str(n.props.style) === "list" ? "list" : "grid",
+      limit,
+      look: "listing",
+    },
+    style: { ...base.style, columns },
+    children: reId([card], n.id),
+  } as Node;
+}
+
+/** A smart block as form or repeat blocks; the same block when it can't be. */
+function fromSmart(n: Node, project: Project): Node {
+  switch (n.type) {
+    case "appForm":
+      return appFormBlock(n, project) ?? n;
+    case "contactForm":
+    case "newsletter":
+      return inboxBlock(n);
+    case "collectionList":
+      return listingBlock(n, project) ?? n;
+    default:
+      return n;
+  }
+}
+/** Whether a tree still holds a smart block that converts. */
+const hasSmart = (root: Node | undefined) =>
+  !!root && [...walk([root])].some((n) => SMART.has(n.type));
+
+/**
+ * A blocks section with its app form, contact, signup and collection list
+ * blocks converted (phases 3–4). Ids come from the replaced blocks, so
+ * converting again changes nothing; a tree that wouldn't validate stays.
+ */
+export function upgradeSmart(s: Section, project: Project): Section {
+  if (s.type !== "blocks" || !hasSmart(s.root)) return s;
+  const visit = (n: Node): Node => {
+    if (SMART.has(n.type)) return fromSmart(n, project);
+    if (!n.children) return n;
+    const kids = n.children.map(visit);
+    return kids.some((c, i) => c !== n.children![i])
+      ? { ...n, children: kids }
+      : n;
+  };
+  const root = visit(s.root!);
+  return root !== s.root && rootValid(root) ? { ...s, root } : s;
+}
+
 /** Whether any section (saved ones included) still has a classic type. */
 export const needsUpgrade = (p: Project) =>
   [
@@ -927,7 +1212,7 @@ export const needsUpgrade = (p: Project) =>
     ...p.pages.flatMap((pg) => pg.sections),
     ...p.footer,
     ...(p.savedSections ?? []),
-  ].some((s) => s.type !== "blocks");
+  ].some((s) => s.type !== "blocks" || hasSmart(s.root));
 
 /**
  * The project with every classic section converted to blocks (header,
@@ -935,12 +1220,21 @@ export const needsUpgrade = (p: Project) =>
  */
 export function upgradeProject<T extends Project>(p: T): T {
   if (!needsUpgrade(p)) return p;
-  const convert = (list: Section[]) => list.map((s) => toBlocks(s, p));
-  return {
+  // Classic sections first, then the smart blocks in them (and in sections
+  // converted earlier), against the project as it is now.
+  let changed = false;
+  const convert = (list: Section[]) => {
+    const next = list.map((s) => upgradeSmart(toBlocks(s, p), p));
+    if (next.some((s, i) => s !== list[i])) changed = true;
+    return next;
+  };
+  const next = {
     ...p,
     header: convert(p.header),
     footer: convert(p.footer),
     pages: p.pages.map((pg) => ({ ...pg, sections: convert(pg.sections) })),
     ...(p.savedSections ? { savedSections: convert(p.savedSections) } : {}),
   };
+  // Blocks that can't convert (their form or collection is gone) stay as they are.
+  return changed ? next : p;
 }

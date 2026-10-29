@@ -14,7 +14,7 @@ import type { ApiRequest, ApiResponse } from "./api";
 import type { Site } from "./types";
 import { itemTitle, publishedItems } from "../src/studio/collections";
 import type { Project } from "../src/studio/model";
-import { placedNodes, siteSections } from "../src/blocks/project";
+import { inboxForms, siteSections } from "../src/blocks/project";
 import {
   INBOX_KINDS,
   isSiteForm,
@@ -100,12 +100,8 @@ export function inboxConfig(project: Project): InboxConfig {
     )
       forms.add(section.type);
   // Contact form and email signup blocks post here too.
-  for (const node of [
-    ...placedNodes(siteSections(project), "contactForm"),
-    ...placedNodes(siteSections(project), "newsletter"),
-  ])
-    if (!/^https?:\/\//i.test(String(node.props.action ?? "")))
-      forms.add(node.type === "contactForm" ? "contact" : "newsletter");
+  for (const form of inboxForms(siteSections(project)))
+    if (!/^https?:\/\//i.test(form.action)) forms.add(form.kind);
   return {
     collections,
     forms: [...forms],

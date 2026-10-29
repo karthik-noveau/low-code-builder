@@ -129,17 +129,21 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
     it("puts every app form on a page in the navigation", () => {
       for (const form of p.app?.forms ?? []) {
         const on = p.pages.filter((pg) =>
-          blocksOf(pg.sections, "appForm").some(
-            (n) => n.props.form === form.id,
-          ),
+          blocksOf(pg.sections, "form").some((n) => n.props.form === form.id),
         );
         // Every page is in the header navigation, so a form on a page is reachable.
         expect([form.name, on.length > 0]).toEqual([form.name, true]);
       }
-      for (const n of blocksOf(sections(p), "appForm"))
-        expect(p.app?.forms.some((f) => f.id === n.props.form)).toBe(true);
-      for (const n of blocksOf(sections(p), "collectionList"))
-        expect(collectionIds).toContain(n.props.collection);
+      // Classic app forms and collection lists open as form and repeat blocks.
+      expect(blocksOf(sections(p), "appForm")).toEqual([]);
+      expect(blocksOf(sections(p), "collectionList")).toEqual([]);
+      for (const n of blocksOf(sections(p), "form"))
+        if (n.props.target !== "inbox")
+          expect(p.app?.forms.some((f) => f.id === n.props.form)).toBe(true);
+      for (const n of blocksOf(sections(p), "repeat"))
+        expect(collectionIds).toContain(
+          String(n.props.source).replace("collection:", ""),
+        );
       expect(p.pages.length).toBeLessThanOrEqual(7);
       const hero = p.pages[0].sections.find((s) =>
         String(s.root?.props.look).startsWith("hero"),
@@ -205,7 +209,11 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
       // Dhanlaxmi reproduces an existing app page for page, and it has neither.
       if (id !== "dhanlaxmi") {
         expect(
-          p.pages.some((pg) => blocksOf(pg.sections, "contactForm").length),
+          p.pages.some((pg) =>
+            blocksOf(pg.sections, "form").some(
+              (n) => n.props.target === "inbox" && n.props.kind === "contact",
+            ),
+          ),
         ).toBe(true);
         expect(blocksOf(sections(p), "accordion").length).toBeGreaterThan(0);
       }

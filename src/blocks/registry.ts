@@ -11,6 +11,7 @@ import {
   type Props,
   type Style,
 } from "./model";
+import { inboxFormNode } from "./forms/inbox";
 import { DATA_BLOCKS } from "./data/registry";
 import { FORM_BLOCKS } from "./forms/registry";
 import { LOGIC_BLOCKS } from "./logic/registry";
@@ -698,6 +699,8 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
   },
   appForm: {
     label: "App form",
+    // Converted to form and repeat blocks when a project opens (legacy.ts).
+    internal: true,
     icon: "activity",
     category: "data",
     description: "A form or lookup from your business app",
@@ -719,6 +722,8 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
   },
   collectionList: {
     label: "Collection list",
+    // Converted to form and repeat blocks when a project opens (legacy.ts).
+    internal: true,
     icon: "grid",
     category: "data",
     description:
@@ -767,6 +772,18 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
 
 /** A new block with its defaults (and default children, with fresh ids). */
 export function createNode(type: NodeType, props: Props = {}): Node {
+  // Contact and Email signup are form blocks posting to the inbox now.
+  if (type === "contactForm" || type === "newsletter")
+    return inboxFormNode(
+      type === "newsletter" ? "newsletter" : "contact",
+      nodeId(),
+      typeof props.label === "string"
+        ? props.label
+        : type === "newsletter"
+          ? "Subscribe"
+          : "Send message",
+      typeof props.action === "string" ? props.action : "",
+    );
   const def = BLOCKS[type];
   const children = def.children?.() ?? (def.container ? [] : undefined);
   return {

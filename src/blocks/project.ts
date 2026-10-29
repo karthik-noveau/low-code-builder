@@ -55,12 +55,41 @@ export function sectionAppForms(s: Section): string[] {
     .filter((f): f is string => typeof f === "string" && !!f);
 }
 
-/** Collection ids a section lists (a collection section's, or collection list blocks'). */
+/** Collection ids a section lists (a collection section's, collection list blocks' or repeats'). */
 export function sectionCollections(s: Section): string[] {
   if (s.type === "collection") return s.listing ? [s.listing.collection] : [];
-  return placedNodes([{ ...s, hidden: false }], "collectionList")
-    .map((n) => n.props.collection)
-    .filter((c): c is string => typeof c === "string" && !!c);
+  const shown = [{ ...s, hidden: false }];
+  return [
+    ...placedNodes(shown, "collectionList").map((n) => n.props.collection),
+    ...placedNodes(shown, "repeat").map((n) =>
+      typeof n.props.source === "string" &&
+      n.props.source.startsWith("collection:")
+        ? n.props.source.slice(11)
+        : "",
+    ),
+  ].filter((c): c is string => typeof c === "string" && !!c);
+}
+
+/**
+ * Contact and Email signup forms placed in visible blocks sections: inbox
+ * form blocks (src/blocks/forms/classic.tsx) and the smart blocks they were.
+ * `action` is the owner's own endpoint, if any.
+ */
+export function inboxForms(
+  sections: Section[],
+): { kind: "contact" | "newsletter"; action: string }[] {
+  return [
+    ...placedNodes(sections, "contactForm"),
+    ...placedNodes(sections, "newsletter"),
+    ...placedNodes(sections, "form").filter((n) => n.props.target === "inbox"),
+  ].map((n) => ({
+    kind:
+      n.type === "newsletter" ||
+      (n.type === "form" && n.props.kind === "newsletter")
+        ? "newsletter"
+        : "contact",
+    action: String(n.props.action ?? ""),
+  }));
 }
 
 /** Whether a visible hero or section has the moving "orbits" background. */

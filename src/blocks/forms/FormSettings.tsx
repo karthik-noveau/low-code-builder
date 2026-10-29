@@ -166,6 +166,32 @@ export function FormChoice({ label }: { label: string }) {
     type: AppFieldType;
   } | null>(null);
   if (!section || !node || node.type !== "form") return null;
+  const setProps = (props: Record<string, string | undefined>) =>
+    useStudio.getState().updateNode(section.id, node.id, (n) => {
+      const next = { ...n.props };
+      for (const [k, v] of Object.entries(props))
+        if (v === undefined) delete next[k];
+        else next[k] = v;
+      return { ...n, props: next };
+    });
+  // Contact and Email signup forms post to the inbox (src/blocks/forms/classic.tsx).
+  if (node.props.target === "inbox")
+    return (
+      <div className="form-settings">
+        <p className="block-hint">
+          {node.props.kind === "newsletter"
+            ? "An email signup: addresses arrive in your Inbox."
+            : "A contact form: messages arrive in your Inbox."}{" "}
+          Change the boxes’ labels and the button by selecting them.
+        </p>
+        <Field
+          label="Send to another address (optional)"
+          value={typeof node.props.action === "string" ? node.props.action : ""}
+          placeholder="https://… your own form endpoint"
+          onChange={(v) => setProps({ action: v })}
+        />
+      </div>
+    );
   const app = project.app;
   const forms = app?.forms ?? [];
   const current = forms.find((f) => f.id === node.props.form);
@@ -263,6 +289,23 @@ export function FormChoice({ label }: { label: string }) {
 
   return (
     <div className="form-settings">
+      {current && (
+        <div className="field">
+          <label htmlFor={`${id}-look`}>Look</label>
+          <select
+            id={`${id}-look`}
+            value={node.props.look === "classic" ? "classic" : ""}
+            onChange={(e) =>
+              setProps({
+                look: e.target.value === "classic" ? "classic" : undefined,
+              })
+            }
+          >
+            <option value="classic">Classic form (as before)</option>
+            <option value="">Blocks (arrange freely)</option>
+          </select>
+        </div>
+      )}
       <div className="field">
         <label htmlFor={id}>{label}</label>
         <select
@@ -519,6 +562,26 @@ export function FormFieldChoice({
   const app = project.app;
   const bound = form && app?.forms.find((f) => f.id === form.props.form);
   const table = bound && app ? tableOf(app, bound.table) : undefined;
+  if (form?.props.target === "inbox")
+    return (
+      <div className="field">
+        <label htmlFor={id}>{label}</label>
+        <select
+          id={id}
+          value={value}
+          onChange={(e) =>
+            useStudio.getState().updateNode(section.id, node.id, (n) => ({
+              ...n,
+              props: { ...n.props, field: e.target.value },
+            }))
+          }
+        >
+          <option value="name">Name</option>
+          <option value="email">Email address</option>
+          <option value="message">Message</option>
+        </select>
+      </div>
+    );
   if (!form || !bound || !table || !app)
     return (
       <p className="block-hint">

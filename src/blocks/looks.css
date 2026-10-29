@@ -1065,6 +1065,110 @@
 .lk-listing > .blk-inner > .blk-box {
   margin-bottom: 36px;
 }
+/* A collection list as a repeat (look "listing", legacy.ts listingBlock):
+   the classic cards (.site-listing in website.css). The card is the
+   template's box: photo, a "Copy" box with the title row (heading, price),
+   subtitle and summary, and a call-to-action link. */
+.rl-listing.l-grid > .blk-repeat-items {
+  gap: 28px;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+}
+.rl-listing.l-list > .blk-repeat-items {
+  gap: 0;
+}
+.rl-listing .blk-repeat-item > .blk-box {
+  gap: 14px;
+  color: inherit;
+}
+.rl-listing .blk-repeat-item > a.blk-box:hover {
+  transform: none;
+}
+.rl-listing.l-list .blk-repeat-item > .blk-box {
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+}
+.rl-listing .blk-repeat-item > .blk-box > .blk-image {
+  aspect-ratio: 4 / 3;
+  height: auto;
+  border-radius: var(--site-radius);
+  transition: transform 0.5s ease;
+}
+.rl-listing.l-list .blk-repeat-item > .blk-box > .blk-image {
+  width: 88px;
+  flex: none;
+  aspect-ratio: 1;
+}
+.rl-listing .blk-repeat-item > a.blk-box:hover > .blk-image {
+  transform: scale(1.02);
+}
+.rl-listing .blk-repeat-item > .blk-box > .blk-box {
+  flex: 1;
+  gap: 6px;
+}
+.rl-listing .blk-box > .blk-row.blk {
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rl-listing .blk-row > .blk-heading.lvl-3 {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.35;
+  letter-spacing: normal;
+  white-space: normal;
+  text-wrap: wrap;
+}
+.rl-listing .blk-row > .blk-text.blk {
+  flex: none;
+  max-width: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+  white-space: normal;
+}
+.rl-listing .blk-box > .blk-text.blk {
+  max-width: none;
+  margin-inline: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: normal;
+  opacity: 0.8;
+}
+.rl-listing .blk-box > .blk-text.v-eyebrow {
+  margin: 0;
+  color: inherit;
+  font-size: 11px;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.rl-listing .blk-repeat-item > .blk-box > .blk-button {
+  margin-top: auto;
+}
+@container (max-width: 768px) {
+  .rl-listing.l-grid > .blk-repeat-items {
+    grid-template-columns: repeat(
+      var(--cols-t, var(--cols, 3)),
+      minmax(0, 1fr)
+    );
+  }
+  .rl-listing.l-grid > .blk-repeat-items:has(> :nth-child(3)) {
+    grid-template-columns: repeat(var(--cols-t, 2), minmax(0, 1fr));
+  }
+}
+@container (max-width: 480px) {
+  .rl-listing.l-grid > .blk-repeat-items,
+  .rl-listing.l-grid > .blk-repeat-items:has(> :nth-child(3)) {
+    grid-template-columns: repeat(var(--cols-m, 1), minmax(0, 1fr));
+  }
+}
 
 /* App form */
 .lk-app > .blk-inner {

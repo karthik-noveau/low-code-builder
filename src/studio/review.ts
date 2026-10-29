@@ -80,7 +80,11 @@ export function reviewProject(project: Project): ReviewItem[] {
         section.type === "app"
           ? [section.appForm]
           : [...shownNodes(section.root)]
-              .filter((n) => n.type === "appForm")
+              .filter(
+                (n) =>
+                  n.type === "appForm" ||
+                  (n.type === "form" && n.props.look === "classic"),
+              )
               .map((n) => String(n.props.form ?? "") || undefined);
       const problem = forms
         .map((f) => appSectionProblem(project.app, f))

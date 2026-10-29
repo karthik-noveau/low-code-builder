@@ -82,11 +82,12 @@ export function declarations(
   if (s.wrap !== undefined && !grid) add("flex-wrap", s.wrap ? "wrap" : "nowrap");
   if (s.width === "full") add("width", "100%");
   else if (s.width === "auto") add("width", "auto");
-  // A set width holds in rows (no shrinking) but never overflows its parent.
+  // A set width holds in rows (no growing or shrinking, which would let the
+  // row's shared 240px basis win) but never overflows its parent.
   else if (typeof s.width === "number") {
     add("width", px(s.width));
     if (!s.maxWidth) add("max-width", "100%");
-    add("flex-shrink", "0");
+    add("flex", "0 0 auto");
   }
   if (s.maxWidth) add("max-width", px(s.maxWidth));
   if (s.minHeight) add("min-height", px(s.minHeight));

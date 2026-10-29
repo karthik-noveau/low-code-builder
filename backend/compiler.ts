@@ -34,7 +34,7 @@ import { digest } from "./project";
 import { walk, type Node } from "../src/blocks/model";
 import { createNode } from "../src/blocks/registry";
 import { productCards } from "../src/blocks/legacy";
-import { placedNodes } from "../src/blocks/project";
+import { inboxForms } from "../src/blocks/project";
 import { config, insist } from "./config";
 import type { CommerceBinding } from "./commerce-publishing";
 
@@ -73,6 +73,10 @@ const starterNames = new Set([
   "switches.jpg",
   "vegetables.jpg",
   "wires.jpg",
+  // Illustrated people (no real faces) for team and review sections.
+  ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `person-${i}.jpg`),
+  // Grey placeholder logos (transparent PNG) for logo strips.
+  ...[1, 2, 3, 4, 5, 6].map((i) => `logo-placeholder-${i}.png`),
 ]);
 /**
  * A blocks header's button becomes "Shop" (the store's address): its first
@@ -185,7 +189,7 @@ export async function compileSite(
       body = await readFile(
         path.join(process.env.ASSET_DIR || "public/images", name),
       );
-      extension = "jpeg";
+      extension = name.endsWith(".png") ? "png" : "jpeg";
     } else if (source.startsWith("data:")) {
       const match =
         /^data:image\/(png|jpeg|webp|gif);base64,([a-zA-Z0-9+/]+={0,2})$/.exec(
@@ -260,10 +264,7 @@ export async function compileSite(
           (s.type === "contact" || s.type === "newsletter") &&
           !/^https?:\/\//i.test(s.formAction),
       ) ||
-      [
-        ...placedNodes(sections, "contactForm"),
-        ...placedNodes(sections, "newsletter"),
-      ].some((n) => !/^https?:\/\//i.test(String(n.props.action ?? "")))) &&
+      inboxForms(sections).some((f) => !/^https?:\/\//i.test(f.action))) &&
     !project.pages.some((p) => p.slug === "thanks")
   )
     add({

@@ -145,33 +145,39 @@ const bandPhone = (top = 64): Style => ({
   gap: 32,
 });
 
-/** A round badge of initials, standing in for a photo. */
-const avatar = (initials: string, size = 44) =>
-  box(
-    "plain",
-    {
-      width: size,
-      height: size,
-      radius: "full",
-      background: "accent",
-      color: "accentText",
-      align: "center",
-      justify: "center",
-      fontSize: size > 60 ? "xl" : "sm",
-      fontWeight: 700,
-      gap: 0,
-    },
-    [text(initials, "body", { lineHeight: 1 })],
-  );
-/** A person: avatar, name and a second line. */
-const person = (initials: string, name: string, role: string) =>
+/**
+ * A round photo of a person: one of the illustrated portraits bundled in
+ * /images (person-1.jpg … person-8.jpg), original drawings rather than real
+ * people, for owners to replace with their own photos.
+ */
+const avatar = (portrait: number, name: string, size = 44) =>
+  image(`person-${portrait}.jpg`, `Portrait of ${name}`, "1/1", {
+    width: size,
+    radius: "full",
+  });
+/** A person: photo, name and a second line. */
+const person = (portrait: number, name: string, role: string) =>
   row({ gap: 12, wrap: false }, [
-    avatar(initials),
+    avatar(portrait, name),
     box("plain", { gap: 0 }, [
       text(name, "body", { fontWeight: 600 }),
       text(role, "small", { color: "muted" }),
     ]),
   ]);
+/**
+ * Grey placeholder logos bundled in /images (logo-placeholder-1.png … 6):
+ * a plain geometric mark and a neutral word, for owners to swap for the
+ * logos of their own clients or brands.
+ */
+const LOGO_WIDTHS = [392, 304, 329, 401, 370, 280]; // at 96px tall
+const logo = (i: number, alt: string, height = 32) => {
+  const node = image(`logo-placeholder-${i}.png`, alt, "auto", {
+    height,
+    width: Math.round((LOGO_WIDTHS[i - 1] * height) / 96),
+  });
+  node.props.fit = "contain";
+  return node;
+};
 const stars = () =>
   text("★★★★★", "body", { color: "accent", letterSpacing: 2, fontSize: "lg" });
 
@@ -333,13 +339,9 @@ export const PRESETS: Preset[] = [
             [
               [
                 text("Open 7 days a week", "eyebrow"),
-                at(
-                  heading("Beautiful spaces, *made simple*", "1", {
-                    fontSize: "60",
-                  }),
-                  { fontSize: "48" },
-                  { fontSize: "36" },
-                ),
+                heading("Beautiful spaces, *made simple*", "1", {
+                  fontSize: "4xl",
+                }),
                 text(
                   "Tell visitors what you offer and what makes it special. Keep it short and friendly.",
                   "lead",
@@ -421,13 +423,9 @@ export const PRESETS: Preset[] = [
             [
               [
                 n("badge", { text: "Order online in a minute", icon: "zap" }),
-                at(
-                  heading("Order, pay and track *in a tap*", "1", {
-                    fontSize: "60",
-                  }),
-                  { fontSize: "48" },
-                  { fontSize: "36" },
-                ),
+                heading("Order, pay and track *in a tap*", "1", {
+                  fontSize: "4xl",
+                }),
                 text(
                   "Browse today's menu, pay with UPI and get updates on WhatsApp. No app to install.",
                   "lead",
@@ -830,7 +828,7 @@ export const PRESETS: Preset[] = [
               { fontSize: "2xl", lineHeight: 1.3, fontWeight: 500 },
             ),
             row({ justify: "center", gap: 12 }, [
-              person("AK", "Anita Kumar", "Founder"),
+              person(7, "Anita Kumar", "Founder"),
             ]),
           ],
         ),
@@ -1278,30 +1276,32 @@ export const PRESETS: Preset[] = [
           ),
           grid(
             3,
-            [
+            (
               [
-                "PR",
-                "Priya Raman",
-                "Regular customer",
-                "The quality is consistent every single time, and they always remember how I like things. It feels like a family shop.",
-              ],
-              [
-                "AM",
-                "Arjun Mehta",
-                "Ordered for an event",
-                "They handled our order for 200 guests without a single problem. On time, well packed and everyone loved it.",
-              ],
-              [
-                "SN",
-                "Sneha Nair",
-                "Customer since 2019",
-                "Quick replies on WhatsApp, fair prices and honest advice. I have recommended them to all my friends.",
-              ],
-            ].map(([initials, name, role, quote]) =>
+                [
+                  1,
+                  "Priya Raman",
+                  "Regular customer",
+                  "The quality is consistent every single time, and they always remember how I like things. It feels like a family shop.",
+                ],
+                [
+                  4,
+                  "Arjun Mehta",
+                  "Ordered for an event",
+                  "They handled our order for 200 guests without a single problem. On time, well packed and everyone loved it.",
+                ],
+                [
+                  3,
+                  "Sneha Nair",
+                  "Customer since 2019",
+                  "Quick replies on WhatsApp, fair prices and honest advice. I have recommended them to all my friends.",
+                ],
+              ] as const
+            ).map(([portrait, name, role, quote]) =>
               box("card", { gap: 16, padding: [28, 28, 28, 28] }, [
                 stars(),
                 text(`“${quote}”`, "body", { lineHeight: 1.65 }),
-                person(initials, name, role),
+                person(portrait, name, role),
               ]),
             ),
             { gap: 24 },
@@ -1315,7 +1315,7 @@ export const PRESETS: Preset[] = [
     id: "testimonials-quote",
     name: "Featured review",
     category: "testimonials",
-    description: "One big review on an accent band",
+    description: "One big review on an accent band, with a photo",
     build: () =>
       at(
         section(
@@ -1327,9 +1327,12 @@ export const PRESETS: Preset[] = [
               "3",
               { fontSize: "2xl", lineHeight: 1.3, fontWeight: 500 },
             ),
-            box("plain", { gap: 2 }, [
-              text("Kavya Iyer", "body", { fontWeight: 600 }),
-              text("Home owner, Chennai", "small", { color: "muted" }),
+            box("plain", { gap: 12, align: "center" }, [
+              avatar(3, "Kavya Iyer", 64),
+              box("plain", { gap: 2 }, [
+                text("Kavya Iyer", "body", { fontWeight: 600 }),
+                text("Home owner, Chennai", "small", { color: "muted" }),
+              ]),
             ]),
           ],
           { tone: "accent" },
@@ -1365,24 +1368,26 @@ export const PRESETS: Preset[] = [
                   ]),
                 ],
                 [
-                  ...[
+                  ...(
                     [
-                      "RV",
-                      "Rahul Verma",
-                      "Booked a home service",
-                      "Arrived on time, explained everything clearly and left the place spotless. Exactly what you hope for.",
-                    ],
-                    [
-                      "FS",
-                      "Fatima Shaikh",
-                      "Monthly customer",
-                      "Friendly, reliable and always fairly priced. I don't go anywhere else now.",
-                    ],
-                  ].map(([initials, name, role, quote]) =>
+                      [
+                        2,
+                        "Rahul Verma",
+                        "Booked a home service",
+                        "Arrived on time, explained everything clearly and left the place spotless. Exactly what you hope for.",
+                      ],
+                      [
+                        5,
+                        "Fatima Shaikh",
+                        "Monthly customer",
+                        "Friendly, reliable and always fairly priced. I don't go anywhere else now.",
+                      ],
+                    ] as const
+                  ).map(([portrait, name, role, quote]) =>
                     box("card", { gap: 14, padding: [24, 24, 24, 24] }, [
                       stars(),
                       text(`“${quote}”`),
-                      person(initials, name, role),
+                      person(portrait, name, role),
                     ]),
                   ),
                 ],
@@ -1402,7 +1407,7 @@ export const PRESETS: Preset[] = [
     id: "team-grid",
     name: "Team cards",
     category: "team",
-    description: "Four people with initials, names and roles",
+    description: "Four people with photos, names and roles",
     build: () =>
       at(
         section(band(), [
@@ -1414,12 +1419,14 @@ export const PRESETS: Preset[] = [
           at(
             grid(
               4,
-              [
-                ["DS", "Dr. Deepa Shah", "Founder and lead"],
-                ["RK", "Ravi Kumar", "Senior specialist"],
-                ["MJ", "Meera Joshi", "Customer care"],
-                ["AT", "Aman Thakur", "Operations"],
-              ].map(([initials, name, role]) =>
+              (
+                [
+                  [7, "Dr. Deepa Shah", "Founder and lead"],
+                  [6, "Ravi Kumar", "Senior specialist"],
+                  [1, "Meera Joshi", "Customer care"],
+                  [8, "Aman Thakur", "Operations"],
+                ] as const
+              ).map(([portrait, name, role]) =>
                 box(
                   "card",
                   {
@@ -1429,7 +1436,7 @@ export const PRESETS: Preset[] = [
                     align: "center",
                   },
                   [
-                    at(avatar(initials, 88), undefined, {
+                    at(avatar(portrait, name, 88), undefined, {
                       width: 72,
                       height: 72,
                     }),
@@ -1459,32 +1466,34 @@ export const PRESETS: Preset[] = [
           intro("Meet the experts", "Talk to *the right person*", "", "left"),
           grid(
             2,
-            [
+            (
               [
-                "NG",
-                "Nikhil Gupta",
-                "Sales and quotes",
-                "Helps you choose the right product and gets you the best price.",
-              ],
-              [
-                "SP",
-                "Sana Patel",
-                "Service and repairs",
-                "Books visits, tracks repairs and keeps you updated on WhatsApp.",
-              ],
-              [
-                "VR",
-                "Vikram Rao",
-                "Projects",
-                "Plans larger orders and installations for homes and offices.",
-              ],
-              [
-                "LM",
-                "Lakshmi Menon",
-                "Accounts",
-                "Invoices, GST bills and payment questions, sorted quickly.",
-              ],
-            ].map(([initials, name, role, bio]) =>
+                [
+                  8,
+                  "Nikhil Gupta",
+                  "Sales and quotes",
+                  "Helps you choose the right product and gets you the best price.",
+                ],
+                [
+                  5,
+                  "Sana Patel",
+                  "Service and repairs",
+                  "Books visits, tracks repairs and keeps you updated on WhatsApp.",
+                ],
+                [
+                  4,
+                  "Vikram Rao",
+                  "Projects",
+                  "Plans larger orders and installations for homes and offices.",
+                ],
+                [
+                  3,
+                  "Lakshmi Menon",
+                  "Accounts",
+                  "Invoices, GST bills and payment questions, sorted quickly.",
+                ],
+              ] as const
+            ).map(([portrait, name, role, bio]) =>
               box(
                 "panel",
                 {
@@ -1494,7 +1503,7 @@ export const PRESETS: Preset[] = [
                   padding: [24, 24, 24, 24],
                 },
                 [
-                  avatar(initials, 52),
+                  avatar(portrait, name, 52),
                   box("plain", { gap: 4 }, [
                     heading(name, "4"),
                     text(role, "small", { color: "accent", fontWeight: 600 }),
@@ -1660,7 +1669,7 @@ export const PRESETS: Preset[] = [
     id: "logos-row",
     name: "Logo strip",
     category: "logos",
-    description: "A short line and a row of client or brand names",
+    description: "A short line and a row of client logos to swap for yours",
     build: () =>
       at(
         section({ padding: [48, 24, 48, 24], gap: 24, textAlign: "center" }, [
@@ -1669,20 +1678,8 @@ export const PRESETS: Preset[] = [
           }),
           at(
             row(
-              { justify: "center", gap: 48, opacity: 70 },
-              [
-                ["Kaveri", { font: "heading", italic: true }],
-                ["BANYAN", { letterSpacing: 4 }],
-                ["saffron.", {}],
-                ["Monsoon & Co", { font: "heading" }],
-                ["NEEM", { letterSpacing: 6, fontWeight: 800 }],
-              ].map(([name, style]) =>
-                text(name as string, "body", {
-                  fontSize: "xl",
-                  fontWeight: 700,
-                  ...(style as Style),
-                }),
-              ),
+              { justify: "center", gap: 48 },
+              [1, 2, 3, 4, 5].map((i) => logo(i, "Client logo")),
             ),
             undefined,
             { gap: 28 },
@@ -1696,7 +1693,7 @@ export const PRESETS: Preset[] = [
     id: "logos-grid",
     name: "Brands we stock",
     category: "logos",
-    description: "Brand names in a grid of tiles, with a heading",
+    description: "Brand logos in a grid of tiles, with a heading",
     build: () =>
       at(
         section(band(72), [
@@ -1708,25 +1705,17 @@ export const PRESETS: Preset[] = [
           at(
             grid(
               6,
-              ["Kaveri", "Banyan", "Saffron", "Monsoon", "Neem", "Lotus"].map(
-                (name) =>
-                  box(
-                    "panel",
-                    {
-                      padding: [26, 12, 26, 12],
-                      align: "center",
-                      justify: "center",
-                      gap: 0,
-                    },
-                    [
-                      text(name, "body", {
-                        fontSize: "lg",
-                        fontWeight: 700,
-                        color: "muted",
-                        letterSpacing: 1,
-                      }),
-                    ],
-                  ),
+              [1, 2, 3, 4, 5, 6].map((i) =>
+                box(
+                  "panel",
+                  {
+                    padding: [26, 12, 26, 12],
+                    align: "center",
+                    justify: "center",
+                    gap: 0,
+                  },
+                  [logo(i, "Brand logo", 28)],
+                ),
               ),
               { gap: 12 },
             ),

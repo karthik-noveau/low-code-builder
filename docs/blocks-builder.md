@@ -54,7 +54,7 @@ plus a renderer case.
 | Basic | heading, text, button, image, icon, list, divider, spacer, badge |
 | Media | video, map, embed |
 | Site | logo, menu, theme switch, accordion, social links |
-| Form (phase 3) | form, field, form button, form step, step indicator, after sending, when sending fails, found record |
+| Form (phase 3) | form (app form, or contact / email signup to the inbox), field, form button, form step, step indicator, after sending, when sending fails, found record |
 | Data (phase 4) | repeat (list/cards), table, stat, chart, record value |
 | Logic (phase 5) | dialog (pop-up or side panel); click actions and show-when on any block |
 
@@ -153,12 +153,14 @@ long text) stays classic.
   colours, padding (top/bottom), alignment, height, tablet/phone overrides.
   A hero's photo shade is the section prop `shade`; the moving background is
   `effect: "orbits"`.
-- **Smart blocks** draw the classic markup (`src/studio/siteParts.tsx`):
-  `appForm` (form, title and intro or breadcrumb), `collectionList`,
-  `contactForm` and `newsletter` (post to the inbox), `products` (cards the
-  publisher replaces with Forma Store products) and `tabBar` (the phone's
-  bottom bar, drawn at the end of the page). `src/blocks/project.ts` answers
-  site-wide questions across both kinds: placed app forms, orbits, tab bar.
+- **Smart blocks** that remain: `products` (cards the publisher replaces
+  with Forma Store products) and `tabBar` (the phone's bottom bar, drawn at
+  the end of the page). The app form, contact, email signup and collection
+  list smart blocks convert to form and repeat blocks ("Converted smart
+  blocks" below); their types stay valid and still draw the classic markup
+  (`src/studio/siteParts.tsx`) for any block that couldn't convert.
+  `src/blocks/project.ts` answers site-wide questions across all kinds:
+  placed app forms, inbox forms, listed collections, orbits, tab bar.
 - Ids are derived from the section id, so converting twice gives the same tree.
 - The thanks page visitors land on after a request (`renderThanksPage`) is
   a blocks section with the custom look, its heading the page's H1.
@@ -266,8 +268,67 @@ read API in `backend/apps.ts`.
 - **Editor.** Blocks show the owner's real records (owner API, the same view
   rules) or sample rows on a local draft; the Data tab picks the source,
   sets up views ("Show on your website: these fields only") and bindings.
-- **Classic smart blocks** `collectionList` and `products` stay as they are
-  (exact classic markup; Forma Store fills `products` at publish).
+- **Classic smart blocks**: `collectionList` converts to a repeat (below);
+  `products` stays as it is (Forma Store fills it at publish).
+
+## Converted smart blocks
+
+`upgradeSmart` in `src/blocks/legacy.ts` (run by `upgradeProject` on every
+open, import, cloud load and backend decode, after the classic sections are
+converted) replaces the classic smart blocks inside blocks sections, saved
+sections included. The new block keeps the old block's id (so its `n-<id>`
+styles and the form's element ids are unchanged) and its parts get ids
+derived from it (`<id>-c0`, `-c1`…), so converting again changes nothing. A
+block whose form or collection is gone, or a tree that wouldn't validate,
+stays as it was; the smart types still render.
+
+- **App form → form block, look "classic"** (`forms/classic.tsx`). The
+  children are the form's own blocks (`formChildren`, as a new form block
+  gets them), worded as the classic form was (the button's default, "Send
+  another" / "Place another order" / "Record another", "Yes, that's me",
+  the step-by-step done title), with the form's title (`part: "title"`,
+  H1 or H2) and intro (`part: "intro"`) first. With the classic look the
+  block draws the classic App form markup (`AppFormMarkup`, without
+  `data-blocks-form`), so the widget runs the classic paths: identify and
+  confirm, menu and cart, payment, capacity, lookups and the rewards page.
+  The words come from the blocks, read by where they sit: field blocks'
+  label, example and help; buttons' labels; each step's heading, intro and
+  note; "Sending as {name}"; the success heading. Blocks the owner adds in a
+  step are drawn in it (before its error line); hiding the title hides the
+  heading. In the editor the title, fields and buttons select their blocks.
+  The form's **Look** setting switches to "Blocks", which lays the same
+  blocks out freely (the phase 3 form).
+- **Contact and Email signup → form block, `target: "inbox"`** (`kind`
+  `contact` or `newsletter`, `action` the owner's own endpoint). Its field
+  blocks are the boxes (`field` = `name`, `email` or `message`; label,
+  example, `hideLabel`) and its Form button the button. It draws the same
+  `<form action=inbox method=POST>` as before: the hidden `form` kind, the
+  honeypot (`website`), boxes named for the inbox, the classic classes
+  (`blk-contactForm`, `blk-newsletter`). It isn't synced with the app.
+  `inboxForms` (project.ts) feeds the inbox config and the thanks page. The
+  Add panel's Contact form and Email signup make these (`createNode`); App
+  form and Collection list are no longer offered (Form and Repeat are).
+- **Collection list → repeat** over `collection:<id>` with look `listing`
+  (`rl-listing`, drawn by looks.css with the classic `.site-listing`
+  values), its layout (`grid`/`list`), limit and columns (`style.columns`).
+  The card is a box (linked to the item's page via `item:link` when the
+  collection has item pages) holding the photo (bound to the display image,
+  ratio from the look), a "Copy" box with the title row (heading bound to
+  `item:title`, the price), the subtitle (eyebrow) and the summary, and,
+  without item pages, the call-to-action link. Parts show only when the
+  item has them (`when` item rules, decided at publish, no logic.js).
+- **Products stay a smart block.** Its cards are already editable blocks,
+  but at publish the compiler replaces them wholesale with Forma Store's
+  catalogue (product links, prices, the Shop button). A repeat would need a
+  store source that the data layer doesn't have (the catalogue isn't in the
+  project, so the editor has nothing to bind or preview), so converting it
+  would change what visitors see; it is left as it is.
+- **Parity.** For all 12 templates (Dhanlaxmi included) the published
+  pages render pixel-identically at 1280 and 390 px before and after (every
+  page 0.000% different, section heights equal); app form and inbox pages
+  publish the same body HTML (only CSS rules for blocks that the classic
+  look doesn't draw are added). `src/blocks/convert.test.tsx` checks this
+  for every template. Publishing bumps `compilerVersion` to 11.
 
 ## Logic (phase 5)
 

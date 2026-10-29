@@ -10,7 +10,7 @@ import { emptyPayments, parseAmount } from "../../src/studio/payments";
  * Runs against fake Stripe and Razorpay APIs. Start the stack with
  *   STRIPE_API_BASE=http://127.0.0.1:8799/stripe
  *   RAZORPAY_API_BASE=http://127.0.0.1:8799/razorpay
- * and set TEST_FAKE_PROVIDERS=1 to include it.
+ * and set TEST_FAKE_PROVIDERS=1 to include it (TEST_FAKE_PORT if 8799 is taken).
  */
 const enabled = process.env.TEST_FAKE_PROVIDERS === "1";
 const base = process.env.TEST_API_URL || "http://127.0.0.1:8787";
@@ -104,7 +104,9 @@ function startFake() {
       send(404, {});
     });
   });
-  return new Promise<void>((r) => fake.listen(8799, "127.0.0.1", r));
+  return new Promise<void>((r) =>
+    fake.listen(Number(process.env.TEST_FAKE_PORT || 8799), "127.0.0.1", r),
+  );
 }
 
 const project = createProject();

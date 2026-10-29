@@ -69,7 +69,7 @@ describe("style tokens", () => {
   it("a set width holds without overflowing", () => {
     const d = declarations({ width: 44 });
     expect(d).toEqual(
-      expect.arrayContaining(["width:44px", "max-width:100%", "flex-shrink:0"]),
+      expect.arrayContaining(["width:44px", "max-width:100%", "flex:0 0 auto"]),
     );
     expect(declarations({ width: 300, maxWidth: 200 })).not.toContain(
       "max-width:100%",

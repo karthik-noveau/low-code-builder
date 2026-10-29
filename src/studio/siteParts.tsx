@@ -13,10 +13,11 @@ import {
   itemTitle,
   type Collection,
 } from "./collections";
-import { AppFormMarkup } from "../apps/AppSection";
+import { AppFormMarkup, type FormCustom } from "../apps/AppSection";
 import { appLinks } from "../apps/links";
 import { appSectionProblem } from "../apps/issues";
 import type { Tab } from "../blocks/project";
+import { INBOX_FIELDS, type InboxField } from "../blocks/forms/inbox";
 
 export function CollectionCards({
   collection: c,
@@ -231,6 +232,8 @@ export function TabBar({
 /**
  * The Contact and Email signup form. It posts to the Forma inbox (or the
  * owner's own endpoint, an https address); in the editor it never sends.
+ * `fields` and `extras` come from an inbox form block (its field blocks and
+ * any other blocks the owner put in it).
  */
 export function SiteForm({
   kind,
@@ -241,6 +244,9 @@ export function SiteForm({
   exporting,
   className,
   attrs,
+  fields = INBOX_FIELDS[kind],
+  extras,
+  buttonAttrs,
 }: {
   kind: "contact" | "newsletter";
   buttonLabel: string;
@@ -251,6 +257,9 @@ export function SiteForm({
   exporting: boolean;
   className?: string;
   attrs?: Record<string, string | undefined>;
+  fields?: InboxField[];
+  extras?: ReactNode;
+  buttonAttrs?: Record<string, string | undefined>;
 }) {
   const custom = /^https?:\/\//i.test(formAction);
   const endpoint = custom ? formAction : inbox;
@@ -275,37 +284,29 @@ export function SiteForm({
           </label>
         </>
       )}
-      {kind === "contact" && (
-        <label>
-          Your name
-          <input name="name" placeholder="Alex Smith" required />
+      {fields.map((f) => (
+        <label key={f.name} {...f.attrs}>
+          {f.hideLabel ? <span className="sr-only">{f.label}</span> : f.label}
+          {f.name === "message" ? (
+            <textarea
+              name="message"
+              rows={4}
+              placeholder={f.placeholder}
+              required
+            />
+          ) : (
+            <input
+              type={f.name === "email" ? "email" : undefined}
+              name={f.name}
+              placeholder={f.placeholder}
+              required
+            />
+          )}
         </label>
-      )}
-      <label>
-        {kind === "contact" ? (
-          "Email address"
-        ) : (
-          <span className="sr-only">Email address</span>
-        )}
-        <input
-          type="email"
-          name="email"
-          placeholder="Your email address"
-          required
-        />
-      </label>
-      {kind === "contact" && (
-        <label>
-          What’s on your mind?
-          <textarea
-            name="message"
-            rows={4}
-            placeholder="Tell us a little about it…"
-            required
-          />
-        </label>
-      )}
+      ))}
+      {extras}
       <button
+        {...buttonAttrs}
         className="site-button"
         type="submit"
         disabled={!connected && exporting}
@@ -336,7 +337,13 @@ export function AppFormArea({
   exporting,
   appApi,
   href,
+  custom,
+  titleAttrs,
 }: {
+  /** A classic-look form block's own words and blocks. */
+  custom?: FormCustom;
+  /** Editor: marks the title as its block. */
+  titleAttrs?: Record<string, string | undefined>;
   project: Project;
   formId?: string;
   /** Makes the form's element ids unique on the page. */
@@ -365,9 +372,13 @@ export function AppFormArea({
             <span aria-current="page">{pageName ?? form.title}</span>
           </nav>
           {main ? (
-            <h1 className="sr-only">{form.title}</h1>
+            <h1 {...titleAttrs} className="sr-only">
+              {form.title}
+            </h1>
           ) : (
-            <h2 className="sr-only">{form.title}</h2>
+            <h2 {...titleAttrs} className="sr-only">
+              {form.title}
+            </h2>
           )}
         </div>
       ) : (
@@ -375,9 +386,11 @@ export function AppFormArea({
           {eyebrow}
           {form?.title &&
             (main ? (
-              <h1 className="site-title-main">{form.title}</h1>
+              <h1 {...titleAttrs} className="site-title-main">
+                {form.title}
+              </h1>
             ) : (
-              <h2>{form.title}</h2>
+              <h2 {...titleAttrs}>{form.title}</h2>
             ))}
           {form?.intro && <p className="site-description">{form.intro}</p>}
         </div>
@@ -391,6 +404,7 @@ export function AppFormArea({
           collections={project.collections}
           mode={exporting ? (appApi ? "live" : "export") : "editor"}
           links={appLinks(project.app, project.pages, form, href)}
+          custom={custom}
         />
       ) : (
         <p className="site-listing-empty site-app-empty">
