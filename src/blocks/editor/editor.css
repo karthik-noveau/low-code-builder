@@ -684,9 +684,23 @@ button.layer-disclosure:hover {
   color: var(--ui-muted);
 }
 .layer-select > span {
+  flex-shrink: 0;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* What an unnamed text block says, muted after its type, cut to the row. */
+.layer-select > .layer-preview {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.layer-row.selected .layer-select > .layer-preview {
+  color: inherit;
 }
 .layer-row.is-hidden .layer-select > span {
   color: var(--ui-muted);
@@ -3108,4 +3122,17 @@ html body .studio.canvas-first .site-navigator .review-link {
 html body .studio.canvas-first .navigator-pages-view .page-disclosure {
   width: 24px;
   margin-right: -4px;
+}
+.layer-disclosure {
+  width: 24px;
+  margin-inline: -3px;
+}
+/* Hover-only row buttons take no room until shown, so the layer's name and
+   words get the row's width. */
+@media (hover: hover) and (pointer: fine) {
+  .layer-row:not(:hover, :focus-within, .is-hidden) .layer-eye,
+  .layer-row:not(:hover, :focus-within, .is-locked) .layer-lock {
+    width: 0;
+    overflow: hidden;
+  }
 }

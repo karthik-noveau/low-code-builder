@@ -20,6 +20,7 @@ import { findSection, sectionMeta, type Section } from "../../studio/model";
 import { locate, pathTo, type Node } from "../model";
 import { BLOCKS, nodeLabel } from "../registry";
 import { accepts, lockNotice } from "../lock";
+import { parseInline, plainText } from "../richtext";
 import {
   currentDrag,
   drop,
@@ -234,6 +235,7 @@ export function Layers({
     depth,
     icon,
     name,
+    preview,
     isSelected,
     hidden,
     locked,
@@ -253,6 +255,8 @@ export function Layers({
     depth: number;
     icon: string;
     name: string;
+    /** What an unnamed text block says, after its type ("Heading  Good…"). */
+    preview?: string;
     isSelected: boolean;
     hidden: boolean;
     /** Locked in place (src/blocks/lock.ts); onLock toggles it. */
@@ -344,7 +348,7 @@ export function Layers({
               className="layer-select"
               aria-pressed={isSelected}
               aria-description="Double-click or press F2 to rename"
-              title={name}
+              title={preview ? `${name}: ${preview}` : name}
               onClick={onSelect}
               onDoubleClick={() => setRenaming(id)}
               onKeyDown={(e) => {
@@ -356,6 +360,11 @@ export function Layers({
             >
               <Icon name={icon} size={13} />
               <span>{name}</span>
+              {preview && (
+                <small className="layer-preview" aria-hidden="true">
+                  {preview}
+                </small>
+              )}
             </button>
           )}
           {(logic?.click || logic?.when) && (
@@ -436,6 +445,7 @@ export function Layers({
         depth,
         icon: BLOCKS[n.type].icon,
         name: nodeLabel(n),
+        preview: layerPreview(n),
         isSelected: selected === s.id && selectedBlock === n.id,
         hidden: !!n.hidden,
         locked: !!n.locked,
@@ -660,4 +670,18 @@ export function Layers({
       )}
     </div>
   );
+}
+
+/** The words an unnamed heading, text, button or badge shows, as plain text. */
+function layerPreview(n: Node): string | undefined {
+  if (n.name) return undefined;
+  const key = { heading: "text", text: "text", button: "label", badge: "text" }[
+    n.type as string
+  ];
+  const value = key ? n.props[key] : undefined;
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  return plainText(parseInline(value, { accent: true }))
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 }

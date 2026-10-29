@@ -301,8 +301,8 @@ export function FormChoice({ label }: { label: string }) {
               })
             }
           >
-            <option value="classic">Classic form (as before)</option>
-            <option value="">Blocks (arrange freely)</option>
+            <option value="classic">Ready-made layout</option>
+            <option value="">Your own layout (blocks)</option>
           </select>
         </div>
       )}
@@ -429,7 +429,7 @@ export function FormChoice({ label }: { label: string }) {
               <h4>Questions</h4>
               <p className="block-hint">
                 {placed.length
-                  ? `${placed.length} of ${askable(currentTable).length} fields of ${currentTable.name} are asked. Drag fields on the page to reorder them.`
+                  ? `Asks ${placed.length} of the ${askable(currentTable).length} ${currentTable.name} fields. Drag them on the page to change the order.`
                   : `No questions yet. Add fields of ${currentTable.name} below.`}
               </p>
               {unplaced.length > 0 && (
@@ -531,10 +531,8 @@ export function FormChoice({ label }: { label: string }) {
             </p>
           )}
           <p className="block-hint">
-            Who-are-you steps, payment, the success message and what a lookup
-            shows are set in App → Forms → {current.name}. Text with {"{ref}"},{" "}
-            {"{message}"}, {"{status}"} or {"{name}"} fills itself in on your
-            site.
+            Who-are-you steps, payment, the thank-you message and what a lookup
+            shows are set in App → Forms → {current.name}.
           </p>
         </>
       )}

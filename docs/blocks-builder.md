@@ -38,7 +38,9 @@ and font sizes accept **theme tokens** (`accent`, `text`, `muted`, `surface`,
 `line`, `background`, `radius`, `sm…4xl`) so a theme change restyles every
 template. `style.ts` turns styles into scoped CSS (`.n-<id>{…}` plus
 `@container` rules for tablet/mobile), the same in the editor and on the
-published site.
+published site. A row set to
+stack (`direction: column`) gives its blocks `flex-basis: auto`, so the
+240px share a row gives cards doesn't become their height.
 
 ### Registry (`src/blocks/registry.ts`)
 
@@ -87,8 +89,9 @@ plus a renderer case.
   copy, paste, move, put in a box/row, select parent, hide, delete. Drag a
   block to move it, with before/after/inside drop lines. A blank page shows
   `FirstRun.tsx`: add a section, templates, popular sections, first blocks.
-- **Layers**: the page's block tree with nesting guides; select, rename
-  (double-click/F2), hide, lock, drag to reorder, right-click for the block
+- **Layers**: the page's block tree with nesting guides (an unnamed
+  heading, text, button or badge shows its words, muted, after its type);
+  select, rename (double-click/F2), hide, lock, drag to reorder, right-click for the block
   menu, expand/collapse all; device icons mark blocks hidden on tablet or
   phone. Sections drag between "Top of every page" (`project.header`), the
   page and "Bottom of every page" (`project.footer`): into the header or
@@ -151,7 +154,8 @@ long text) stays classic.
   and `looks.css` draws it with the classic values (`.lk.lk-<look>`, three-class
   selectors so owner styles still win). The owner's settings become styles:
   colours, padding (top/bottom), alignment, height, tablet/phone overrides.
-  A hero's photo shade is the section prop `shade`; the moving background is
+  A hero's photo shade is the section prop `shade` ("Darken the photo",
+  shown only on the image banner look; on phones it is at least 45 %); the moving background is
   `effect: "orbits"`.
 - **Smart blocks** that remain: `products` (cards the publisher replaces
   with Forma Store products) and `tabBar` (the phone's bottom bar, drawn at

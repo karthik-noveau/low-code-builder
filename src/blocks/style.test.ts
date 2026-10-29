@@ -147,6 +147,16 @@ describe("treeCss", () => {
     expect(css).toMatch(/\.n-section-1\.blk\{padding:/);
   });
 
+  it("a row stacked on phones stops its blocks taking a 240px height", () => {
+    const css = treeCss([
+      node("row", { gap: 12 }, { mobile: { direction: "column" } }),
+    ]);
+    expect(css).toContain(
+      "@container (max-width:480px){.website .n-row-1.blk{flex-direction:column}.website .n-row-1.blk>.blk{flex-basis:auto}}",
+    );
+    expect(css.split("@container")[0]).not.toContain("flex-basis");
+  });
+
   it("skips nodes whose ids could escape the selector", () => {
     expect(treeCss([node("box", { gap: 1 }, { id: "x}body{" })])).toBe("");
   });
