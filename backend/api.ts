@@ -27,7 +27,15 @@ import {
   refundRequest,
   updateRequest,
 } from "./inbox";
-import { connect, disconnect, getConnection } from "./payments";
+import {
+  connect,
+  disconnect,
+  finishSignIn,
+  getConnection,
+  signInProviders,
+  signInReturn,
+  startSignIn,
+} from "./payments";
 import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
 import { appOwnerApi, appsPublic } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
@@ -71,6 +79,24 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     let owner = request.owner;
     if (path === "/health" && method === "GET")
       return jsonResponse({ ok: true });
+    // Stripe or Razorpay sends the owner's browser back here after signing in.
+    const signedIn = /^\/payments\/sign-in\/(stripe|razorpay)\/return$/.exec(
+      path,
+    );
+    if (signedIn && method === "GET")
+      return {
+        status: 303,
+        headers: {
+          location: await signInReturn(
+            signedIn[1],
+            new URLSearchParams(request.query ?? ""),
+          ),
+          "cache-control": "no-store",
+          // The code is in this URL; don't pass it on to the editor.
+          "referrer-policy": "no-referrer",
+        },
+        body: Buffer.alloc(0),
+      };
     const inbox = await inboxPublic(request);
     if (inbox) return inbox;
     const apps = await appsPublic(request);
@@ -123,21 +149,34 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     };
     const show = (site: Parameters<typeof publicSite>[0]) =>
       publicSite(site, config.siteOrigin);
-    const paymentsMatch = /^\/sites\/([^/]+)\/payments(\/disconnect)?$/.exec(
-      path,
-    );
+    const paymentsMatch =
+      /^\/sites\/([^/]+)\/payments(\/disconnect|\/sign-in|\/sign-in\/finish)?$/.exec(
+        path,
+      );
     if (paymentsMatch) {
-      const [, siteId, off] = paymentsMatch;
+      const [, siteId, operation] = paymentsMatch;
       insist(idPattern.test(siteId), 404, "Not found.");
-      if (!off && method === "GET")
-        return jsonResponse({ connection: await getConnection(siteId) });
-      if (!off && method === "POST")
+      if (!operation && method === "GET")
+        return jsonResponse({
+          connection: await getConnection(siteId),
+          signIn: signInProviders(),
+        });
+      if (method !== "POST") throw new HttpError(405, "Method not allowed.");
+      if (!operation)
         return jsonResponse({ connection: await connect(siteId, data()) });
-      if (off && method === "POST") {
-        await disconnect(siteId);
-        return jsonResponse({ connection: null });
-      }
-      throw new HttpError(405, "Method not allowed.");
+      // A sign-in belongs to the account that started it.
+      if (operation === "/sign-in")
+        return jsonResponse(await startSignIn(siteId, request.owner!, data()));
+      if (operation === "/sign-in/finish")
+        return jsonResponse({
+          connection: await finishSignIn(siteId, request.owner!, data()),
+        });
+      const revoked = await disconnect(siteId);
+      // The account may still list Forma; the owner can remove it there.
+      return jsonResponse({
+        connection: null,
+        ...(revoked ? {} : { revoked: false }),
+      });
     }
     const appMatch = /^\/sites\/[^/]+\/app(\/.*)?$/.exec(path);
     if (appMatch && access)

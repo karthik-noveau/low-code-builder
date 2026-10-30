@@ -1,15 +1,26 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server } from "node:http";
 import { gzipSync } from "node:zlib";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { db } from "../../backend/database";
+import { config } from "../../backend/config";
 import { createProject } from "../../src/studio/templates";
 import { createCollection } from "../../src/studio/collections";
 import { emptyPayments, parseAmount } from "../../src/studio/payments";
 
 /**
- * Runs against fake Stripe and Razorpay APIs. Start the stack with
+ * Runs against fake Stripe and Razorpay APIs, including their sign-in (OAuth)
+ * hosts. Start the stack with
  *   STRIPE_API_BASE=http://127.0.0.1:8799/stripe
  *   RAZORPAY_API_BASE=http://127.0.0.1:8799/razorpay
+ *   STRIPE_CONNECT_BASE=http://127.0.0.1:8799/stripe-connect
+ *   RAZORPAY_AUTH_BASE=http://127.0.0.1:8799/razorpay-auth
+ *   STRIPE_CONNECT_CLIENT_ID=ca_FormaFakePlatform
+ *   STRIPE_PLATFORM_SECRET=sk_test_FormaFakePlatform123
+ *   RAZORPAY_PARTNER_CLIENT_ID=FormaFakePartner
+ *   RAZORPAY_PARTNER_CLIENT_SECRET=FormaFakePartnerSecret
+ *   RAZORPAY_PARTNER_MODE=test
  * and set TEST_FAKE_PROVIDERS=1 to include it (TEST_FAKE_PORT if 8799 is taken).
  */
 const enabled = process.env.TEST_FAKE_PROVIDERS === "1";
@@ -18,6 +29,12 @@ const sites = process.env.TEST_SITE_URL || "http://127.0.0.1:8788";
 const STRIPE_KEY = "rk_test_FormaFakeKey1234567890";
 const RZP_ID = "rzp_test_FormaFake01";
 const RZP_SECRET = "FormaFakeSecret12345";
+const STRIPE_CLIENT = "ca_FormaFakePlatform";
+const STRIPE_PLATFORM = "sk_test_FormaFakePlatform123";
+const RZP_CLIENT = "FormaFakePartner";
+const RZP_CLIENT_SECRET = "FormaFakePartnerSecret";
+const STRIPE_ACCOUNT = "acct_FormaOwner1234";
+const RZP_ACCOUNT = "acc_FormaOwner5678";
 
 interface Session {
   id: string;
@@ -27,6 +44,8 @@ interface Session {
   client_reference_id: string;
   payment_status: "paid" | "unpaid";
   payment_intent: string;
+  /** The connected account it was made on; "" for pasted keys. */
+  account: string;
 }
 interface Link {
   id: string;
@@ -37,6 +56,7 @@ interface Link {
   status: "created" | "paid";
   amount_paid: number;
   payments: { payment_id: string; status: string; amount: number }[];
+  account: string;
 }
 interface Refund {
   id: string;
@@ -52,6 +72,23 @@ const refunds: Refund[] = [];
 /** Makes the next refund go through but loses the answer, like a timeout. */
 let dropNextRefund = false;
 const refundsOf = (of: string) => refunds.filter((r) => r.of === of);
+/** What the fake sign-in hosts saw and handed out. */
+const oauth = {
+  /** The next authorize answers like the owner pressed cancel. */
+  deny: false,
+  codes: new Map<string, { account: string; used: boolean; redirect: string }>(),
+  connected: new Set<string>(),
+  deauthorized: [] as string[],
+  /** Razorpay access token → account; removed when expired or revoked. */
+  access: new Map<string, string>(),
+  refresh: new Map<string, string>(),
+  issued: [] as string[],
+  revoked: [] as string[],
+  refreshes: 0,
+  modes: [] as string[],
+  /** Lifetime of the next Razorpay access token. */
+  expiresIn: 7862400,
+};
 let fake: Server;
 function startFake() {
   fake = createServer((req, res) => {
@@ -68,8 +105,126 @@ function startFake() {
         dropNextRefund = false;
         req.socket.destroy();
       };
+      const authorize = /^\/(stripe-connect\/oauth|razorpay-auth)\/authorize$/.exec(
+        url.pathname,
+      );
+      if (authorize && req.method === "GET") {
+        const stripeSide = authorize[1] === "stripe-connect/oauth";
+        const q = url.searchParams;
+        const redirect = q.get("redirect_uri")!;
+        if (
+          q.get("client_id") !== (stripeSide ? STRIPE_CLIENT : RZP_CLIENT) ||
+          q.get("response_type") !== "code" ||
+          q.get("scope") !== "read_write" ||
+          !q.get("state")
+        )
+          return send(400, { error: "invalid_request" });
+        const back = new URL(redirect);
+        back.searchParams.set("state", q.get("state")!);
+        if (oauth.deny) {
+          oauth.deny = false;
+          back.searchParams.set("error", "access_denied");
+          back.searchParams.set("error_description", "The user denied your request");
+        } else {
+          const code = `${stripeSide ? "ac" : "rzpcode"}_FormaFakeCode${oauth.codes.size + 1}`;
+          oauth.codes.set(code, {
+            account: stripeSide ? STRIPE_ACCOUNT : RZP_ACCOUNT,
+            used: false,
+            redirect,
+          });
+          back.searchParams.set("code", code);
+        }
+        res.writeHead(302, { location: back.href });
+        return res.end();
+      }
+      if (url.pathname.startsWith("/stripe-connect/oauth/")) {
+        if (req.headers.authorization !== `Bearer ${STRIPE_PLATFORM}`)
+          return send(401, { error: "invalid_client" });
+        const form = new URLSearchParams(body);
+        if (url.pathname.endsWith("/token")) {
+          const grant = oauth.codes.get(form.get("code") ?? "");
+          if (form.get("grant_type") !== "authorization_code" || !grant || grant.used)
+            return send(400, { error: "invalid_grant" });
+          grant.used = true;
+          oauth.connected.add(grant.account);
+          return send(200, {
+            stripe_user_id: grant.account,
+            livemode: false,
+            scope: "read_write",
+            token_type: "bearer",
+            access_token: "sk_test_DeprecatedAccessToken",
+            refresh_token: "rt_DeprecatedRefreshToken",
+          });
+        }
+        if (url.pathname.endsWith("/deauthorize")) {
+          const account = form.get("stripe_user_id") ?? "";
+          if (form.get("client_id") !== STRIPE_CLIENT || !oauth.connected.has(account))
+            return send(400, { error: "invalid_client" });
+          oauth.connected.delete(account);
+          oauth.deauthorized.push(account);
+          return send(200, { stripe_user_id: account });
+        }
+        return send(404, {});
+      }
+      if (url.pathname.startsWith("/razorpay-auth/")) {
+        const input = JSON.parse(body || "{}");
+        if (input.client_id !== RZP_CLIENT || input.client_secret !== RZP_CLIENT_SECRET)
+          return send(401, { error: { description: "Invalid client" } });
+        const issue = (account: string) => {
+          const n = oauth.issued.length / 2 + 1;
+          const access = `rzp_at_FormaFake${n}`;
+          const refresh = `rzp_rt_FormaFake${n}`;
+          oauth.access.set(access, account);
+          oauth.refresh.set(refresh, account);
+          oauth.issued.push(access, refresh);
+          const expires_in = oauth.expiresIn;
+          oauth.expiresIn = 7862400;
+          return send(200, {
+            public_token: "rzp_test_oauth_FormaFake01",
+            token_type: "Bearer",
+            expires_in,
+            access_token: access,
+            refresh_token: refresh,
+            razorpay_account_id: account,
+          });
+        };
+        if (url.pathname === "/razorpay-auth/token") {
+          if (input.grant_type === "authorization_code") {
+            const grant = oauth.codes.get(input.code);
+            if (!grant || grant.used || input.redirect_uri !== grant.redirect)
+              return send(400, { error: { description: "Invalid code" } });
+            grant.used = true;
+            oauth.modes.push(input.mode);
+            return issue(grant.account);
+          }
+          if (input.grant_type === "refresh_token") {
+            const account = oauth.refresh.get(input.refresh_token);
+            if (!account)
+              return send(400, { error: { description: "Invalid refresh token" } });
+            oauth.refresh.delete(input.refresh_token);
+            oauth.refreshes++;
+            return issue(account);
+          }
+          return send(400, {});
+        }
+        if (url.pathname === "/razorpay-auth/revoke") {
+          oauth.access.delete(input.token);
+          oauth.refresh.delete(input.token);
+          oauth.revoked.push(`${input.token_type_hint}:${input.token}`);
+          return send(200, { message: "Token Revoked" });
+        }
+        return send(404, {});
+      }
       if (url.pathname.startsWith("/stripe/")) {
-        if (req.headers.authorization !== `Bearer ${STRIPE_KEY}`)
+        const asAccount = String(req.headers["stripe-account"] ?? "");
+        const account =
+          req.headers.authorization === `Bearer ${STRIPE_KEY}` && !asAccount
+            ? ""
+            : req.headers.authorization === `Bearer ${STRIPE_PLATFORM}` &&
+                oauth.connected.has(asAccount)
+              ? asAccount
+              : undefined;
+        if (account === undefined)
           return send(401, { error: { message: "Invalid API key" } });
         const path = url.pathname.slice("/stripe".length);
         if (path === "/v1/checkout/sessions" && req.method === "GET")
@@ -87,18 +242,20 @@ function startFake() {
             client_reference_id: form.get("client_reference_id")!,
             payment_status: "unpaid",
             payment_intent: `pi_${id}`,
+            account,
           };
           sessions.set(id, session);
           return send(200, session);
         }
         const one = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(path);
-        if (one && sessions.has(one[1])) return send(200, sessions.get(one[1]));
+        if (one && sessions.get(one[1])?.account === account)
+          return send(200, sessions.get(one[1]));
         if (path === "/v1/refunds" && req.method === "POST") {
           const form = new URLSearchParams(body);
           const key = String(req.headers["idempotency-key"] ?? "");
           const intent = form.get("payment_intent")!;
           const session = [...sessions.values()].find(
-            (s) => s.payment_intent === intent,
+            (s) => s.payment_intent === intent && s.account === account,
           );
           if (!session || session.payment_status !== "paid")
             return send(404, { error: { message: "No such payment_intent" } });
@@ -133,7 +290,14 @@ function startFake() {
       }
       if (url.pathname.startsWith("/razorpay/")) {
         const expected = `Basic ${Buffer.from(`${RZP_ID}:${RZP_SECRET}`).toString("base64")}`;
-        if (req.headers.authorization !== expected)
+        const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? "");
+        const account =
+          req.headers.authorization === expected
+            ? ""
+            : bearer
+              ? oauth.access.get(bearer[1])
+              : undefined;
+        if (account === undefined)
           return send(401, { error: { description: "Authentication failed" } });
         const path = url.pathname.slice("/razorpay".length);
         if (path === "/v1/payment_links" && req.method === "GET")
@@ -150,15 +314,19 @@ function startFake() {
             status: "created",
             amount_paid: 0,
             payments: [],
+            account,
           };
           links.set(id, link);
           return send(200, link);
         }
         const one = /^\/v1\/payment_links\/([^/]+)$/.exec(path);
-        if (one && links.has(one[1])) return send(200, links.get(one[1]));
+        if (one && links.get(one[1])?.account === account)
+          return send(200, links.get(one[1]));
         const pay = /^\/v1\/payments\/([^/]+)\/(refunds|refund)$/.exec(path);
-        const link = [...links.values()].find((l) =>
-          l.payments.some((p) => p.payment_id === pay?.[1]),
+        const link = [...links.values()].find(
+          (l) =>
+            l.account === account &&
+            l.payments.some((p) => p.payment_id === pay?.[1]),
         );
         if (pay && !link)
           return send(400, {
@@ -598,6 +766,225 @@ describe.skipIf(!enabled)(
       expect(
         await (await fetch(`${base}/inbox/${id}/requests/${request.id}`)).text(),
       ).toContain("as refunded to you");
+    });
+
+    const signInStart = (provider: string, auth = token, site = id) =>
+      call(
+        `/sites/${site}/payments/sign-in`,
+        "POST",
+        { provider, editor: "http://localhost:5178" },
+        auth,
+      );
+    const finish = (state: string, auth = token, site = id) =>
+      call(`/sites/${site}/payments/sign-in/finish`, "POST", { state }, auth);
+    /** Plays the owner's browser: to the provider, back to Forma, to the editor. */
+    const signInBrowser = async (url: string) => {
+      const atProvider = await go(url);
+      expect(atProvider.status).toBe(302);
+      const back = atProvider.headers.get("location")!;
+      const returned = await go(back);
+      expect(returned.status).toBe(303);
+      expect(returned.headers.get("referrer-policy")).toBe("no-referrer");
+      return { back, editor: returned.headers.get("location")! };
+    };
+    const expireState = (state: string) =>
+      db.send(
+        new UpdateCommand({
+          TableName: config.table,
+          Key: {
+            pk: `PAYSIGNIN#${createHash("sha256").update(state).digest("hex")}`,
+            sk: "STATE",
+          },
+          UpdateExpression: "SET #expires = :past",
+          ExpressionAttributeNames: { "#expires": "expires" },
+          ExpressionAttributeValues: { ":past": 1 },
+        }),
+      );
+    const secrets = () => [
+      STRIPE_PLATFORM,
+      RZP_CLIENT_SECRET,
+      ...oauth.issued,
+      ...oauth.codes.keys(),
+    ];
+
+    it("offers signing in only to owners, with a fixed return address", async () => {
+      const read = await call(`/sites/${id}/payments`);
+      expect(read.data.signIn).toEqual({ stripe: true, razorpay: true });
+      expect((await signInStart("stripe", stranger)).response.status).toBe(404);
+      expect((await signInStart("stripe", manager)).response.status).toBe(403);
+      expect((await signInStart("paypal")).response.status).toBe(422);
+      const { data } = await signInStart("stripe");
+      const url = new URL(data.url);
+      expect(url.pathname).toBe("/stripe-connect/oauth/authorize");
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        response_type: "code",
+        client_id: STRIPE_CLIENT,
+        scope: "read_write",
+        state: data.state,
+        redirect_uri: `${base}/payments/sign-in/stripe/return`,
+      });
+      expect(data.state).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect((await signInStart("stripe")).data.state).not.toBe(data.state);
+    });
+
+    it("connects Stripe by signing in, refusing bad, expired, reused or someone else's state", async () => {
+      // A made-up state goes nowhere near a site.
+      const bogus = await go(
+        `${base}/payments/sign-in/stripe/return?code=ac_x&state=${"a".repeat(43)}`,
+      );
+      expect(bogus.headers.get("location")).toBe("http://127.0.0.1:5178/workspace");
+      expect((await finish("not-a-state")).response.status).toBe(422);
+      // Pressing cancel at Stripe.
+      const cancelled = (await signInStart("stripe")).data;
+      oauth.deny = true;
+      const denied = await signInBrowser(cancelled.url);
+      expect(denied.editor).toBe(
+        `http://localhost:5178/editor?site=${id}&open=settings&payments=cancelled`,
+      );
+      expect((await finish(cancelled.state)).response.status).toBe(409);
+      // Too slow.
+      const slow = (await signInStart("stripe")).data;
+      await expireState(slow.state);
+      expect((await signInBrowser(slow.url)).editor).toContain("payments=expired");
+      expect((await finish(slow.state)).response.status).toBe(409);
+      // Someone else's editor address is never used.
+      const elsewhere = await call(`/sites/${id}/payments/sign-in`, "POST", {
+        provider: "stripe",
+        editor: "https://attacker.test",
+      });
+      const landed = await signInBrowser(elsewhere.data.url);
+      expect(landed.editor).toMatch(/^http:\/\/127\.0\.0\.1:5178\/editor\?/);
+      await finish(elsewhere.data.state).then(() =>
+        call(`/sites/${id}/payments/disconnect`, "POST", {}),
+      );
+
+      const { state, url } = (await signInStart("stripe")).data;
+      const { back, editor } = await signInBrowser(url);
+      expect(editor).toBe(
+        `http://localhost:5178/editor?site=${id}&open=settings&payments=finish`,
+      );
+      // The code stays on the server: nothing secret goes to the editor.
+      for (const secret of secrets()) expect(editor).not.toContain(secret);
+      expect((await go(back)).headers.get("location")).toContain("payments=expired");
+      // Another account can't finish it, here or on their own site.
+      const theirs = (await call("/sites", "POST", { name: "Theirs" }, stranger))
+        .data.site.id;
+      expect((await finish(state, stranger, theirs)).response.status).toBe(409);
+      expect((await finish(state, stranger)).response.status).toBe(404);
+      expect((await finish(state, manager)).response.status).toBe(403);
+      const done = await finish(state);
+      expect(done.response.status).toBe(200);
+      expect(done.data.connection).toEqual({
+        provider: "stripe",
+        mode: "test",
+        hint: STRIPE_ACCOUNT.slice(-4),
+        connectedAt: expect.any(String),
+        via: "oauth",
+        account: STRIPE_ACCOUNT,
+      });
+      expect((await finish(state)).response.status).toBe(409);
+      const read = JSON.stringify((await call(`/sites/${id}/payments`)).data);
+      for (const secret of [...secrets(), "sk_test_DeprecatedAccessToken"])
+        expect(read).not.toContain(secret);
+    });
+
+    it("takes and refunds payments on the signed-in Stripe account", async () => {
+      const page = await order("1");
+      const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
+      const session = sessions.get(checkout.split("/").pop()!)!;
+      expect(session.account).toBe(STRIPE_ACCOUNT);
+      session.payment_status = "paid";
+      expect(await (await fetch(page)).text()).toContain("Payment received");
+      const request = (await requests()).find((r) => page.endsWith(r.id))!;
+      const done = await refund(request.id, { revision: request.revision });
+      expect(done.data.request.payment).toMatchObject({
+        status: "refunded",
+        refund: { provider: "stripe", amount: unit },
+      });
+      expect(refundsOf(session.payment_intent)).toHaveLength(1);
+    });
+
+    it("lets go of the Stripe account on disconnect", async () => {
+      const off = await call(`/sites/${id}/payments/disconnect`, "POST", {});
+      expect(off.data).toEqual({ connection: null });
+      expect(oauth.deauthorized).toContain(STRIPE_ACCOUNT);
+      expect(oauth.connected.has(STRIPE_ACCOUNT)).toBe(false);
+    });
+
+    it("connects Razorpay by signing in and refreshes its token", async () => {
+      const { state, url } = (await signInStart("razorpay")).data;
+      const authorize = new URL(url);
+      expect(authorize.pathname).toBe("/razorpay-auth/authorize");
+      expect(authorize.searchParams.get("redirect_uri")).toBe(
+        `${base}/payments/sign-in/razorpay/return`,
+      );
+      // A Stripe return can't use a Razorpay state.
+      expect(
+        (
+          await go(
+            `${base}/payments/sign-in/stripe/return?code=ac_1&state=${state}`,
+          )
+        ).headers.get("location"),
+      ).toBe("http://127.0.0.1:5178/workspace");
+      // The first token is about to run out, so the next call refreshes it.
+      oauth.expiresIn = 60;
+      expect((await signInBrowser(url)).editor).toContain("payments=finish");
+      const done = await finish(state);
+      expect(done.data.connection).toMatchObject({
+        provider: "razorpay",
+        mode: "test",
+        via: "oauth",
+        account: RZP_ACCOUNT,
+      });
+      expect(oauth.modes).toEqual(["test"]);
+      expect(oauth.refreshes).toBe(0);
+      const page = await order("1");
+      const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
+      const link = links.get(checkout.split("/").pop()!)!;
+      expect(link.account).toBe(RZP_ACCOUNT);
+      expect(oauth.refreshes).toBe(1);
+      // Razorpay stops taking the current token: refresh and try again.
+      oauth.access.clear();
+      link.status = "paid";
+      link.amount_paid = unit;
+      link.payments = [
+        { payment_id: "pay_oauth", status: "captured", amount: unit },
+      ];
+      const request = (await requests()).find((r) => page.endsWith(r.id))!;
+      const synced = await call(`/sites/${id}/inbox/${request.id}`, "POST", {
+        sync: true,
+      });
+      expect(synced.data.request.payment.status).toBe("paid");
+      expect(oauth.refreshes).toBe(2);
+      const refunded = await refund(request.id, {
+        revision: synced.data.request.revision,
+      });
+      expect(refunded.data.request.payment).toMatchObject({
+        status: "refunded",
+        refund: { provider: "razorpay", amount: unit },
+      });
+      expect(refundsOf("pay_oauth")).toHaveLength(1);
+      const everything = JSON.stringify([
+        done.data,
+        synced.data,
+        refunded.data,
+        (await call(`/sites/${id}/payments`)).data,
+        (await call(`/sites/${id}/inbox`)).data,
+      ]);
+      for (const secret of secrets()) expect(everything).not.toContain(secret);
+    });
+
+    it("revokes Razorpay's tokens on disconnect", async () => {
+      const latest = oauth.issued.slice(-2);
+      const off = await call(`/sites/${id}/payments/disconnect`, "POST", {});
+      expect(off.data).toEqual({ connection: null });
+      expect(oauth.revoked).toEqual(
+        expect.arrayContaining([
+          `access_token:${latest[0]}`,
+          `refresh_token:${latest[1]}`,
+        ]),
+      );
+      expect(oauth.refresh.size + oauth.access.size).toBe(0);
     });
   },
 );

@@ -582,3 +582,7 @@ button.data-row:hover,
   color: var(--ui-muted);
   font-size: 12px;
 }
+.online-payments .online-payments-switch {
+  align-self: center;
+  font-size: 11px;
+}

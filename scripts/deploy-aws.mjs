@@ -119,6 +119,15 @@ aws(
   `ArtifactKey=${key}`,
   `EditorDomain=${editorDomain}`,
   `EditorCertificateArn=${certificateArn}`,
+  // Optional sign-in apps for card payments. Unset keeps the stack's value.
+  ...[
+    ["StripeConnectClientId", "STRIPE_CONNECT_CLIENT_ID"],
+    ["StripePlatformSecret", "STRIPE_PLATFORM_SECRET"],
+    ["RazorpayPartnerClientId", "RAZORPAY_PARTNER_CLIENT_ID"],
+    ["RazorpayPartnerClientSecret", "RAZORPAY_PARTNER_CLIENT_SECRET"],
+  ]
+    .filter(([, name]) => process.env[name] !== undefined)
+    .map(([parameter, name]) => `${parameter}=${process.env[name]}`),
 );
 const described = JSON.parse(
   aws("cloudformation", "describe-stacks", "--stack-name", stack),

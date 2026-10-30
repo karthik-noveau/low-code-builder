@@ -163,7 +163,12 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
   const store = useStudio();
   const { project } = store;
   const page = project.pages.find((p) => p.id === store.activePage)!;
-  const [panel, setPanel] = useState<Panel>("sections");
+  // Signing in with Stripe or Razorpay comes back to …&open=settings.
+  const [panel, setPanel] = useState<Panel>(() =>
+    new URLSearchParams(location.search).get("open") === "settings"
+      ? "settings"
+      : "sections",
+  );
   // Notifications link to /editor?site=…&open=inbox; the app page to …&open=app.
   const [dialog, setDialog] = useState<Dialog>(() => {
     const open = new URLSearchParams(location.search).get("open");

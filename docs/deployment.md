@@ -97,6 +97,19 @@ Bootstrap writes `.build/github-environment.json`. It can set the following iden
 
 The deployment script requires AWS CLI v2, verifies the target account, packages the Lambda artifact, validates/deploys CloudFormation, rebuilds metadata using the actual editor origin, writes non-secret runtime configuration, and uploads immutable assets before entrypoint HTML. It refreshes the editor with one `/*` invalidation path; website publishing changes only its route pointer. HTML is `no-cache`, runtime configuration `no-store`; robots/sitemap retain their proper content types. CDN/public-page health failures fail the deployment job instead of reporting success.
 
+### Optional: connect Stripe or Razorpay by signing in
+
+Owners can always paste their own Stripe or Razorpay keys. To also offer **Connect with Stripe** / **Connect with Razorpay**, create Forma's own platform apps and give the deployment their credentials. Leave them empty and the buttons stay hidden.
+
+| GitHub environment value                    | Kind     | Stack parameter → Lambda variable                                    |
+| ------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| `STRIPE_CONNECT_CLIENT_ID` (`ca_…`)         | variable | `StripeConnectClientId` → `STRIPE_CONNECT_CLIENT_ID`                 |
+| `STRIPE_PLATFORM_SECRET` (`sk_test_…`/`sk_live_…`) | secret   | `StripePlatformSecret` (NoEcho) → `STRIPE_PLATFORM_SECRET`           |
+| `RAZORPAY_PARTNER_CLIENT_ID`                | variable | `RazorpayPartnerClientId` → `RAZORPAY_PARTNER_CLIENT_ID`             |
+| `RAZORPAY_PARTNER_CLIENT_SECRET`            | secret   | `RazorpayPartnerClientSecret` (NoEcho) → `RAZORPAY_PARTNER_CLIENT_SECRET` |
+
+Only the **Deploy the tested revision** step sees them; `scripts/deploy-aws.mjs` passes each one that is set as a parameter override (an unset one keeps the stack's current value; an empty one clears it). Like `PAYMENT_ENCRYPTION_KEY`, they end up in the API function's environment, so limit who can read the Lambda configuration. In each provider's app settings, allow exactly one redirect URL: `{ApiUrl}/payments/sign-in/stripe/return` or `{ApiUrl}/payments/sign-in/razorpay/return` (`ApiUrl` is a stack output; Stripe needs HTTPS for live mode). Use a test-mode Stripe key and a Razorpay development app in development, and live ones in production. Never commit these values. See [the backend guide](backend.md#connecting-by-signing-in) for the flow.
+
 The initial Cognito pool is invitation-only. Create invited users in the output pool through AWS's console or CLI. If you want public registration, change `AdminCreateUserConfig`, configure production email delivery/rate controls, and test in development first. The deployment files are implemented and locally validated; a real AWS run and its account-specific verification remain required before calling an environment live.
 
 ## Rollback and operations

@@ -70,6 +70,12 @@ jobs:
           allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
       - name: Deploy the tested revision
         run: node scripts/deploy-aws.mjs
+        # Only this step sees them. Empty: "Connect with…" stays hidden and owners paste keys.
+        env:
+          STRIPE_CONNECT_CLIENT_ID: ${{ vars.STRIPE_CONNECT_CLIENT_ID }}
+          STRIPE_PLATFORM_SECRET: ${{ secrets.STRIPE_PLATFORM_SECRET }}
+          RAZORPAY_PARTNER_CLIENT_ID: ${{ vars.RAZORPAY_PARTNER_CLIENT_ID }}
+          RAZORPAY_PARTNER_CLIENT_SECRET: ${{ secrets.RAZORPAY_PARTNER_CLIENT_SECRET }}
 
       - uses: actions/upload-artifact@v4
         if: always()

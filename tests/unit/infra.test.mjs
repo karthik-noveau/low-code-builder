@@ -122,11 +122,14 @@ describe("cost and deployment invariants", () => {
       "AppPayRoute",
       "AppCheckoutRoute",
       "PushKeyRoute",
+      "PaymentSignInRoute",
     ])
       expect(resources[name].Properties.AuthorizationType).toBe("NONE");
     const routes = Object.entries(resources)
       .filter(([name]) => /^Route\d+$/.test(name))
       .map(([, r]) => r.Properties.RouteKey);
     expect(routes).toContain("POST /sites/{id}/app/{proxy+}");
+    expect(routes).toContain("POST /sites/{id}/inbox/{requestId}/refund");
+    expect(routes).toContain("POST /sites/{id}/inbox/{requestId}/delete");
   });
 });

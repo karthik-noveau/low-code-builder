@@ -625,6 +625,11 @@ export function template() {
     PAYMENT_ENCRYPTION_KEY: sub(
       "{{resolve:secretsmanager:${PaymentKey}:SecretString}}",
     ),
+    // Forma's own Stripe Connect / Razorpay partner apps. Empty: owners paste keys.
+    STRIPE_CONNECT_CLIENT_ID: ref("StripeConnectClientId"),
+    STRIPE_PLATFORM_SECRET: ref("StripePlatformSecret"),
+    RAZORPAY_PARTNER_CLIENT_ID: ref("RazorpayPartnerClientId"),
+    RAZORPAY_PARTNER_CLIENT_SECRET: ref("RazorpayPartnerClientSecret"),
     ASSET_DIR: "/var/task/images",
   };
   const fn = (worker) =>
@@ -709,6 +714,10 @@ export function template() {
     "PUT /sites/{id}/app/{proxy+}",
     "GET /account/notifications",
     "POST /account/notifications",
+    "POST /sites/{id}/payments/sign-in",
+    "POST /sites/{id}/payments/sign-in/finish",
+    "POST /sites/{id}/inbox/{requestId}/refund",
+    "POST /sites/{id}/inbox/{requestId}/delete",
   ].entries()) {
     R[`Route${index}`] = resource("AWS::ApiGatewayV2::Route", {
       ApiId: ref("Api"),
@@ -756,6 +765,14 @@ export function template() {
     },
     { DeletionPolicy: "Retain", UpdateReplacePolicy: "Retain" },
   );
+  // Stripe or Razorpay sends the owner back here after signing in; the
+  // editor then finishes with the owner's token.
+  R.PaymentSignInRoute = resource("AWS::ApiGatewayV2::Route", {
+    ApiId: ref("Api"),
+    RouteKey: "GET /payments/sign-in/{provider}/return",
+    Target: sub("integrations/${Integration}"),
+    AuthorizationType: "NONE",
+  });
   R.InboxCheckoutRoute = resource("AWS::ApiGatewayV2::Route", {
     ApiId: ref("Api"),
     RouteKey: "GET /inbox/{id}/requests/{requestId}/checkout",
@@ -778,6 +795,10 @@ export function template() {
     RouteSettings: {
       "POST /inbox/{id}": { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 },
       "GET /inbox/{id}/requests/{requestId}": {
+        ThrottlingBurstLimit: 5,
+        ThrottlingRateLimit: 2,
+      },
+      "GET /payments/sign-in/{provider}/return": {
         ThrottlingBurstLimit: 5,
         ThrottlingRateLimit: 2,
       },
@@ -849,6 +870,29 @@ export function template() {
         Default: "",
         AllowedPattern:
           "^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[a-f0-9-]+$",
+      },
+      // Optional "Connect with Stripe/Razorpay"; supplied by the deploy script from secrets.
+      StripeConnectClientId: {
+        Type: "String",
+        Default: "",
+        AllowedPattern: "^$|^ca_[A-Za-z0-9]+$",
+      },
+      StripePlatformSecret: {
+        Type: "String",
+        Default: "",
+        NoEcho: true,
+        AllowedPattern: "^$|^sk_(test|live)_[A-Za-z0-9]+$",
+      },
+      RazorpayPartnerClientId: {
+        Type: "String",
+        Default: "",
+        AllowedPattern: "^$|^[A-Za-z0-9]+$",
+      },
+      RazorpayPartnerClientSecret: {
+        Type: "String",
+        Default: "",
+        NoEcho: true,
+        AllowedPattern: "^$|^[A-Za-z0-9]+$",
       },
     },
     Conditions: {
