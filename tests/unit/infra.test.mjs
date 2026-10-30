@@ -5,6 +5,7 @@ import {
   routerSource,
   editorRouterSource,
 } from "../../infra/template.mjs";
+import { apiRoutes, matchRoute } from "../../infra/api-routes.mjs";
 
 describe("cost and deployment invariants", () => {
   const resources = template().Resources;
@@ -131,5 +132,197 @@ describe("cost and deployment invariants", () => {
     expect(routes).toContain("POST /sites/{id}/app/{proxy+}");
     expect(routes).toContain("POST /sites/{id}/inbox/{requestId}/refund");
     expect(routes).toContain("POST /sites/{id}/inbox/{requestId}/delete");
+  });
+});
+
+describe("API routes on AWS", () => {
+  const resources = template().Resources;
+  const routes = Object.entries(resources).filter(
+    ([, r]) => r.Type === "AWS::ApiGatewayV2::Route",
+  );
+  const byKey = new Map(routes.map(([id, r]) => [r.Properties.RouteKey, id]));
+  const settings = resources.Stage.Properties.RouteSettings;
+  it("makes exactly the listed hosted routes, each once, with its authorization", () => {
+    const hosted = apiRoutes.filter((r) => !r.localOnly);
+    expect(routes).toHaveLength(hosted.length);
+    expect(byKey.size).toBe(hosted.length);
+    for (const entry of hosted) {
+      const resource = resources[entry.id];
+      expect(resource?.Properties.RouteKey, entry.route).toBe(entry.route);
+      if (entry.auth === "jwt")
+        expect(resource.Properties, entry.route).toMatchObject({
+          AuthorizationType: "JWT",
+          AuthorizerId: { Ref: "Authorizer" },
+          AuthorizationScopes: ["openid"],
+        });
+      else {
+        expect(resource.Properties.AuthorizationType, entry.route).toBe("NONE");
+        expect(resource.Properties.AuthorizerId).toBeUndefined();
+      }
+    }
+    for (const entry of apiRoutes.filter((r) => r.localOnly))
+      expect(byKey.has(entry.route), entry.route).toBe(false);
+  });
+  it("keeps the logical IDs of routes already deployed", () => {
+    // A new ID for a deployed route key makes CloudFormation create a
+    // duplicate route first, which fails the deploy.
+    const deployed = [
+      "GET /sites",
+      "POST /sites",
+      "GET /sites/{id}",
+      "GET /sites/{id}/draft",
+      "PUT /sites/{id}/draft",
+      "GET /sites/{id}/releases",
+      "GET /sites/{id}/domains",
+      "POST /sites/{id}/domains",
+      "POST /sites/{id}/domains/{domainId}/check",
+      "POST /sites/{id}/domains/{domainId}/retry",
+      "POST /sites/{id}/domains/{domainId}/disconnect",
+      "POST /sites/{id}/domains/{domainId}/primary",
+      "POST /sites/{id}/domains/{domainId}/remove",
+      "POST /sites/{id}/publish",
+      "POST /sites/{id}/rollback",
+      "POST /sites/{id}/unpublish",
+      "GET /sites/{id}/inbox",
+      "POST /sites/{id}/inbox/{requestId}",
+      "GET /sites/{id}/payments",
+      "POST /sites/{id}/payments",
+      "POST /sites/{id}/payments/disconnect",
+      "GET /sites/{id}/app",
+      "GET /sites/{id}/app/{proxy+}",
+      "POST /sites/{id}/app/{proxy+}",
+      "PUT /sites/{id}/app/{proxy+}",
+      "GET /account/notifications",
+      "POST /account/notifications",
+      "POST /sites/{id}/payments/sign-in",
+      "POST /sites/{id}/payments/sign-in/finish",
+      "POST /sites/{id}/inbox/{requestId}/refund",
+      "POST /sites/{id}/inbox/{requestId}/delete",
+    ].map((route, index) => [`Route${index}`, route]);
+    for (const [id, route] of [
+      ...deployed,
+      ["Health", "GET /health"],
+      ["InboxRoute", "POST /inbox/{id}"],
+      ["AppFindRoute", "GET /apps/{id}/forms/{formId}/find"],
+      ["AppSubmitRoute", "POST /apps/{id}/forms/{formId}"],
+      ["AppAvailabilityRoute", "GET /apps/{id}/forms/{formId}/availability"],
+      ["AppPayRoute", "GET /apps/{id}/records/{recordId}/pay"],
+      ["AppCheckoutRoute", "GET /apps/{id}/records/{recordId}/checkout"],
+      ["PushKeyRoute", "GET /push/key"],
+      ["PaymentSignInRoute", "GET /payments/sign-in/{provider}/return"],
+      ["InboxCheckoutRoute", "GET /inbox/{id}/requests/{requestId}/checkout"],
+      ["InboxPaymentRoute", "GET /inbox/{id}/requests/{requestId}"],
+    ])
+      expect(resources[id]?.Properties.RouteKey, id).toBe(route);
+  });
+  it("throttles every public route on its own and only names real routes", () => {
+    for (const [, r] of routes) {
+      const key = r.Properties.RouteKey;
+      if (r.Properties.AuthorizationType === "NONE" && key !== "GET /health") {
+        expect(settings[key], key).toBeDefined();
+        expect(settings[key].ThrottlingBurstLimit).toBeLessThanOrEqual(20);
+        expect(settings[key].ThrottlingRateLimit).toBeLessThanOrEqual(10);
+      }
+    }
+    for (const key of Object.keys(settings)) {
+      expect(byKey.has(key), key).toBe(true);
+      expect(resources.Stage.DependsOn).toContain(byKey.get(key));
+    }
+    expect(resources.Stage.Properties.DefaultRouteSettings).toEqual({
+      ThrottlingBurstLimit: 10,
+      ThrottlingRateLimit: 5,
+    });
+  });
+  it("routes the whole of Forma Store: owner routes signed in, the storefront public", () => {
+    const store = "/store/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const owner = "/sites/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/commerce";
+    const order = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    for (const [request, auth] of [
+      [`GET ${store}`, "NONE"],
+      [`POST ${store}/events`, "NONE"],
+      [`POST ${store}/cart`, "NONE"],
+      [`POST ${store}/cart/read`, "NONE"],
+      [`POST ${store}/checkout`, "NONE"],
+      [`POST ${store}/forms`, "NONE"],
+      [`POST ${store}/unsubscribe`, "NONE"],
+      [`POST ${store}/orders/${order}/receipt`, "NONE"],
+      [`POST ${store}/orders/${order}/return`, "NONE"],
+      [`GET ${store}/account`, "JWT"],
+      [`POST ${store}/account`, "JWT"],
+      [`GET ${store}/account/profile`, "JWT"],
+      [`POST ${store}/account/orders/${order}/return`, "JWT"],
+      [`GET ${owner}`, "JWT"],
+      [`GET ${owner}/catalog`, "JWT"],
+      [`PUT ${owner}/settings`, "JWT"],
+      [`POST ${owner}/products`, "JWT"],
+      [`POST ${owner}/discounts`, "JWT"],
+      [`POST ${owner}/content`, "JWT"],
+      [`POST ${owner}/orders/${order}`, "JWT"],
+      [`POST ${owner}/members`, "JWT"],
+      [`POST ${owner}/members/${order}/remove`, "JWT"],
+      [`GET ${owner}/export`, "JWT"],
+      [`POST ${owner}/integrations`, "JWT"],
+      [`GET ${owner}/integrations/${order}/events`, "JWT"],
+      [`POST ${owner}/campaign-preview`, "JWT"],
+    ]) {
+      const [method, path] = request.split(" ");
+      const entry = matchRoute(method, path);
+      expect(entry && !entry.localOnly, request).toBe(true);
+      expect(resources[entry.id].Properties.AuthorizationType, request).toBe(
+        auth,
+      );
+    }
+    // The sandbox payment never reaches a hosted store.
+    expect(
+      matchRoute("POST", `${store}/orders/${order}/pay-local`).localOnly,
+    ).toBeTruthy();
+  });
+  it("matches paths the way API Gateway does", () => {
+    const site = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    expect(matchRoute("GET", `/sites/${site}`).route).toBe("GET /sites/{id}");
+    expect(matchRoute("GET", `/sites/${site}/app/records/a/b`).route).toBe(
+      "GET /sites/{id}/app/{proxy+}",
+    );
+    expect(matchRoute("GET", `/sites/${site}/app`).route).toBe(
+      "GET /sites/{id}/app",
+    );
+    expect(matchRoute("GET", `/store/${site}/cart`)).toBeUndefined();
+    expect(matchRoute("POST", `/store/${site}/cart/`)).toBeUndefined();
+    expect(matchRoute("POST", `/store/${site}/nope`)).toBeUndefined();
+    expect(matchRoute("GET", `/sites/${site}/commerce/catalog`).route).toBe(
+      "GET /sites/{id}/commerce/catalog",
+    );
+  });
+  it("lets the API run store transactions without widening its access", () => {
+    const statements =
+      resources.ApiRole.Properties.Policies[0].PolicyDocument.Statement;
+    const table = statements.find(
+      (s) =>
+        JSON.stringify(s.Resource) ===
+        JSON.stringify({ "Fn::GetAtt": ["Table", "Arn"] }),
+    );
+    expect(table.Action).toEqual([
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:ConditionCheckItem",
+    ]);
+    for (const role of ["ApiRole", "WorkerRole"])
+      for (const statement of resources[role].Properties.Policies[0]
+        .PolicyDocument.Statement) {
+        const actions = [statement.Action].flat();
+        expect(actions.some((a) => a.endsWith(":*") || a === "*")).toBe(false);
+        expect(actions.some((a) => /Scan|BatchWrite/.test(a))).toBe(false);
+        expect(statement.Resource).not.toBe("*");
+      }
+    const env = resources.ApiFunction.Properties.Environment.Variables;
+    expect(env.EDITOR_ORIGIN).toBeDefined();
+    expect(env.FORMA_MODE).toBe("aws");
+    expect(resources.Table.Properties.TimeToLiveSpecification).toEqual({
+      AttributeName: "expires",
+      Enabled: true,
+    });
   });
 });

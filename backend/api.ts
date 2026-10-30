@@ -8,7 +8,7 @@ import {
   writeLocalDns,
   removeDomain,
 } from "./domains";
-import { config, HttpError, insist, idPattern } from "./config";
+import { config, HttpError, insist, idPattern, local } from "./config";
 import {
   createSite,
   getSite,
@@ -40,6 +40,7 @@ import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
 import { appOwnerApi, appsPublic } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
 import { getItem, putItem } from "./database";
+import { matchRoute } from "../infra/api-routes.mjs";
 
 export interface ApiRequest {
   method: string;
@@ -74,6 +75,25 @@ export const isPublicAppPath = (path: string) =>
   /^\/apps\/[^/]+\/records\/[^/]+\/(?:pay|checkout)$/.test(path) ||
   /^\/apps\/[^/]+\/(?:views\/[^/]+|metrics)$/.test(path);
 export async function api(request: ApiRequest): Promise<ApiResponse> {
+  const response = await route(request);
+  // AWS only routes what infra/api-routes.mjs lists, so locally a route that
+  // works but isn't listed fails loudly instead of 404ing once deployed.
+  if (
+    local &&
+    response.status < 400 &&
+    !matchRoute(request.method, request.path)
+  ) {
+    console.error("undeclared_route", request.method, request.path);
+    return jsonResponse(
+      {
+        error: `${request.method} ${request.path} is missing from infra/api-routes.mjs.`,
+      },
+      500,
+    );
+  }
+  return response;
+}
+async function route(request: ApiRequest): Promise<ApiResponse> {
   try {
     const { method, path, body, headers } = request;
     let owner = request.owner;
@@ -120,16 +140,16 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
           : // The inbox and app records hold visitors' contact details, so viewers can't open them.
             /^\/sites\/[^/]+\/(?:inbox|app)(\/|$)/.test(path)
             ? "edit"
-          : method === "GET"
-            ? "read"
-            : path.endsWith("/draft")
-              ? "edit"
-              : path.includes("/domains") ||
-                  path.endsWith("/delete") ||
-                  // Where a site's money goes is the owner's decision.
-                  /^\/sites\/[^/]+\/payments(\/|$)/.test(path)
-                ? "owner"
-                : "manage",
+            : method === "GET"
+              ? "read"
+              : path.endsWith("/draft")
+                ? "edit"
+                : path.includes("/domains") ||
+                    path.endsWith("/delete") ||
+                    // Where a site's money goes is the owner's decision.
+                    /^\/sites\/[^/]+\/payments(\/|$)/.test(path)
+                  ? "owner"
+                  : "manage",
       );
       owner = access.owner;
     }
@@ -182,9 +202,7 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     if (appMatch && access)
       return await appOwnerApi(request, access.site, appMatch[1] ?? "", data);
     const inboxMatch =
-      /^\/sites\/([^/]+)\/inbox(?:\/([^/]+)(\/delete|\/refund)?)?$/.exec(
-        path,
-      );
+      /^\/sites\/([^/]+)\/inbox(?:\/([^/]+)(\/delete|\/refund)?)?$/.exec(path);
     if (inboxMatch) {
       const [, siteId, requestId, operation] = inboxMatch;
       const remove = operation === "/delete";
@@ -201,7 +219,8 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
             email: request.email,
           }),
         });
-      if (operation === "/refund") throw new HttpError(405, "Method not allowed.");
+      if (operation === "/refund")
+        throw new HttpError(405, "Method not allowed.");
       // POST …/delete does the same for browsers, whose CORS rules allow only GET, POST and PUT.
       if (requestId && (method === "DELETE" || (remove && method === "POST")))
         return jsonResponse(await deleteRequest(siteId, requestId));

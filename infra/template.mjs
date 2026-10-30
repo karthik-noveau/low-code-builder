@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { apiRoutes } from "./api-routes.mjs";
 
 const ref = (Ref) => ({ Ref });
 const get = (id, attr) => ({ "Fn::GetAtt": [id, attr] });
@@ -390,6 +391,9 @@ export function template() {
     "dynamodb:PutItem",
     "dynamodb:UpdateItem",
     "dynamodb:DeleteItem",
+    // TransactWriteItems checks each item it touches: store, inbox and app
+    // writes guard on the site's lifecycle row with a ConditionCheck.
+    "dynamodb:ConditionCheckItem",
   ];
   R.DomainExecutionRole = resource("AWS::IAM::Role", {
     RoleName: sub("${AWS::StackName}-domains"),
@@ -686,75 +690,21 @@ export function template() {
       Issuer: sub("https://cognito-idp.${AWS::Region}.amazonaws.com/${Users}"),
     },
   });
-  for (const [index, route] of [
-    "GET /sites",
-    "POST /sites",
-    "GET /sites/{id}",
-    "GET /sites/{id}/draft",
-    "PUT /sites/{id}/draft",
-    "GET /sites/{id}/releases",
-    "GET /sites/{id}/domains",
-    "POST /sites/{id}/domains",
-    "POST /sites/{id}/domains/{domainId}/check",
-    "POST /sites/{id}/domains/{domainId}/retry",
-    "POST /sites/{id}/domains/{domainId}/disconnect",
-    "POST /sites/{id}/domains/{domainId}/primary",
-    "POST /sites/{id}/domains/{domainId}/remove",
-    "POST /sites/{id}/publish",
-    "POST /sites/{id}/rollback",
-    "POST /sites/{id}/unpublish",
-    "GET /sites/{id}/inbox",
-    "POST /sites/{id}/inbox/{requestId}",
-    "GET /sites/{id}/payments",
-    "POST /sites/{id}/payments",
-    "POST /sites/{id}/payments/disconnect",
-    "GET /sites/{id}/app",
-    "GET /sites/{id}/app/{proxy+}",
-    "POST /sites/{id}/app/{proxy+}",
-    "PUT /sites/{id}/app/{proxy+}",
-    "GET /account/notifications",
-    "POST /account/notifications",
-    "POST /sites/{id}/payments/sign-in",
-    "POST /sites/{id}/payments/sign-in/finish",
-    "POST /sites/{id}/inbox/{requestId}/refund",
-    "POST /sites/{id}/inbox/{requestId}/delete",
-  ].entries()) {
-    R[`Route${index}`] = resource("AWS::ApiGatewayV2::Route", {
+  // Routes and their throttles come from infra/api-routes.mjs, the list the
+  // local server also checks every answered route against.
+  const hosted = apiRoutes.filter((entry) => !entry.localOnly);
+  for (const { id, route, auth } of hosted)
+    R[id] = resource("AWS::ApiGatewayV2::Route", {
       ApiId: ref("Api"),
       RouteKey: route,
       Target: sub("integrations/${Integration}"),
-      AuthorizationType: "JWT",
-      AuthorizerId: ref("Authorizer"),
-      AuthorizationScopes: ["openid"],
-    });
-  }
-  R.Health = resource("AWS::ApiGatewayV2::Route", {
-    ApiId: ref("Api"),
-    RouteKey: "GET /health",
-    Target: sub("integrations/${Integration}"),
-    AuthorizationType: "NONE",
-  });
-  // Visitor action forms on published sites post here without a token.
-  R.InboxRoute = resource("AWS::ApiGatewayV2::Route", {
-    ApiId: ref("Api"),
-    RouteKey: "POST /inbox/{id}",
-    Target: sub("integrations/${Integration}"),
-    AuthorizationType: "NONE",
-  });
-  // Business app forms and lookups on published sites, and the push key.
-  for (const [name, route] of [
-    ["AppFindRoute", "GET /apps/{id}/forms/{formId}/find"],
-    ["AppSubmitRoute", "POST /apps/{id}/forms/{formId}"],
-    ["AppAvailabilityRoute", "GET /apps/{id}/forms/{formId}/availability"],
-    ["AppPayRoute", "GET /apps/{id}/records/{recordId}/pay"],
-    ["AppCheckoutRoute", "GET /apps/{id}/records/{recordId}/checkout"],
-    ["PushKeyRoute", "GET /push/key"],
-  ])
-    R[name] = resource("AWS::ApiGatewayV2::Route", {
-      ApiId: ref("Api"),
-      RouteKey: route,
-      Target: sub("integrations/${Integration}"),
-      AuthorizationType: "NONE",
+      ...(auth === "jwt"
+        ? {
+            AuthorizationType: "JWT",
+            AuthorizerId: ref("Authorizer"),
+            AuthorizationScopes: ["openid"],
+          }
+        : { AuthorizationType: "NONE" }),
     });
   // Retained: losing it would make every stored provider key unreadable.
   R.PaymentKey = resource(
@@ -765,70 +715,36 @@ export function template() {
     },
     { DeletionPolicy: "Retain", UpdateReplacePolicy: "Retain" },
   );
-  // Stripe or Razorpay sends the owner back here after signing in; the
-  // editor then finishes with the owner's token.
-  R.PaymentSignInRoute = resource("AWS::ApiGatewayV2::Route", {
-    ApiId: ref("Api"),
-    RouteKey: "GET /payments/sign-in/{provider}/return",
-    Target: sub("integrations/${Integration}"),
-    AuthorizationType: "NONE",
-  });
-  R.InboxCheckoutRoute = resource("AWS::ApiGatewayV2::Route", {
-    ApiId: ref("Api"),
-    RouteKey: "GET /inbox/{id}/requests/{requestId}/checkout",
-    Target: sub("integrations/${Integration}"),
-    AuthorizationType: "NONE",
-  });
-  // After an order, booking or RSVP, visitors are sent here to see how to pay.
-  R.InboxPaymentRoute = resource("AWS::ApiGatewayV2::Route", {
-    ApiId: ref("Api"),
-    RouteKey: "GET /inbox/{id}/requests/{requestId}",
-    Target: sub("integrations/${Integration}"),
-    AuthorizationType: "NONE",
-  });
-  R.Stage = resource("AWS::ApiGatewayV2::Stage", {
-    ApiId: ref("Api"),
-    StageName: "$default",
-    AutoDeploy: true,
-    DefaultRouteSettings: { ThrottlingBurstLimit: 10, ThrottlingRateLimit: 5 },
-    // The public form route gets its own budget so visitors can't starve the editor API.
-    RouteSettings: {
-      "POST /inbox/{id}": { ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2 },
-      "GET /inbox/{id}/requests/{requestId}": {
-        ThrottlingBurstLimit: 5,
-        ThrottlingRateLimit: 2,
-      },
-      "GET /payments/sign-in/{provider}/return": {
-        ThrottlingBurstLimit: 5,
-        ThrottlingRateLimit: 2,
-      },
-      "GET /inbox/{id}/requests/{requestId}/checkout": {
-        ThrottlingBurstLimit: 2,
-        ThrottlingRateLimit: 1,
-      },
-      // Per-IP lookup limits live in the API; these cap the whole route.
-      "GET /apps/{id}/forms/{formId}/find": {
+  R.Stage = resource(
+    "AWS::ApiGatewayV2::Stage",
+    {
+      ApiId: ref("Api"),
+      StageName: "$default",
+      AutoDeploy: true,
+      DefaultRouteSettings: {
         ThrottlingBurstLimit: 10,
         ThrottlingRateLimit: 5,
       },
-      "POST /apps/{id}/forms/{formId}": {
-        ThrottlingBurstLimit: 5,
-        ThrottlingRateLimit: 2,
-      },
-      "GET /apps/{id}/forms/{formId}/availability": {
-        ThrottlingBurstLimit: 10,
-        ThrottlingRateLimit: 5,
-      },
-      "GET /apps/{id}/records/{recordId}/pay": {
-        ThrottlingBurstLimit: 5,
-        ThrottlingRateLimit: 2,
-      },
-      "GET /apps/{id}/records/{recordId}/checkout": {
-        ThrottlingBurstLimit: 2,
-        ThrottlingRateLimit: 1,
-      },
+      // Public routes get their own budgets so visitors (form posts, shoppers)
+      // can't starve the editor API.
+      RouteSettings: Object.fromEntries(
+        hosted
+          .filter((entry) => entry.throttle)
+          .map(({ route, throttle }) => [
+            route,
+            {
+              ThrottlingBurstLimit: throttle.burst,
+              ThrottlingRateLimit: throttle.rate,
+            },
+          ]),
+      ),
     },
-  });
+    {
+      // Route settings name route keys, which must exist before the stage
+      // refers to them.
+      DependsOn: hosted.filter((entry) => entry.throttle).map(({ id }) => id),
+    },
+  );
   R.Invoke = resource("AWS::Lambda::Permission", {
     Action: "lambda:InvokeFunction",
     FunctionName: ref("ApiFunction"),

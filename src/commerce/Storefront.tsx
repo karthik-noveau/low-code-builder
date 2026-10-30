@@ -33,6 +33,10 @@ interface StoreData {
   products: Product[];
   content: ContentEntry[];
   sandbox: boolean;
+  /** Whether this host takes orders; hosted stores don't have payments yet. */
+  checkout?: boolean;
+  /** Whether shoppers can sign in to a customer account here. */
+  accounts?: boolean;
 }
 type Page = "shop" | "cart" | "checkout" | "receipt" | "journal" | "contact";
 const messageOf = (e: unknown) =>
@@ -103,7 +107,8 @@ export function Storefront({ siteId }: { siteId: string }) {
   };
   const storageKey = `forma-store-cart-${siteId}`;
   useEffect(() => {
-    if (page !== "checkout" || !session.account) return;
+    if (page !== "checkout" || !session.account || data?.accounts === false)
+      return;
     let active = true;
     request<{ addresses: Address[]; email: string }>(
       `/store/${siteId}/account/profile`,
@@ -123,7 +128,7 @@ export function Storefront({ siteId }: { siteId: string }) {
     return () => {
       active = false;
     };
-  }, [page, siteId, session.account]);
+  }, [page, siteId, session.account, data?.accounts]);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -578,13 +583,26 @@ export function Storefront({ siteId }: { siteId: string }) {
                   </button>
                 </form>
                 <Totals quote={cart.quote} />
-                <button
-                  className="commerce-button"
-                  disabled={busy}
-                  onClick={() => navigate("checkout")}
-                >
-                  Continue to checkout
-                </button>
+                {data?.checkout === false ? (
+                  <div className="commerce-notice" role="status">
+                    This store doesn’t take online orders yet.{" "}
+                    <button
+                      className="commerce-link"
+                      onClick={() => navigate("contact")}
+                    >
+                      Contact the store
+                    </button>{" "}
+                    to order.
+                  </div>
+                ) : (
+                  <button
+                    className="commerce-button"
+                    disabled={busy}
+                    onClick={() => navigate("checkout")}
+                  >
+                    Continue to checkout
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1065,7 +1083,9 @@ export function Storefront({ siteId }: { siteId: string }) {
             >
               View your last order
             </button>
-            <a href={`/customer?site=${siteId}`}>Your account</a>
+            {data?.accounts !== false && (
+              <a href={`/customer?site=${siteId}`}>Your account</a>
+            )}
             <span>Built with Forma</span>
           </div>
         </footer>

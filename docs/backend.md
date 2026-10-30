@@ -30,7 +30,7 @@ For Docker instead of a Java process: `docker compose up -d`, then `npm run dev:
 
 ## API
 
-All `/sites` routes require `Authorization: Bearer <token>`. Identity comes from the verified session/JWT, never from a request owner field.
+All `/sites` routes require `Authorization: Bearer <token>`. Identity comes from the verified session/JWT, never from a request owner field. Every route is listed in `infra/api-routes.mjs`, which the AWS template is built from; locally, a route that answers successfully but isn't listed returns 500 (see [deployment](deployment.md#api-routes)).
 
 | Method     | Route                                       | Result                                                                  |
 | ---------- | ------------------------------------------- | ----------------------------------------------------------------------- |

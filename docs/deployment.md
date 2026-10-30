@@ -2,7 +2,7 @@
 
 The application is implemented and exercised locally. No AWS account is required, and no cloud resources are created by local setup, development, tests, builds, or CI. The AWS template and deployment workflow are prepared separately; they still need an account-specific IAM/bootstrap review and a real staging deployment before being treated as production-verified.
 
-The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The existing AWS templates do not yet constitute a production deployment of the new commerce surface.
+The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Forma Store ([below](#forma-store-on-aws)), but checkout, customer accounts and team invitations stay closed on AWS, and none of it has been verified on a real deployment.
 
 ## Development to a published preview
 
@@ -119,6 +119,20 @@ The initial Cognito pool is invitation-only. Create invited users in the output 
 - **Failed publish:** Existing complete releases stay available. After repeated/transient failures inspect the output DLQ and publisher log. Stale locks expire after ten minutes. A subsequent publish uses a new job ID; stale deliveries cannot promote over it.
 - **Data durability:** Table, user pool, and data buckets use `Retain` on stack deletion/replacement. Deleting a stack therefore does not delete your sites, accounts, or retained-storage charges. Backup/PITR, longer logs, public signup protections and monitoring can be added deliberately for production; they are not silently enabled at extra cost.
 - **Orphan storage:** Old-draft/release cleanup is best effort; inspect failed jobs and cleanup warnings. Do not apply a blanket object-expiration rule to all published files—it could delete an active website. Old editor build assets and abandoned Lambda artifacts need periodic reviewed cleanup.
+
+### API routes
+
+`infra/api-routes.mjs` lists every route the API answers: its route key, `auth` (`jwt` for the Cognito authorizer, `none` for public routes), a `throttle` for each public route, and the CloudFormation logical ID. The template makes the HTTP API's routes and per-route throttles from it; `localOnly` entries (local accounts, the DNS simulator, website deletion, the store's sandbox payment) stay off AWS, each with its reason. Locally, `api()` answers 500 for any route it serves successfully that the list doesn't match, so a new backend route can't pass the integration tests and then 404 on AWS. `tests/unit/infra.test.mjs` checks the template against the list (authorization, throttles, unchanged logical IDs, IAM); `tests/unit/api-routes.test.ts` checks that the backend handles every listed route.
+
+Never rename a deployed route's `id`: CloudFormation would create the new route before deleting the old one, and two routes can't share a key. The stage depends on every throttled route, because its route settings must name existing routes.
+
+### Forma Store on AWS
+
+- **Routes:** the store workspace (`/sites/{id}/commerce…`, JWT; roles are checked in the API), the storefront (`/store/{id}`, cart, cart read, events, forms, unsubscribe, checkout, receipts, returns: public, throttled), and the customer account (`/store/{id}/account…`, JWT, answering 503 until shoppers have their own identity provider).
+- **IAM:** the API and publisher roles also have `dynamodb:ConditionCheckItem` on the table. Store, inbox and app-record writes are DynamoDB transactions that guard on the site's lifecycle row with a `ConditionCheck`; without it those transactions are denied (this also affected the Inbox and business apps already on AWS). There are still no scans, batch writes or wildcards.
+- **Pages:** nothing new. `/store`, `/customer` and `/commerce` are prerendered editor pages that the editor router already serves; the Lambda's `EDITOR_ORIGIN` makes the website's Shop link and product sections point at them.
+- **Closed on AWS:** checkout and refunds, the sandbox payment, customer accounts, inviting collaborators, and email delivery (previews only, as locally). See [the commerce guide](commerce.md#on-aws) for why and what deciding them involves.
+- **Verify on a staging deployment:** the transactions with real IAM, the per-route throttles, CORS from the editor origin, and a published site's Shop link to the editor's `/store` page.
 
 ### Branded pages
 

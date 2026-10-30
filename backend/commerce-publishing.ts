@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { config, local } from "./config";
+import { config } from "./config";
 import { list, read } from "./commerce-data";
 import type { Product, StoreSettings } from "../src/commerce/types";
 import {
@@ -45,9 +45,9 @@ export async function websiteProducts(
       };
     });
 }
-/** Whether the site's store is open for its website (Forma Store runs locally only). */
+/** Whether the site's store is open for its website (locally and on AWS). */
 export const storeOnWebsite = (settings: StoreSettings | undefined) =>
-  local && !!settings?.enabled;
+  !!settings?.enabled;
 export async function publicationCommerce(
   siteId: string,
 ): Promise<CommerceBinding> {

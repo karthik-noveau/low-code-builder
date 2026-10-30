@@ -426,6 +426,10 @@ export async function storefront(siteId: string) {
       (p) => p.status === "published",
     ),
     sandbox: local,
+    // What this host can do: hosted stores have no payment flow or customer
+    // sign-in yet (docs/commerce.md), so the storefront doesn't offer them.
+    checkout: local,
+    accounts: local,
   };
 }
 export interface Cart {

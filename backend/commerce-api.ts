@@ -250,11 +250,8 @@ export async function commerceApi(
     }
     const accountReturn = /^account\/orders\/([^/]+)\/return$/.exec(action);
     if (accountReturn && method === "POST") {
-      insist(
-        local && actor && request.email,
-        401,
-        "Sign in to request a return.",
-      );
+      insist(local, 503, "Live customer accounts are not configured.");
+      insist(actor && request.email, 401, "Sign in to request a return.");
       return {
         value: {
           order: await requestReturn(siteId, accountReturn[1], input.reason, {
@@ -359,7 +356,6 @@ export async function commerceApi(
   if (action === "integrations" && method === "POST") {
     const access = await siteAccess(actor, siteId);
     allow(access, "owner");
-    insist(local, 503, "Live extensions are not configured.");
     const id = input.id ? text(input.id, "integration ID", 36) : randomUUID();
     insist(idPattern.test(id), 422, "Invalid integration ID.");
     const prior = await read<Integration & { secret: string }>(
