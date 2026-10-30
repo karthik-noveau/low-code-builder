@@ -158,7 +158,7 @@ export interface InboxRequest {
     amount: number | null;
     currency: string;
     reference: string;
-    status: "unpaid" | "paid";
+    status: "unpaid" | "paid" | "refunded";
     /** A checkout in the owner's Stripe or Razorpay account. */
     checkout?: {
       provider: "stripe" | "razorpay";
@@ -169,7 +169,27 @@ export interface InboxRequest {
     /** Who marked it paid: the provider confirmed it, or the owner did. */
     confirmedBy?: "provider" | "owner";
     paidAt?: string;
+    refund?: PaymentRefund;
   };
+}
+/**
+ * Money given back, in full or in part. Until `refundedAt` is set the refund
+ * is still being made, and `key` lets a retry find it instead of refunding twice.
+ */
+export interface PaymentRefund {
+  amount: number;
+  /** Through the owner's Stripe or Razorpay; absent when the owner paid it back themselves. */
+  provider?: "stripe" | "razorpay";
+  /** The provider's refund id. */
+  id?: string;
+  key: string;
+  /** Account that asked for the refund. */
+  by: string;
+  byEmail?: string;
+  requestedAt: string;
+  /** When the provider last started making it; a lease against concurrent tries. */
+  attemptAt?: string;
+  refundedAt?: string;
 }
 const emailPattern = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 const urlPattern = /^https?:\/\/[^\s]{3,500}$/;

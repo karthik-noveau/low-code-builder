@@ -41,7 +41,17 @@ function noticesFor(site: cloud.Site, requests: InboxRequest[]): Notice[] {
       r.payment?.amount != null
         ? ` · ${formatAmount(r.payment.amount, r.payment.currency)}`
         : "";
-    if (r.payment?.status === "paid" && r.payment.paidAt)
+    const refund = r.payment?.refund;
+    if (r.payment && refund?.refundedAt)
+      list.push({
+        id: `${r.id}-refunded`,
+        title: `Refunded ${formatAmount(refund.amount, r.payment.currency)} to ${r.name || r.email}`,
+        detail: `${site.name} · ${r.itemTitle || r.collectionName}`,
+        at: refund.refundedAt,
+        href: inbox,
+        icon: "undo",
+      });
+    if (r.payment?.status !== "unpaid" && r.payment?.paidAt)
       list.push({
         id: `${r.id}-paid`,
         title: `Payment received from ${r.name || r.email}`,

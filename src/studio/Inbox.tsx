@@ -9,7 +9,7 @@ import {
   type InboxRequest,
   type RequestFieldId,
 } from "./requests";
-import { formatAmount } from "./payments";
+import { formatAmount, parseAmount, paymentStatusLabel } from "./payments";
 
 /** The cloud site open in the editor, if any (CloudWorkspace keeps it in the URL). */
 const activeSiteId = () =>
@@ -43,11 +43,25 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   const [checked, setChecked] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  /** Only the site's owner can send money back. */
+  const [canRefund, setCanRefund] = useState(false);
+  /** The request whose refund is being confirmed, and the amount typed. */
+  const [refunding, setRefunding] = useState<{
+    id: string;
+    amount: string;
+  } | null>(null);
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundError, setRefundError] = useState("");
   const fetchRequests = useCallback(
     () =>
       cloud
-        .request<{ requests: InboxRequest[] }>(`/sites/${siteId}/inbox`)
-        .then(({ requests }) => requests),
+        .request<{ requests: InboxRequest[]; canRefund?: boolean }>(
+          `/sites/${siteId}/inbox`,
+        )
+        .then(({ requests, canRefund }) => {
+          setCanRefund(!!canRefund);
+          return requests;
+        }),
     [siteId],
   );
   const load = async () => {
@@ -112,6 +126,45 @@ export function Inbox({ onClose }: { onClose: () => void }) {
             ? "Payment confirmed"
             : "Still unpaid — the provider hasn’t confirmed it yet.",
       }));
+  };
+  const startRefund = (r: InboxRequest) => {
+    setRefundError("");
+    setRefunding({
+      id: r.id,
+      amount: r.payment?.amount == null ? "" : String(r.payment.amount / 100),
+    });
+  };
+  const refund = async (r: InboxRequest & { revision?: number }) => {
+    if (!siteId || !r.payment) return;
+    // A refund already started keeps its amount; the server ignores a new one.
+    const amount = r.payment.refund
+      ? undefined
+      : parseAmount(refunding?.id === r.id ? refunding.amount : "");
+    if (!r.payment.refund && amount === null) {
+      setRefundError("Enter an amount to refund.");
+      return;
+    }
+    setRefundBusy(true);
+    setRefundError("");
+    try {
+      const { request } = await cloud.request<{ request: InboxRequest }>(
+        `/sites/${siteId}/inbox/${r.id}/refund`,
+        {
+          method: "POST",
+          body: JSON.stringify({ revision: r.revision, amount }),
+        },
+      );
+      setRequests(
+        (list) => list?.map((x) => (x.id === r.id ? request : x)) ?? null,
+      );
+      setRefunding(null);
+    } catch (e) {
+      setRefundError(
+        e instanceof Error ? e.message : "Could not refund the payment.",
+      );
+    } finally {
+      setRefundBusy(false);
+    }
   };
   const remove = async (r: InboxRequest) => {
     if (!siteId) return;
@@ -179,7 +232,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
         details(r),
         r.payment
           ? [
-              r.payment.status === "paid" ? "Paid" : "Unpaid",
+              paymentStatusLabel(r.payment),
               price(r),
               r.payment.reference,
             ]
@@ -317,7 +370,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                     </span>
                     {r.payment && (
                       <span className={`inbox-pay is-${r.payment.status}`}>
-                        {r.payment.status === "paid" ? "Paid" : "Unpaid"}
+                        {paymentStatusLabel(r.payment)}
                         {price(r) && ` · ${price(r)}`}
                       </span>
                     )}
@@ -338,7 +391,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                             <dd>
                               {price(r) || "Amount not set"} · reference{" "}
                               <strong>{r.payment.reference}</strong>
-                              {r.payment.status === "paid" &&
+                              {r.payment.status !== "unpaid" &&
                                 (r.payment.confirmedBy === "provider"
                                   ? " · paid online"
                                   : " · marked paid")}
@@ -346,6 +399,12 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                                 r.payment.checkout &&
                                 ` · checkout started with ${r.payment.checkout.provider === "stripe" ? "Stripe" : "Razorpay"}`}
                             </dd>
+                          </div>
+                        )}
+                        {r.payment?.refund && (
+                          <div>
+                            <dt>Refund</dt>
+                            <dd>{refundText(r.payment)}</dd>
                           </div>
                         )}
                         {INBOX_KINDS[r.kind].fields
@@ -377,7 +436,24 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                                 : "Check payment"}
                             </button>
                           )}
-                        {r.payment && (
+                        {canRefund &&
+                          r.payment?.status === "paid" &&
+                          r.payment.amount !== null &&
+                          refunding?.id !== r.id && (
+                            <button
+                              className="subtle-button"
+                              onClick={() => startRefund(r)}
+                            >
+                              <Icon name="undo" size={14} />
+                              {r.payment.refund
+                                ? "Finish refund"
+                                : r.payment.confirmedBy === "provider" &&
+                                    r.payment.checkout
+                                  ? "Refund"
+                                  : "Record refund"}
+                            </button>
+                          )}
+                        {r.payment && !r.payment.refund && (
                           <button
                             className="subtle-button"
                             onClick={() =>
@@ -419,6 +495,22 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                           {checked[r.id]}
                         </p>
                       )}
+                      {refunding?.id === r.id && r.payment && (
+                        <RefundConfirm
+                          request={r}
+                          amount={refunding.amount}
+                          busy={refundBusy}
+                          error={refundError}
+                          onAmount={(amount) =>
+                            setRefunding({ id: r.id, amount })
+                          }
+                          onConfirm={() => void refund(r)}
+                          onCancel={() => {
+                            setRefunding(null);
+                            setRefundError("");
+                          }}
+                        />
+                      )}
                       {deleting === r.id && (
                         <InlineConfirm
                           message={`Delete this ${INBOX_KINDS[r.kind].noun.toLowerCase()} from ${r.name || r.email}? This can’t be undone.`}
@@ -437,5 +529,103 @@ export function Inbox({ onClose }: { onClose: () => void }) {
         )}
       </div>
     </Modal>
+  );
+}
+
+const providerName = (p?: "stripe" | "razorpay") =>
+  p === "stripe" ? "Stripe" : "Razorpay";
+/** "₹520 through Stripe · Oct 30, 4:12 PM · by you@example.com", or that it's still being made. */
+function refundText(payment: NonNullable<InboxRequest["payment"]>) {
+  const refund = payment.refund!;
+  const amount = formatAmount(refund.amount, payment.currency);
+  if (!refund.refundedAt)
+    return `${amount} through ${providerName(refund.provider)} · not finished yet. Press Finish refund to check it; it never refunds twice.`;
+  return [
+    refund.provider
+      ? `${amount} through ${providerName(refund.provider)}`
+      : `${amount} · recorded, paid back by you`,
+    when(refund.refundedAt),
+    refund.byEmail && `by ${refund.byEmail}`,
+    refund.id,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+/** Asks before money goes back, with the amount to refund (the whole payment unless changed). */
+function RefundConfirm({
+  request,
+  amount,
+  busy,
+  error,
+  onAmount,
+  onConfirm,
+  onCancel,
+}: {
+  request: InboxRequest;
+  amount: string;
+  busy: boolean;
+  error: string;
+  onAmount: (value: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const payment = request.payment!;
+  const who = request.name || request.email;
+  const online = payment.confirmedBy === "provider" && !!payment.checkout;
+  const pending = payment.refund;
+  const message = pending
+    ? `Finish the ${formatAmount(pending.amount, payment.currency)} refund to ${who}? ${providerName(pending.provider)} is asked again with the same refund, so it can’t be paid twice.`
+    : online
+      ? `Refund ${who} through ${providerName(payment.checkout?.provider)}? The money goes back to the card or account they paid with. This can’t be undone.`
+      : `Record that you paid ${who} back? Forma doesn’t move any money for payments you marked paid.`;
+  return (
+    <div className="inline-confirm refund-confirm" role="group" aria-label="Refund">
+      <p>{message}</p>
+      {!pending && (
+        <label className="refund-amount">
+          <span>Amount ({payment.currency || "total"})</span>
+          <input
+            inputMode="decimal"
+            value={amount}
+            disabled={busy}
+            onChange={(e) => onAmount(e.target.value)}
+          />
+          <small>
+            Paid {formatAmount(payment.amount ?? 0, payment.currency)}. Lower it
+            for a partial refund.
+          </small>
+        </label>
+      )}
+      {error && (
+        <p className="inbox-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy}
+          onClick={onConfirm}
+        >
+          {busy
+            ? "Refunding…"
+            : pending
+              ? "Finish refund"
+              : online
+                ? "Refund"
+                : "Record refund"}
+        </button>
+        <button
+          type="button"
+          className="subtle-button"
+          disabled={busy}
+          autoFocus
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

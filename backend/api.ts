@@ -24,6 +24,7 @@ import {
   deleteRequest,
   inboxPublic,
   listRequests,
+  refundRequest,
   updateRequest,
 } from "./inbox";
 import { connect, disconnect, getConnection } from "./payments";
@@ -87,9 +88,12 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
       access = await siteAccess(owner, scoped[1]);
       allow(
         access,
-        // The inbox and app records hold visitors' contact details, so viewers can't open them.
-        /^\/sites\/[^/]+\/(?:inbox|app)(\/|$)/.test(path)
-          ? "edit"
+        // Refunds send the owner's money back out, so they're the owner's call.
+        /^\/sites\/[^/]+\/inbox\/[^/]+\/refund$/.test(path)
+          ? "owner"
+          : // The inbox and app records hold visitors' contact details, so viewers can't open them.
+            /^\/sites\/[^/]+\/(?:inbox|app)(\/|$)/.test(path)
+            ? "edit"
           : method === "GET"
             ? "read"
             : path.endsWith("/draft")
@@ -139,12 +143,26 @@ export async function api(request: ApiRequest): Promise<ApiResponse> {
     if (appMatch && access)
       return await appOwnerApi(request, access.site, appMatch[1] ?? "", data);
     const inboxMatch =
-      /^\/sites\/([^/]+)\/inbox(?:\/([^/]+)(\/delete)?)?$/.exec(path);
+      /^\/sites\/([^/]+)\/inbox(?:\/([^/]+)(\/delete|\/refund)?)?$/.exec(
+        path,
+      );
     if (inboxMatch) {
-      const [, siteId, requestId, remove] = inboxMatch;
+      const [, siteId, requestId, operation] = inboxMatch;
+      const remove = operation === "/delete";
       insist(idPattern.test(siteId), 404, "Not found.");
       if (!requestId && method === "GET")
-        return jsonResponse({ requests: await listRequests(siteId) });
+        return jsonResponse({
+          requests: await listRequests(siteId),
+          canRefund: access?.role === "owner",
+        });
+      if (requestId && operation === "/refund" && method === "POST")
+        return jsonResponse({
+          request: await refundRequest(siteId, requestId, data(), {
+            id: request.owner!,
+            email: request.email,
+          }),
+        });
+      if (operation === "/refund") throw new HttpError(405, "Method not allowed.");
       // POST …/delete does the same for browsers, whose CORS rules allow only GET, POST and PUT.
       if (requestId && (method === "DELETE" || (remove && method === "POST")))
         return jsonResponse(await deleteRequest(siteId, requestId));

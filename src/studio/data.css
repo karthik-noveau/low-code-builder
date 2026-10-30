@@ -425,6 +425,10 @@ button.data-row:hover,
   background: var(--ui-success-soft, var(--ui-accent-soft));
   color: var(--ui-success, var(--ui-accent));
 }
+.inbox-pay.is-refunded {
+  background: var(--ui-surface-alt);
+  color: var(--ui-muted);
+}
 .inbox-who {
   display: flex;
   flex-direction: column;
@@ -463,6 +467,7 @@ button.data-row:hover,
 }
 .inbox-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 @media (max-width: 640px) {
@@ -551,6 +556,26 @@ button.data-row:hover,
 .inline-confirm > div {
   display: flex;
   gap: 8px;
+}
+.refund-confirm {
+  flex-direction: column;
+  align-items: stretch;
+}
+.refund-amount {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+.refund-amount input {
+  max-width: 12rem;
+  padding: 6px 8px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
 }
 .inbox-note {
   margin: 0;

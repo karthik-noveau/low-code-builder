@@ -6,7 +6,7 @@
  * the request paid in the Inbox. No fees and nothing to connect.
  * Shared by the editor, the static renderer and the backend.
  */
-import type { RequestFieldId, RequestKind } from "./requests";
+import type { InboxRequest, RequestFieldId, RequestKind } from "./requests";
 
 export interface PaymentSettings {
   /** UPI ID, e.g. name@bank. */
@@ -143,4 +143,38 @@ export function upiLink(
     query.set("cu", "INR");
   }
   return `upi://pay?${query.toString().replace(/\+/g, "%20")}`;
+}
+
+type RequestPayment = NonNullable<InboxRequest["payment"]>;
+/**
+ * How much to give back, in minor units: the whole payment unless a smaller
+ * amount is asked for. Only paid payments with a known amount, refunded once.
+ */
+export function refundAmount(
+  payment: RequestPayment,
+  asked?: unknown,
+): { ok: true; amount: number } | { ok: false; error: string } {
+  if (payment.status === "refunded" || payment.refund?.refundedAt)
+    return { ok: false, error: "This payment was already refunded." };
+  if (payment.status !== "paid")
+    return { ok: false, error: "Only paid requests can be refunded." };
+  if (payment.amount === null)
+    return { ok: false, error: "This request has no amount to refund." };
+  if (asked === undefined || asked === null) return { ok: true, amount: payment.amount };
+  if (!Number.isInteger(asked) || (asked as number) <= 0)
+    return { ok: false, error: "Enter an amount to refund." };
+  if ((asked as number) > payment.amount)
+    return {
+      ok: false,
+      error: `You can refund at most ${formatAmount(payment.amount, payment.currency)}.`,
+    };
+  return { ok: true, amount: asked as number };
+}
+/** "Paid", "Unpaid", "Refunded" or "Partly refunded". */
+export function paymentStatusLabel(payment: RequestPayment) {
+  if (payment.status === "unpaid") return "Unpaid";
+  if (payment.status === "paid") return "Paid";
+  return payment.refund && payment.amount !== null && payment.refund.amount < payment.amount
+    ? "Partly refunded"
+    : "Refunded";
 }

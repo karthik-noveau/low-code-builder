@@ -90,13 +90,19 @@ async function provider<T>(
   const data = (await response.json().catch(() => ({}))) as T;
   return { ok: response.ok, status: response.status, data };
 }
-function stripe<T>(secret: string, path: string, form?: URLSearchParams) {
+function stripe<T>(
+  secret: string,
+  path: string,
+  form?: URLSearchParams,
+  idempotencyKey?: string,
+) {
   return provider<T>(
     `${stripeBase()}${path}`,
     {
       method: form ? "POST" : "GET",
       headers: {
         authorization: `Bearer ${secret}`,
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
         ...(form
           ? { "content-type": "application/x-www-form-urlencoded" }
           : {}),
@@ -315,4 +321,126 @@ export async function checkoutPaid(
     `/v1/payment_links/${encodeURIComponent(checkout.id)}`,
   );
   return ok && data.status === "paid" && (data.amount_paid ?? 0) >= amount;
+}
+
+interface ProviderError {
+  error?: { message?: string; description?: string; code?: string };
+}
+/** The provider's reason in words an owner can act on. */
+function refundError(name: string, status: number, data: ProviderError) {
+  if (status === 401 || status === 403)
+    return new HttpError(
+      422,
+      name === "Stripe"
+        ? "Stripe didn’t allow the refund. Give the connected key Refunds write access, or refund it in your Stripe dashboard."
+        : "Razorpay didn’t accept the connected key. Connect it again, or refund it in your Razorpay dashboard.",
+    );
+  if (status >= 500 || status === 429)
+    return new HttpError(502, `${name} is busy. Try the refund again in a moment.`);
+  const reason = (data.error?.message || data.error?.description || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  if (data.error?.code === "charge_already_refunded")
+    return new HttpError(
+      409,
+      "This payment was already refunded in your Stripe dashboard.",
+    );
+  return new HttpError(
+    422,
+    `${name} couldn’t refund this payment${reason ? `: ${reason.replace(/\.$/, "")}` : ""}.`,
+  );
+}
+/**
+ * Refunds part or all of a paid checkout. `key` makes retries safe: Stripe
+ * returns the same refund for the same idempotency key, and Razorpay refunds
+ * carry it as their receipt, so a retry finds the earlier one first.
+ */
+export async function refundCheckout(
+  siteId: string,
+  checkout: Checkout,
+  amount: number,
+  key: string,
+  reference: string,
+): Promise<{ id: string; amount: number }> {
+  const stored = await read<StoredConnection>(siteId, "PAYCONN");
+  const name = checkout.provider === "stripe" ? "Stripe" : "Razorpay";
+  // Only the provider that took the payment can give it back.
+  insist(
+    stored && stored.provider === checkout.provider,
+    409,
+    `Connect the ${name} account this was paid with to refund it, or refund it in your ${name} dashboard.`,
+  );
+  const secret = unseal(stored.secret);
+  if (checkout.provider === "stripe") {
+    const session = await stripe<
+      ProviderError & { payment_intent?: string | { id?: string } }
+    >(
+      secret,
+      `/v1/checkout/sessions/${encodeURIComponent(checkout.id)}`,
+    );
+    if (!session.ok) throw refundError(name, session.status, session.data);
+    const intent =
+      typeof session.data.payment_intent === "string"
+        ? session.data.payment_intent
+        : session.data.payment_intent?.id;
+    insist(intent, 409, "Stripe has no payment for this checkout to refund.");
+    const { ok, status, data } = await stripe<
+      ProviderError & { id?: string; amount?: number; status?: string }
+    >(
+      secret,
+      "/v1/refunds",
+      new URLSearchParams({
+        payment_intent: intent,
+        amount: String(amount),
+        "metadata[forma_reference]": reference,
+        "metadata[forma_refund]": key,
+      }),
+      key,
+    );
+    if (!ok) throw refundError(name, status, data);
+    insist(
+      data.id && data.status !== "failed" && data.status !== "canceled",
+      422,
+      "Stripe couldn’t refund this payment. Refund it in your Stripe dashboard.",
+    );
+    return { id: data.id, amount: data.amount ?? amount };
+  }
+  const link = await razorpay<
+    ProviderError & {
+      payments?: { payment_id?: string; status?: string }[] | null;
+    }
+  >(stored.keyId, secret, `/v1/payment_links/${encodeURIComponent(checkout.id)}`);
+  if (!link.ok) throw refundError(name, link.status, link.data);
+  // A partly refunded payment stays captured; a fully refunded one says so.
+  const paymentId = link.data.payments?.find(
+    (p) => (p.status === "captured" || p.status === "refunded") && p.payment_id,
+  )?.payment_id;
+  insist(paymentId, 409, "Razorpay has no captured payment for this link to refund.");
+  const path = `/v1/payments/${encodeURIComponent(paymentId)}`;
+  type Refund = { id?: string; amount?: number; receipt?: string; status?: string };
+  // Razorpay has no idempotency header: look for this refund before making it.
+  const earlier = await razorpay<ProviderError & { items?: Refund[] }>(
+    stored.keyId,
+    secret,
+    `${path}/refunds?count=100`,
+  );
+  if (!earlier.ok) throw refundError(name, earlier.status, earlier.data);
+  const found = earlier.data.items?.find(
+    (r) => r.receipt === key && r.id && r.status !== "failed",
+  );
+  if (found) return { id: found.id!, amount: found.amount ?? amount };
+  const { ok, status, data } = await razorpay<ProviderError & Refund>(
+    stored.keyId,
+    secret,
+    `${path}/refund`,
+    { amount, speed: "normal", receipt: key, notes: { forma_reference: reference } },
+  );
+  if (!ok) throw refundError(name, status, data);
+  insist(
+    data.id && data.status !== "failed",
+    422,
+    "Razorpay couldn’t refund this payment. Refund it in your Razorpay dashboard.",
+  );
+  return { id: data.id, amount: data.amount ?? amount };
 }

@@ -11,6 +11,8 @@ import {
   parseAmount,
   paymentProblems,
   paymentReference,
+  paymentStatusLabel,
+  refundAmount,
   requestAmount,
   upiLink,
   usablePayments,
@@ -87,5 +89,63 @@ describe("getting paid without a provider", () => {
     expect(
       reviewProject(project).some((i) => i.id.startsWith("payments")),
     ).toBe(false);
+  });
+});
+
+describe("refunds", () => {
+  const paid = {
+    amount: 52000,
+    currency: "₹",
+    reference: "AB12CD34",
+    status: "paid" as const,
+  };
+  it("refunds the whole payment unless a smaller amount is asked for", () => {
+    expect(refundAmount(paid)).toEqual({ ok: true, amount: 52000 });
+    expect(refundAmount(paid, 10000)).toEqual({ ok: true, amount: 10000 });
+    expect(refundAmount(paid, 52000)).toEqual({ ok: true, amount: 52000 });
+  });
+  it("refuses amounts that can't be refunded", () => {
+    expect(refundAmount(paid, 52001)).toEqual({
+      ok: false,
+      error: "You can refund at most ₹520.",
+    });
+    for (const amount of [0, -5, 1.5, "100"])
+      expect(refundAmount(paid, amount).ok).toBe(false);
+    expect(refundAmount({ ...paid, status: "unpaid" }).ok).toBe(false);
+    expect(refundAmount({ ...paid, amount: null }).ok).toBe(false);
+    const refunded = {
+      ...paid,
+      status: "refunded" as const,
+      refund: {
+        amount: 52000,
+        key: "k",
+        by: "u",
+        requestedAt: "2026-10-30T10:00:00Z",
+        refundedAt: "2026-10-30T10:00:01Z",
+      },
+    };
+    expect(refundAmount(refunded)).toEqual({
+      ok: false,
+      error: "This payment was already refunded.",
+    });
+  });
+  it("names full and partial refunds", () => {
+    const refund = { key: "k", by: "u", requestedAt: "", refundedAt: "x" };
+    expect(paymentStatusLabel(paid)).toBe("Paid");
+    expect(paymentStatusLabel({ ...paid, status: "unpaid" })).toBe("Unpaid");
+    expect(
+      paymentStatusLabel({
+        ...paid,
+        status: "refunded",
+        refund: { ...refund, amount: 52000 },
+      }),
+    ).toBe("Refunded");
+    expect(
+      paymentStatusLabel({
+        ...paid,
+        status: "refunded",
+        refund: { ...refund, amount: 100 },
+      }),
+    ).toBe("Partly refunded");
   });
 });

@@ -1,7 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { config as settings, HttpError, idPattern, insist } from "./config";
-import { event, key, now, put, read, transact } from "./commerce-data";
+import {
+  audit,
+  event,
+  key,
+  now,
+  put,
+  read,
+  transact,
+} from "./commerce-data";
 import { db, getItem, putItem } from "./database";
 import { readObject, writeObject } from "./objects";
 import {
@@ -9,6 +17,7 @@ import {
   createCheckout,
   currencyCode,
   getConnection,
+  refundCheckout,
 } from "./payments";
 import type { ApiRequest, ApiResponse } from "./api";
 import type { Site } from "./types";
@@ -21,6 +30,7 @@ import {
   parseRequest,
   SITE_FORMS,
   type InboxRequest,
+  type PaymentRefund,
   type RequestKind,
   type SiteFormKind,
 } from "../src/studio/requests";
@@ -29,6 +39,7 @@ import {
   formatAmount,
   parseAmount,
   paymentReference,
+  refundAmount,
   requestAmount,
   upiLink,
   usablePayments,
@@ -316,7 +327,7 @@ async function confirmWithProvider(
   const payment = request.payment;
   if (
     !payment?.checkout ||
-    payment.status === "paid" ||
+    payment.status !== "unpaid" ||
     payment.amount === null ||
     !(await checkoutPaid(siteId, payment.checkout, payment.amount))
   )
@@ -364,7 +375,7 @@ async function startCheckout(siteId: string, requestId: string) {
     },
     body: Buffer.alloc(0),
   });
-  if (payment.status === "paid" || payment.amount === null)
+  if (payment.status !== "unpaid" || payment.amount === null)
     return redirect(back);
   const fresh =
     payment.checkout &&
@@ -419,7 +430,8 @@ async function paymentPage(siteId: string, requestId: string) {
   const name = live?.value.site?.name || "the website";
   const accent = safeAccent(live?.value.site?.accent);
   const back = await siteUrl(live?.owner ?? "", siteId).catch(() => "");
-  const { amount, currency, reference, status, confirmedBy } = request.payment!;
+  const { amount, currency, reference, status, confirmedBy, refund } =
+    request.payment!;
   const connection =
     status === "unpaid" && amount !== null && currencyCode(currency)
       ? await getConnection(siteId)
@@ -427,7 +439,15 @@ async function paymentPage(siteId: string, requestId: string) {
   const total = amount === null ? "" : formatAmount(amount, currency);
   const noun = INBOX_KINDS[request.kind].noun.toLowerCase();
   const blocks: string[] = [];
-  if (status === "paid")
+  if (status === "refunded" && refund) {
+    const given = formatAmount(refund.amount, currency);
+    const partly = amount !== null && refund.amount < amount;
+    blocks.push(
+      refund.provider
+        ? `<p class="done">${escape(name)} refunded ${escape(given)}${partly ? ` of ${escape(total)}` : ""} to the card or account you paid with. Refunds usually arrive within 5–10 business days.</p>`
+        : `<p class="done">${escape(name)} has marked ${escape(given)}${partly ? ` of ${escape(total)}` : ""} as refunded to you.</p>`,
+    );
+  } else if (status === "paid")
     blocks.push(
       confirmedBy === "provider"
         ? `<p class="done">Your payment was received and ${escape(name)} has been notified. Thank you.</p>`
@@ -470,15 +490,17 @@ async function paymentPage(siteId: string, requestId: string) {
   }
   const matchNote = `add the reference <strong>${escape(reference)}</strong> so ${escape(name)} can match your payment.`;
   const instructions =
-    status === "paid" || !payments
+    status !== "unpaid" || !payments
       ? ""
       : connection
         ? ""
         : `<p>Pay ${total ? escape(total) : "the amount"} using one of these options and ${matchNote}</p>`;
   const heading =
-    status === "paid"
-      ? "Payment received"
-      : "Your request was sent — now pay to confirm";
+    status === "refunded"
+      ? "Payment refunded"
+      : status === "paid"
+        ? "Payment received"
+        : "Your request was sent — now pay to confirm";
   const html = `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escape(`Pay ${name}`)}</title><style>
 :root{--accent:${accent}}
 body{font:16px/1.55 system-ui,-apple-system,sans-serif;max-width:34rem;margin:8vh auto;padding:0 1.25rem 3rem;color:#1c1c1c;background:#fafaf9}
@@ -627,6 +649,13 @@ export async function updateRequest(
       "Choose paid or unpaid.",
     );
     insist(current.payment, 422, "This request didn’t ask for payment.");
+    insist(
+      !current.payment.refund,
+      409,
+      current.payment.refund?.refundedAt
+        ? "This payment was refunded, so it can’t be marked paid or unpaid."
+        : "A refund for this payment is in progress. Refresh the inbox in a minute.",
+    );
     next.payment =
       input.payment === "paid"
         ? {
@@ -651,6 +680,173 @@ export async function updateRequest(
   }
   await transact([put(siteId, "REQUEST", id, next, current.revision)]);
   return next;
+}
+/** How long one refund attempt holds the request, so two tries never call the provider at once. */
+const REFUND_LEASE_MS = 60_000;
+const changed = () =>
+  new HttpError(409, "This request changed. Refresh the inbox and try again.");
+/** Saves a change to a refund, reapplying it if the request changed meanwhile (e.g. marked done). */
+async function saveRefund(
+  siteId: string,
+  request: StoredRequest,
+  apply: (
+    payment: NonNullable<InboxRequest["payment"]>,
+  ) => InboxRequest["payment"],
+  writes: Parameters<typeof transact>[0] = [],
+) {
+  let current = request;
+  for (let attempt = 0; ; attempt++) {
+    const next: StoredRequest = {
+      ...current,
+      payment: apply(current.payment!),
+      revision: current.revision + 1,
+    };
+    try {
+      await transact([
+        put(siteId, "REQUEST", current.id, next, current.revision),
+        ...writes,
+      ]);
+      return next;
+    } catch (error) {
+      if (!(error instanceof HttpError && error.status === 409) || attempt >= 3)
+        throw error;
+      const fresh = await read<StoredRequest>(siteId, "REQUEST", current.id);
+      if (
+        !fresh?.payment?.refund ||
+        fresh.payment.refund.key !== request.payment?.refund?.key
+      )
+        throw changed();
+      current = fresh;
+    }
+  }
+}
+/**
+ * Gives a paid request's money back. Card payments are refunded through the
+ * provider that took them; payments the owner marked paid are only recorded,
+ * since the owner pays those back themselves. The refund and its key are
+ * stored before the provider is called, so a retry or a second click finds
+ * that refund instead of making another.
+ */
+export async function refundRequest(
+  siteId: string,
+  id: string,
+  input: Record<string, unknown>,
+  actor: { id: string; email?: string },
+) {
+  insist(requestIdPattern.test(id), 404, "Request not found.");
+  const current = await read<StoredRequest>(siteId, "REQUEST", id);
+  insist(current, 404, "Request not found.");
+  const payment = current.payment;
+  insist(payment, 422, "This request didn’t ask for payment.");
+  // Already refunded: answering with it is what makes a retried call safe.
+  if (payment.refund?.refundedAt) return current;
+  const done = [
+    event(siteId, "request.refunded"),
+    audit(siteId, actor.id, "request.refunded", id),
+  ];
+  let refund: PaymentRefund | undefined = payment.refund;
+  if (!refund) {
+    if (input.revision !== current.revision) throw changed();
+    const amount = refundAmount(payment, input.amount);
+    insist(amount.ok, 422, amount.ok ? "" : amount.error);
+    const online = payment.confirmedBy === "provider" && payment.checkout;
+    refund = {
+      amount: amount.amount,
+      ...(online ? { provider: online.provider } : {}),
+      key: `forma_rf_${randomBytes(12).toString("hex")}`,
+      by: actor.id,
+      ...(actor.email ? { byEmail: actor.email.slice(0, 254) } : {}),
+      requestedAt: now(),
+    };
+    if (!online) {
+      const next: StoredRequest = {
+        ...current,
+        payment: {
+          ...payment,
+          status: "refunded",
+          refund: { ...refund, refundedAt: refund.requestedAt },
+        },
+        revision: current.revision + 1,
+      };
+      try {
+        await transact([
+          put(siteId, "REQUEST", id, next, current.revision),
+          ...done,
+        ]);
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 409) throw changed();
+        throw error;
+      }
+      return next;
+    }
+  } else
+    insist(
+      !refund.attemptAt ||
+        Date.now() - Date.parse(refund.attemptAt) > REFUND_LEASE_MS,
+      409,
+      "This refund is already being made. Refresh the inbox in a minute.",
+    );
+  insist(
+    refund.provider && payment.checkout,
+    409,
+    "Refresh the inbox and try again.",
+  );
+  // Claim this attempt: only the caller whose write lands calls the provider.
+  const claimed: StoredRequest = {
+    ...current,
+    payment: { ...payment, refund: { ...refund, attemptAt: now() } },
+    revision: current.revision + 1,
+  };
+  try {
+    await transact([put(siteId, "REQUEST", id, claimed, current.revision)]);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 409)
+      throw new HttpError(
+        409,
+        "This refund is already being made. Refresh the inbox in a minute.",
+      );
+    throw error;
+  }
+  let result: { id: string; amount: number };
+  try {
+    result = await refundCheckout(
+      siteId,
+      payment.checkout,
+      refund.amount,
+      refund.key,
+      payment.reference,
+    );
+  } catch (error) {
+    // 502: the provider may have made it, so keep the key for the next try.
+    // Anything else was refused, so the owner can try again from scratch.
+    const unknown = !(error instanceof HttpError) || error.status === 502;
+    await saveRefund(siteId, claimed, (p) => ({
+      ...p,
+      refund: unknown ? { ...p.refund!, attemptAt: undefined } : undefined,
+    })).catch(() => undefined);
+    if (unknown && error instanceof HttpError)
+      throw new HttpError(
+        502,
+        `${error.message} If the refund went through, pressing Refund again records it without refunding twice.`,
+      );
+    throw error;
+  }
+  return saveRefund(
+    siteId,
+    claimed,
+    (p) => ({
+      ...p,
+      status: "refunded",
+      refund: {
+        ...p.refund!,
+        id: result.id.slice(0, 100),
+        amount: result.amount,
+        attemptAt: undefined,
+        refundedAt: now(),
+      },
+    }),
+    done,
+  );
 }
 /** Removes a request for good (spam, tests, or a visitor asking to be forgotten). */
 export async function deleteRequest(siteId: string, id: string) {
