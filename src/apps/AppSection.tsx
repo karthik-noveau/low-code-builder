@@ -57,7 +57,15 @@ export interface FormCustom {
   extras?: Partial<Record<"identify" | "fields" | "lookup", ReactNode>>;
   /** Editor attributes for a piece: a field id, "identity", "value", "verify" or "button". */
   attrs?: (key: string) => Attrs | undefined;
+  /**
+   * Editor: draws a piece's words so they can be typed into. The key is
+   * "title", "intro", a copy key, a button's key, or "label:" / "hint:" and
+   * a field's key.
+   */
+  text?: (key: string, shown: string) => ReactNode;
 }
+/** A piece's words: as they are, or (editor) typed into (FormCustom.text). */
+type Say = (key: string, shown: string) => ReactNode;
 import type { AppLinks } from "./links";
 
 /** Icons the step screens use that the editor's icon set doesn't have. */
@@ -220,6 +228,7 @@ export function ItemChoice({
   disabled,
   catalog,
   attrs,
+  say = (_, shown) => shown,
 }: {
   field: AppField;
   id: string;
@@ -227,6 +236,7 @@ export function ItemChoice({
   catalog: Catalog;
   /** Editor: marks the field as its block (classic-look form blocks). */
   attrs?: Attrs;
+  say?: Say;
 }) {
   const items = catalog(field.collection)?.items ?? [];
   const error = `${id}-error`;
@@ -234,7 +244,7 @@ export function ItemChoice({
     return (
       <div {...attrs} className="app-field app-wide">
         <label htmlFor={id}>
-          {field.name}
+          {say("label", field.name)}
           <Optional field={field} />
         </label>
         <select
@@ -262,7 +272,7 @@ export function ItemChoice({
   return (
     <fieldset {...attrs} className="app-field app-wide app-choices">
       <legend>
-        {field.name}
+        {say("label", field.name)}
         <Optional field={field} />
       </legend>
       <div className="app-choice-grid">
@@ -312,8 +322,11 @@ function FieldInput({
   placeholder,
   look,
   attrs,
+  say = (_, shown) => shown,
 }: {
   attrs?: Attrs;
+  /** A label's or hint's words ("label" or "hint"). */
+  say?: Say;
   field: AppField;
   prefix: string;
   disabled: boolean;
@@ -332,6 +345,7 @@ function FieldInput({
         disabled={disabled}
         catalog={catalog}
         attrs={attrs}
+        say={say}
       />
     );
   const control = inputFor(
@@ -355,7 +369,7 @@ function FieldInput({
   );
   const hint = field.hint && (
     <small className="app-hint-text" id={`${id}-hint`}>
-      {field.hint}
+      {say("hint", field.hint)}
     </small>
   );
   const counter = field.type === "longText" && !!field.maxLength && (
@@ -373,7 +387,7 @@ function FieldInput({
       <div {...attrs} className="app-field app-check">
         <label htmlFor={id}>
           {input}
-          <span>{field.name}</span>
+          <span>{say("label", field.name)}</span>
         </label>
         {hint}
         <small className="app-field-error" id={`${id}-error`} hidden />
@@ -385,7 +399,7 @@ function FieldInput({
       className={`app-field ${field.type === "longText" ? "app-wide" : ""}`}
     >
       <label htmlFor={id}>
-        {field.name}
+        {say("label", field.name)}
         {!name && <Optional field={field} />}
       </label>
       {input}
@@ -540,15 +554,24 @@ export function Picker({
 export const ErrorLine = () => <p className="app-error" role="alert" hidden />;
 
 /** A step's heading and lead line, as in the step-by-step forms. */
-function StepHead({ title, lead }: { title: string; lead?: string }) {
+function StepHead({
+  title,
+  lead,
+  say = (_, shown) => shown,
+}: {
+  title: string;
+  lead?: string;
+  /** The title's and lead's words ("title" or "lead"). */
+  say?: Say;
+}) {
   return (
     <div className="app-step-head">
       {title && (
         <h3 className="app-step-title" tabIndex={-1}>
-          {title}
+          {say("title", title)}
         </h3>
       )}
-      {lead && <p className="app-lead">{lead}</p>}
+      {lead && <p className="app-lead">{say("lead", lead)}</p>}
     </div>
   );
 }
@@ -1016,6 +1039,18 @@ export function AppFormMarkup({
   const rupees = app.currency === "INR";
   const said = custom.words ?? {};
   const pick = (key: string) => custom.attrs?.(key);
+  const say: Say = (key, shown) =>
+    custom.text ? custom.text(key, shown) : shown;
+  /** A field's label and hint, by the field's key. */
+  const sayField =
+    (key: string): Say =>
+    (part, shown) =>
+      say(`${part}:${key}`, shown);
+  /** A step's title and lead, by their copy keys. */
+  const sayStep =
+    (title: FormCopyKey, lead: FormCopyKey): Say =>
+    (part, shown) =>
+      say(part === "title" ? title : lead, shown);
   const button = (
     label: string,
     icon = "arrow",
@@ -1028,7 +1063,7 @@ export function AppFormMarkup({
       type="submit"
       disabled={disabled}
     >
-      <span>{label || "Send"}</span>
+      <span>{say(key, label || "Send")}</span>
       <StateIcon name={icon} size={wide ? 18 : 16} />
     </button>
   );
@@ -1044,7 +1079,7 @@ export function AppFormMarkup({
   const identifyNote = form.copy?.identifyNote?.trim() && (
     <p className="app-note">
       <StateIcon name="shield" size={14} />
-      {form.copy.identifyNote.trim()}
+      {say("identifyNote", form.copy.identifyNote.trim())}
     </p>
   );
   const steps: ReactNode[] = [];
@@ -1091,6 +1126,7 @@ export function AppFormMarkup({
         placeholder={byRef ? `${table.prefix}-1001` : undefined}
         look={keyLook}
         attrs={pick("value")}
+        say={sayField("value")}
       />
     );
     steps.push(
@@ -1104,6 +1140,7 @@ export function AppFormMarkup({
           <StepHead
             title={words(form, "identifyTitle", "")}
             lead={form.copy?.identifyIntro?.trim()}
+            say={sayStep("identifyTitle", "identifyIntro")}
           />
         )}
         {verify ? (
@@ -1116,6 +1153,7 @@ export function AppFormMarkup({
               name="verify"
               catalog={catalog}
               attrs={pick("verify")}
+              say={sayField("verify")}
             />
           </div>
         ) : (
@@ -1260,6 +1298,7 @@ export function AppFormMarkup({
                   : `What’s your ${who.name.toLowerCase()}?`,
               )}
               lead={form.copy?.identifyIntro?.trim()}
+              say={sayStep("identifyTitle", "identifyIntro")}
             />
           )}
           <FieldInput
@@ -1269,6 +1308,7 @@ export function AppFormMarkup({
             name="identity"
             catalog={catalog}
             attrs={pick("identity")}
+            say={sayField("identity")}
             look={
               flow
                 ? {
@@ -1399,7 +1439,7 @@ export function AppFormMarkup({
           {flow ? (
             <div className="app-step-head">
               <h3 className="app-step-title" tabIndex={-1}>
-                {words(form, "fieldsTitle", "Your details")}
+                {say("fieldsTitle", words(form, "fieldsTitle", "Your details"))}
               </h3>
               {whoLine}
             </div>
@@ -1450,6 +1490,7 @@ export function AppFormMarkup({
                   catalog={catalog}
                   look={fieldLook(f)}
                   attrs={pick(f.id)}
+                  say={sayField(f.id)}
                 />
               ))}
             </div>
@@ -1469,7 +1510,7 @@ export function AppFormMarkup({
           {flow && form.copy?.fieldsNote?.trim() && (
             <p className="app-info">
               <StateIcon name="info" size={16} />
-              <span>{form.copy.fieldsNote.trim()}</span>
+              <span>{say("fieldsNote", form.copy.fieldsNote.trim())}</span>
             </p>
           )}
         </form>,

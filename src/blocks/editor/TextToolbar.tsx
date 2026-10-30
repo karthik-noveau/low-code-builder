@@ -4,7 +4,9 @@
  * selected words (src/blocks/richtext.tsx); with nothing selected, bold and
  * italic apply to the whole block, as do size and alignment, for the screen
  * size being edited. ⌘B, ⌘I and ⌘K while typing press the same buttons.
- * Buttons keep the typing focus (mousedown is cancelled).
+ * Buttons keep the typing focus (mousedown is cancelled). Words a
+ * classic-look form draws in its own type (src/blocks/forms/classic.tsx)
+ * only get Done.
  */
 import {
   useEffect,
@@ -40,12 +42,15 @@ export function TextToolbar({
   device,
   style: position,
   onDone,
+  wordsOnly = false,
 }: {
   section: string;
   node: Node;
   device: Device;
   style: CSSProperties;
   onDone: () => void;
+  /** Only the words are typed (no formatting, size or alignment). */
+  wordsOnly?: boolean;
 }) {
   const updateNode = useStudio((s) => s.updateNode);
   const pages = useStudio((s) => s.project.pages);
@@ -65,7 +70,7 @@ export function TextToolbar({
       [slot]: mergeStyle(n[slot], patch),
     }));
   const heading = node.type === "heading";
-  const rich = !!RICH_PROPS[node.type];
+  const rich = !wordsOnly && !!RICH_PROPS[node.type];
   const typing = rich ? richEditing.current : null;
   const words = !!typing?.hasSelection();
   const marks = typing?.state();
@@ -153,57 +158,61 @@ export function TextToolbar({
       data-text-tools=""
       style={position}
     >
-      {heading &&
-        tool(
-          "Accent colour for the selected words",
-          "sparkles",
-          () => richEditing.current?.toggle("accent"),
-          words && marks?.accent,
-          !words,
-        )}
-      {tool(
-        words ? "Bold the selected words (⌘B)" : "Bold (⌘B)",
-        "bold",
-        bold,
-        words ? marks?.b : weight >= 600,
+      {wordsOnly ? null : (
+        <>
+          {heading &&
+            tool(
+              "Accent colour for the selected words",
+              "sparkles",
+              () => richEditing.current?.toggle("accent"),
+              words && marks?.accent,
+              !words,
+            )}
+          {tool(
+            words ? "Bold the selected words (⌘B)" : "Bold (⌘B)",
+            "bold",
+            bold,
+            words ? marks?.b : weight >= 600,
+          )}
+          {tool(
+            words ? "Italic for the selected words (⌘I)" : "Italic (⌘I)",
+            "italic",
+            italic,
+            words ? marks?.i : !!get("italic"),
+          )}
+          {rich &&
+            tool(
+              canLink ? "Link (⌘K)" : "Select words to link",
+              "link",
+              openLink,
+              !!marks?.link || !!linkBox,
+              !canLink,
+            )}
+          <span className="blocks-tool-gap" />
+          {tool("Smaller text", "textSmaller", () => step(-1))}
+          {tool("Bigger text", "textBigger", () => step(1))}
+          <span className="blocks-tool-gap" />
+          {tool(
+            "Align left",
+            "alignLeft",
+            () => write({ textAlign: "left" }),
+            align === "left",
+          )}
+          {tool(
+            "Align centre",
+            "alignCenter",
+            () => write({ textAlign: "center" }),
+            align === "center",
+          )}
+          {tool(
+            "Align right",
+            "alignRight",
+            () => write({ textAlign: "right" }),
+            align === "right",
+          )}
+          <span className="blocks-tool-gap" />
+        </>
       )}
-      {tool(
-        words ? "Italic for the selected words (⌘I)" : "Italic (⌘I)",
-        "italic",
-        italic,
-        words ? marks?.i : !!get("italic"),
-      )}
-      {rich &&
-        tool(
-          canLink ? "Link (⌘K)" : "Select words to link",
-          "link",
-          openLink,
-          !!marks?.link || !!linkBox,
-          !canLink,
-        )}
-      <span className="blocks-tool-gap" />
-      {tool("Smaller text", "textSmaller", () => step(-1))}
-      {tool("Bigger text", "textBigger", () => step(1))}
-      <span className="blocks-tool-gap" />
-      {tool(
-        "Align left",
-        "alignLeft",
-        () => write({ textAlign: "left" }),
-        align === "left",
-      )}
-      {tool(
-        "Align centre",
-        "alignCenter",
-        () => write({ textAlign: "center" }),
-        align === "center",
-      )}
-      {tool(
-        "Align right",
-        "alignRight",
-        () => write({ textAlign: "right" }),
-        align === "right",
-      )}
-      <span className="blocks-tool-gap" />
       <button
         type="button"
         className="blocks-tool-text"

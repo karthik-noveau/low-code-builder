@@ -304,7 +304,17 @@ stays as it was; the smart types still render.
   label, example and help; buttons' labels; each step's heading, intro and
   note; "Sending as {name}"; the success heading. Blocks the owner adds in a
   step are drawn in it (before its error line); hiding the title hides the
-  heading. In the editor the title, fields and buttons select their blocks.
+  heading. In the editor the title, fields and buttons select their blocks,
+  and the words drawn on the canvas are typed in place as ordinary blocks'
+  are (double-click, Enter; Escape cancels, ⌘Enter or clicking away saves;
+  one undo step; locks as elsewhere, so text stays editable): the title,
+  intro, a step's heading, intro and note, field labels and help, and the
+  Continue / send buttons. `FormCustom.text` draws each piece (editor only:
+  published HTML is unchanged) and `classicPart` (`forms/classicWords.ts`)
+  says which block and prop it is. Plain text only (the classic markup shows
+  no formatting), so the text tools show just Done. Examples (placeholders,
+  inside disabled boxes) and the words of steps the editor doesn't draw
+  (confirm, success) stay in the Inspector.
   The form's **Look** setting switches to "Blocks", which lays the same
   blocks out freely (the phase 3 form).
 - **Contact and Email signup → form block, `target: "inbox"`** (`kind`

@@ -369,6 +369,8 @@ export function AppFormArea({
   const form = project.app?.forms.find((f) => f.id === formId);
   const problem = appSectionProblem(project.app, formId);
   if ((problem || !form || !project.app) && exporting) return null;
+  const say = (key: string, shown: string) =>
+    custom?.text ? custom.text(key, shown) : shown;
   return (
     <>
       {!heading ? null : form && (form.steps || form.highlight) ? (
@@ -394,12 +396,14 @@ export function AppFormArea({
           {form?.title &&
             (main ? (
               <h1 {...titleAttrs} className="site-title-main">
-                {form.title}
+                {say("title", form.title)}
               </h1>
             ) : (
-              <h2 {...titleAttrs}>{form.title}</h2>
+              <h2 {...titleAttrs}>{say("title", form.title)}</h2>
             ))}
-          {form?.intro && <p className="site-description">{form.intro}</p>}
+          {form?.intro && (
+            <p className="site-description">{say("intro", form.intro)}</p>
+          )}
         </div>
       )}
       {form && project.app ? (

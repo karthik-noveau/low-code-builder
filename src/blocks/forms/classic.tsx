@@ -13,162 +13,25 @@
  *   inbox (or the owner's own endpoint) with the classic markup: a hidden
  *   `form` kind, the honeypot, and boxes named name, email and message.
  */
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { FormCustom } from "../../apps/AppSection";
 import { appSectionProblem } from "../../apps/issues";
-import {
-  tableOf,
-  type App,
-  type AppForm,
-  type FormCopyKey,
-} from "../../apps/model";
+import { tableOf, type App, type AppForm } from "../../apps/model";
+import { InlineText } from "../../studio/InlineText";
 import { AppFormArea, SiteForm } from "../../studio/siteParts";
 import { inboxKind, INBOX_FIELDS, type InboxField } from "./inbox";
 import type { Node, PropValue } from "../model";
+import { BLOCKS } from "../registry";
 import { Nodes, Placeholder, type RenderContext } from "../render";
-import { identityField, IDENTITY, stepKind } from "./model";
+import { classicPart, readClassic, type Classic } from "./classicWords";
+import { identityField } from "./model";
 
 const str = (v: PropValue | undefined) => (typeof v === "string" ? v : "");
 type Attrs = Record<string, string | undefined>;
-type Zone = "identify" | "confirm" | "fields" | "lookup" | "done";
-
-/** What a classic form block's blocks say, read by where they sit. */
-interface Classic {
-  title?: Node;
-  intro?: Node;
-  copy: Partial<Record<FormCopyKey, string>>;
-  button?: string;
-  words: NonNullable<FormCustom["words"]>;
-  /** Field id (or "identity", "value", "verify") → its block. */
-  fields: Map<string, Node>;
-  buttons: Map<string, Node>;
-  extras: Record<"identify" | "fields" | "lookup", Node[]>;
-}
-
-function readClassic(form: Node, app: AppForm, editing: string | null) {
-  const out: Classic = {
-    copy: {},
-    words: {},
-    fields: new Map(),
-    buttons: new Map(),
-    extras: { identify: [], fields: [], lookup: [] },
-  };
-  const visible = (n: Node) => !n.hidden || editing === n.id;
-  const zoneOf = (step: Node): Zone => {
-    const kind = stepKind(step);
-    return kind === "identify"
-      ? "identify"
-      : kind === "confirm"
-        ? "confirm"
-        : "fields";
-  };
-  const heads: Partial<Record<Zone, FormCopyKey>> = {
-    identify: "identifyTitle",
-    lookup: "identifyTitle",
-    confirm: "confirmTitle",
-    fields: "fieldsTitle",
-    done: "doneTitle",
-  };
-  const read = (nodes: Node[], zone: Zone) => {
-    let pastButton = false;
-    let headed = false;
-    let introduced = false;
-    for (const n of nodes.filter(visible)) {
-      const extra = () => {
-        if (zone !== "confirm" && zone !== "done") out.extras[zone].push(n);
-      };
-      switch (n.type) {
-        case "field": {
-          const id = str(n.props.field);
-          const key =
-            zone === "identify" || id === IDENTITY
-              ? "identity"
-              : zone === "lookup"
-                ? id === app.key
-                  ? "value"
-                  : id === app.verify
-                    ? "verify"
-                    : ""
-                : id;
-          if (key && !out.fields.has(key)) out.fields.set(key, n);
-          break;
-        }
-        case "submit": {
-          const action = str(n.props.action) || "submit";
-          const label = str(n.props.label);
-          if (action === "submit") {
-            pastButton = true;
-            if (zone === "identify") {
-              out.words.continue = label;
-              out.buttons.set("continue", n);
-            } else if (zone === "fields" || zone === "lookup") {
-              out.button = label;
-              out.buttons.set("button", n);
-            }
-          } else if (
-            action === "confirm" ||
-            action === "change" ||
-            action === "again"
-          )
-            out.words[action] = label;
-          break;
-        }
-        case "heading": {
-          const key = heads[zone];
-          if (key && !headed) {
-            headed = true;
-            out.copy[key] = str(n.props.text);
-          } else extra();
-          break;
-        }
-        case "text": {
-          const value = str(n.props.text);
-          if (zone === "done" && value.includes("{message}")) break;
-          if (zone === "fields" && value.includes("{name}")) {
-            out.copy.fieldsIntro = value.replace(/\s*\{name\}\s*$/, "");
-            break;
-          }
-          if (zone === "confirm" && !introduced) {
-            introduced = true;
-            out.copy.confirmIntro = value;
-          } else if (
-            (zone === "identify" || zone === "lookup") &&
-            !pastButton &&
-            !introduced
-          ) {
-            introduced = true;
-            out.copy.identifyIntro = value;
-          } else if ((zone === "identify" || zone === "lookup") && pastButton)
-            out.copy.identifyNote = value;
-          else if (zone === "fields" && pastButton) out.copy.fieldsNote = value;
-          else extra();
-          break;
-        }
-        case "formRecord":
-        case "formError":
-        case "formSteps":
-          break;
-        case "icon":
-          if (zone !== "done") extra();
-          break;
-        default:
-          extra();
-      }
-    }
-  };
-  const top: Node[] = [];
-  for (const c of (form.children ?? []).filter(visible)) {
-    if (c.props.part === "title" && c.type === "heading" && !out.title)
-      out.title = c;
-    else if (c.props.part === "intro" && c.type === "text" && !out.intro)
-      out.intro = c;
-    else if (c.type === "formStep") read(c.children ?? [], zoneOf(c));
-    else if (c.type === "formSuccess") read(c.children ?? [], "done");
-    else top.push(c);
-  }
-  read(top, app.kind === "lookup" ? "lookup" : "fields");
-  return out;
-}
+const TYPING_LABELS: Record<string, string> = {
+  label: "Edit field label",
+  hint: "Edit field help",
+};
 
 /** The app with the field blocks' labels, examples and help on its fields. */
 function withLabels(app: App, form: AppForm, classic: Classic): App {
@@ -226,7 +89,14 @@ export function ClassicForm({
   className: string;
   attrs: Attrs;
 }) {
-  const editing = !!ctx.edit;
+  // Which piece is being typed into (a field has its label and its help).
+  const [typingKey, setTypingKey] = useState<{
+    id: string;
+    key: string;
+  } | null>(null);
+  const press = useRef<{ at: number; target: Element } | null>(null);
+  const edit = ctx.edit;
+  const editing = !!edit;
   const project = ctx.project;
   const app = project.app;
   const form = app?.forms.find((f) => f.id === str(n.props.form));
@@ -279,11 +149,100 @@ export function ClassicForm({
       lookup: extras(classic.extras.lookup),
     },
     attrs: (key) => mark(classic.fields.get(key) ?? classic.buttons.get(key)),
+    text: edit
+      ? (key, shown) => {
+          const part = classicPart(classic, key);
+          if (!part) return shown;
+          const { node, prop } = part;
+          const value = str(node.props[prop]);
+          const last = typingKey;
+          const start = () => {
+            setTypingKey({ id: node.id, key });
+            edit.onStartTyping(node.id);
+          };
+          return (
+            <InlineText
+              as="span"
+              value={value.trim() ? value : shown}
+              enabled
+              editing={
+                edit.typing === node.id &&
+                (last?.id === node.id ? last.key === key : prop !== "hint")
+              }
+              label={
+                node.type === "submit"
+                  ? "Edit button text"
+                  : (TYPING_LABELS[prop] ??
+                    `Edit ${BLOCKS[node.type].label.toLowerCase()} text`)
+              }
+              onCommit={(v) => edit.onCommit(node.id, prop, v)}
+              onActivate={() => edit.onSelect(node.id)}
+              onStartEdit={start}
+              onFinishEdit={edit.onFinishTyping}
+              onDraft={edit.onDraft}
+              attrs={{ ...mark(node), "data-typed": key }}
+              render={() => shown}
+            />
+          );
+        }
+      : undefined,
+  };
+  /** Starts typing into a piece's words, from the element it's drawn in. */
+  const typeInto = (el: Element | null | undefined) => {
+    const id = (el as HTMLElement | null)?.dataset?.typed;
+    const part = id ? classicPart(classic, id) : undefined;
+    if (!edit || !id || !part || el?.matches(".is-editing")) return;
+    setTypingKey({ id: part.node.id, key: id });
+    edit.onStartTyping(part.node.id);
   };
   return (
     <div
       {...attrs}
       className={className.replace(/\bblk-form\b/, "blk-appForm")}
+      // A block's words are typed into from anywhere around them (a
+      // heading's whole line, a field's label row) and in its buttons. The
+      // buttons are disabled here and only get pointer events, so a double
+      // press counts as a double-click.
+      onDoubleClick={
+        edit
+          ? (e) => {
+              for (
+                let el = e.target as Element | null;
+                el && el !== e.currentTarget;
+                el = el.parentElement
+              ) {
+                const words = Array.from(el.querySelectorAll(".inline-copy"));
+                if (!words.length) continue;
+                const ids = new Set(
+                  words.map((w) => w.getAttribute("data-node-id")),
+                );
+                if (ids.size === 1 && !words.includes(e.target as Element))
+                  typeInto(words[0]);
+                return;
+              }
+            }
+          : undefined
+      }
+      onPointerDown={
+        edit
+          ? (e) => {
+              const target =
+                (e.target as Element)
+                  .closest("button:disabled")
+                  ?.querySelector(".inline-copy:not(.is-editing)") ?? null;
+              const last = press.current;
+              press.current = target ? { at: e.timeStamp, target } : null;
+              if (
+                target &&
+                last?.target === target &&
+                e.timeStamp - last.at < 500
+              ) {
+                press.current = null;
+                typeInto(target);
+              }
+            }
+          : undefined
+      }
     >
       <AppFormArea
         project={{ ...project, app: nextApp }}

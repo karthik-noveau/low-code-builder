@@ -48,6 +48,7 @@ import {
 import { BlockMenu } from "./BlockMenu";
 import { TextToolbar } from "./TextToolbar";
 import { presetById } from "../presets";
+import { isClassicForm } from "../forms/inbox";
 
 interface Geometry {
   frame: Rect;
@@ -423,6 +424,7 @@ export function CanvasOverlay({
               node={node}
               device={device}
               onDone={() => onDoneTyping?.()}
+              wordsOnly={!!root && pathTo([root], node.id).some(isClassicForm)}
               style={{
                 left: Math.max(4, Math.min(t.left, frame.width - 360)),
                 top: Math.max(4, top),
