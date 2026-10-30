@@ -940,6 +940,8 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
             )}
           </div>
         )}
+        {/* Holds the middle column while typing, so the actions stay right. */}
+        {editingText && <div aria-hidden="true" />}
         <div className="header-actions">
           <span
             className={`save-indicator ${store.saveError || store.cloud?.failed ? "error" : ""}`}

@@ -43,6 +43,9 @@
   --fx-accent-press: #2549c4;
   --fx-accent-soft: rgba(59, 104, 240, 0.1);
   --fx-accent-text: #2f5ae0;
+  /* Filled buttons with white labels (4.5:1 in both themes). */
+  --fx-accent-fill: #3b68f0;
+  --fx-accent-fill-hover: #2f5ae0;
   --fx-violet: #8b5cf6;
   --fx-gradient: linear-gradient(135deg, #3b68f0 0%, #8b5cf6 100%);
   --fx-glow: radial-gradient(
@@ -142,6 +145,8 @@
   --fx-accent-press: #3d68ea;
   --fx-accent-soft: rgba(79, 124, 255, 0.14);
   --fx-accent-text: #8fadff;
+  --fx-accent-fill: #3d68ea;
+  --fx-accent-fill-hover: #3358d6;
   --fx-violet: #9b6bff;
   --fx-gradient: linear-gradient(135deg, #4f7cff 0%, #9b6bff 100%);
   --fx-glow: radial-gradient(

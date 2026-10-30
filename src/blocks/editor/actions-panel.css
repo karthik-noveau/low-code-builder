@@ -550,3 +550,28 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+/* Rule pickers sit outside a .field: give them the inspector's controls. */
+html
+  body
+  .studio.canvas-first
+  .context-drawer
+  :is(.ap-rule-head, .ap-inline)
+  > :is(select, input:not([type="checkbox"], [type="radio"])) {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--fx-border-strong);
+  border-radius: 6px;
+  background-color: var(--fx-bg-raised);
+  color: var(--fx-text);
+  font-size: 12px;
+}
+html
+  body
+  .studio.canvas-first
+  .context-drawer
+  :is(.ap-rule-head, .ap-inline)
+  > select {
+  padding-right: 26px;
+  appearance: none;
+}

@@ -27,6 +27,9 @@ import { parseCsv, toCsv } from "./csv";
 import { activityLabel, orderNumber, returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
 
+/** Paid and shipped orders read as good news; the rest (waiting, refunded, cancelled) stay neutral. */
+const orderTone = (status: string) =>
+  status === "paid" || status === "fulfilled" ? "" : "neutral";
 const sections = [
   "Overview",
   "Products",
@@ -746,13 +749,20 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               <strong>
                 {data.products.filter((p) => p.status === "active").length}
               </strong>
-              <small>{data.products.length} products in your catalog</small>
+              <small>
+                {data.products.length}{" "}
+                {data.products.length === 1 ? "product" : "products"} in your
+                catalog
+              </small>
             </div>
             <div className="commerce-stat">
               <span>Customers</span>
               <strong>{data.customers.length}</strong>
               <small>
-                {data.analytics.returningCustomers} returning customers
+                {data.analytics.returningCustomers} returning{" "}
+                {data.analytics.returningCustomers === 1
+                  ? "customer"
+                  : "customers"}
               </small>
             </div>
           </div>
@@ -1024,7 +1034,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             <div className="commerce-panel">
               <div className="commerce-toolbar">
                 <h2>Order {orderNumber(selected.id)}</h2>
-                <span className="commerce-badge">
+                <span
+                  className={`commerce-badge ${orderTone(selected.status)}`}
+                >
                   {statusLabel(selected.status)}
                 </span>
               </div>
@@ -1284,7 +1296,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                       <small>{o.email}</small>
                     </td>
                     <td>
-                      <span className="commerce-badge">
+                      <span className={`commerce-badge ${orderTone(o.status)}`}>
                         {statusLabel(o.status)}
                       </span>
                     </td>

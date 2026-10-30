@@ -242,6 +242,11 @@
   float: right;
   font-size: 18px;
 }
+/* A link inside the sentence stays in the sentence (the float is for ×). */
+.commerce-notice button.commerce-link {
+  float: none;
+  font-size: inherit;
+}
 .commerce-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -309,6 +314,9 @@ details.commerce-panel > summary {
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
+  color: var(--ui-ink, #111114);
+}
+details.commerce-panel.settings-danger > summary {
   color: #a23232;
 }
 details.commerce-panel[open] > summary {
@@ -820,7 +828,7 @@ fieldset.commerce-field > legend {
   padding: 6px 12px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 999px;
-  background: white;
+  background: var(--ui-surface, white);
   color: var(--ui-text);
   font-size: 12px;
   font-weight: 600;
@@ -828,7 +836,7 @@ fieldset.commerce-field > legend {
 .commerce-chips button[aria-pressed="true"] {
   background: var(--ui-accent-soft);
   border-color: var(--ui-accent-border);
-  color: var(--ui-accent);
+  color: var(--fx-accent-text, var(--ui-accent));
 }
 /* A readable list of records, e.g. integration events. */
 .commerce-record-list {

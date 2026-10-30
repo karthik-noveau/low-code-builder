@@ -37,7 +37,7 @@
 }
 :is(.blk-contactForm, .blk-newsletter) small {
   width: 100%;
-  opacity: 0.6;
+  opacity: 0.75;
   font-size: 10px;
 }
 .blk-contactForm.blk {
@@ -553,7 +553,7 @@
   margin: 0;
   font-size: 8px;
   letter-spacing: 1.7px;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 .lk-hero-split.blk-section.blk {
   background: var(--site-accent);
@@ -753,7 +753,7 @@
 }
 .lk-features .blk-text.v-muted {
   font-size: 9px;
-  opacity: 0.66;
+  opacity: 0.75;
   color: inherit;
 }
 @container (max-width: 700px) {
@@ -929,7 +929,7 @@
   margin-top: 4px;
   color: inherit;
   font-size: 10px;
-  opacity: 0.6;
+  opacity: 0.75;
 }
 .lk-testimonials .blk-grid > .blk-box {
   padding: 25px 0;
@@ -1196,7 +1196,7 @@
   line-height: inherit;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  opacity: 0.6;
+  opacity: 0.75;
 }
 .rl-listing .blk-repeat-item > .blk-box > .blk-button {
   margin-top: auto;
@@ -1337,7 +1337,7 @@
   padding-top: 20px;
   border-top: 1px solid #ffffff30;
   font-size: 9px;
-  opacity: 0.5;
+  opacity: 0.65;
 }
 @container (max-width: 480px) {
   .lk-footer .v-inline .blk-menu-links {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "../brand/useSession";
 import { request, signOut } from "../cloud/client";
+import { storeRequest } from "./client";
 import { money, type Address, type Order } from "./types";
 import { orderNumber, returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
@@ -20,6 +21,19 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
     [notice, setNotice] = useState("");
   // The saved address waiting on "Remove this address?" to be answered.
   const [removing, setRemoving] = useState<number>();
+  // Hosted stores don't offer customer accounts yet (the store says so).
+  const [closed, setClosed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    storeRequest<{ accounts?: boolean }>(siteId)
+      .then((store) => {
+        if (active) setClosed(store.accounts === false);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [siteId]);
   const endpoint = `/store/${siteId}/account`;
   const refresh = useCallback(
     () =>
@@ -29,8 +43,8 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
     [endpoint],
   );
   useEffect(() => {
-    if (session.account) void refresh();
-  }, [session.account, refresh]);
+    if (session.account && !closed) void refresh();
+  }, [session.account, closed, refresh]);
   const saveAddresses = async (addresses: Address[], message: string) => {
     if (!profile) return false;
     setBusy(true);
@@ -59,7 +73,7 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
           <a href={`/store?site=${siteId}`} className="store-logo store-back">
             ← Back to store
           </a>
-          {session.account && (
+          {session.account && !closed && (
             <button
               className="commerce-link"
               onClick={() => {
@@ -84,7 +98,20 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
               {notice}
             </p>
           )}
-          {session.loading ? (
+          {closed ? (
+            <section className="commerce-panel commerce-form">
+              <h2>Customer accounts aren’t open yet</h2>
+              <p className="commerce-muted">
+                This store doesn’t have customer accounts yet. For an order you
+                placed, contact the store with your order number.
+              </p>
+              <div className="commerce-actions">
+                <a className="commerce-button" href={`/store?site=${siteId}`}>
+                  Back to store
+                </a>
+              </div>
+            </section>
+          ) : session.loading ? (
             <p role="status">Loading…</p>
           ) : !session.account ? (
             <section className="commerce-panel commerce-form">

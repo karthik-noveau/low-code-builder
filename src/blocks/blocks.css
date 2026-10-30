@@ -921,14 +921,15 @@ a.blk-box.v-card:hover {
   position: relative;
   border: 1px dashed var(--blk-line);
   border-radius: calc(var(--site-radius) + 4px);
-  padding-top: 18px;
+  padding-top: 32px;
 }
 .blk-repeat-empty.is-editing::before {
   content: attr(data-label);
   position: absolute;
-  top: 6px;
+  top: 9px;
   left: 12px;
   font-size: 11px;
+  line-height: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;

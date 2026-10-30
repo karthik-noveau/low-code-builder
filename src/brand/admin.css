@@ -543,7 +543,7 @@ html body .admin-ui :is(.brand-button, .commerce-button) {
   padding: 0 12px;
   border: 0;
   border-radius: var(--a-radius-control);
-  background: var(--a-accent);
+  background: var(--fx-accent-fill);
   color: #fff !important;
   font-size: 14px;
   font-weight: 600;
@@ -560,7 +560,7 @@ html body .admin-ui :is(.brand-button, .commerce-button) {
     box-shadow 120ms ease;
 }
 html body .admin-ui :is(.brand-button, .commerce-button):hover {
-  background: var(--fx-accent-hover);
+  background: var(--fx-accent-fill-hover);
   filter: none;
   transform: none;
 }
@@ -606,7 +606,7 @@ html body .admin-ui :is(.brand-button, .commerce-button) svg {
   flex-shrink: 0;
 }
 html body .admin-ui .commerce-link {
-  color: var(--a-accent);
+  color: var(--fx-accent-text);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -945,7 +945,7 @@ html body .admin-ui :is(.commerce-badge, .dashboard-site-status) {
 html body .admin-ui .dashboard-site-status.is-live,
 html body .admin-ui .commerce-badge:not(.neutral) {
   background: var(--fx-success-soft);
-  color: var(--fx-success);
+  color: color-mix(in srgb, var(--fx-success) 70%, var(--fx-text));
 }
 html body .admin-ui .dashboard-site-status.is-live::before {
   content: "";
@@ -1546,7 +1546,7 @@ html body .admin-ui kbd {
 }
 html body .admin-ui .admin-search kbd {
   background: var(--fx-surface-3);
-  color: var(--a-top-muted);
+  color: var(--fx-text-2);
 }
 html body .admin-ui .admin-icon-button {
   position: relative;
@@ -1573,7 +1573,8 @@ html body .admin-ui .admin-badge-dot {
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: var(--fx-danger);
+  /* The light theme's red in both themes: white digits read on it. */
+  background: #dc3545;
   box-shadow: 0 0 0 2px var(--a-top);
   color: #fff;
   font-size: 10px;

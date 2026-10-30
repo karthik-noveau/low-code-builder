@@ -333,7 +333,7 @@ export function volt(brand: string): SiteParts {
     collections: [products],
     app,
     theme: {
-      accent: "#e8730c",
+      accent: "#b85600",
       background: "#fbfaf8",
       color: "#24272b",
       font: "modern",

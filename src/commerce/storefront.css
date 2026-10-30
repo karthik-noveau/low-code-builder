@@ -156,6 +156,9 @@
   text-decoration-color: var(--s-border);
   cursor: pointer;
 }
+.storefront .store-showing {
+  margin: 0 0 var(--fx-4);
+}
 .storefront .commerce-link:hover {
   text-decoration-color: currentColor;
 }

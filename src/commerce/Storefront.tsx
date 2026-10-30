@@ -39,6 +39,16 @@ interface StoreData {
   accounts?: boolean;
 }
 type Page = "shop" | "cart" | "checkout" | "receipt" | "journal" | "contact";
+/** "India" for "IN", in the shopper's language; the code if it isn't known. */
+function countryName(code: string) {
+  try {
+    return (
+      new Intl.DisplayNames(undefined, { type: "region" }).of(code) || code
+    );
+  } catch {
+    return code;
+  }
+}
 const messageOf = (e: unknown) =>
   e instanceof Error ? e.message : "Something went wrong. Please try again.";
 function Totals({ quote }: { quote: Quote }) {
@@ -52,15 +62,17 @@ function Totals({ quote }: { quote: Quote }) {
           ["Tax", quote.tax],
           ["Total", quote.total],
         ] as [string, number][]
-      ).map(([label, amount]) => (
-        <div
-          key={label}
-          className={`commerce-total-row ${label === "Total" ? "total" : ""}`}
-        >
-          <span>{label}</span>
-          <strong>{money(amount, quote.currency)}</strong>
-        </div>
-      ))}
+      )
+        .filter(([label, amount]) => label !== "Discount" || amount !== 0)
+        .map(([label, amount]) => (
+          <div
+            key={label}
+            className={`commerce-total-row ${label === "Total" ? "total" : ""}`}
+          >
+            <span>{label}</span>
+            <strong>{money(amount, quote.currency)}</strong>
+          </div>
+        ))}
     </div>
   );
 }
@@ -251,8 +263,16 @@ export function Storefront({ siteId }: { siteId: string }) {
       : [...lines, { productId, variantId, quantity: 1 }];
     if (await updateCart(updated)) setNotice("Added to your cart.");
   };
+  /** Leaves a product linked from the website (?product=) for the whole catalog. */
+  const showAll = () => {
+    setRequestedProduct("");
+    const url = new URL(location.href);
+    if (!url.searchParams.has("product")) return;
+    url.searchParams.delete("product");
+    history.replaceState(history.state, "", url);
+  };
   const navigate = (next: Page) => {
-    if (next === "shop") setRequestedProduct("");
+    if (next === "shop") showAll();
     if (article) setArticle(undefined);
     setPage(next);
     setError("");
@@ -350,9 +370,13 @@ export function Storefront({ siteId }: { siteId: string }) {
   const content = () => {
     if (!data || !market) return null;
     if (page === "shop") {
+      // A link to a product that's gone (or hidden) shows the whole catalog.
+      const linked = data.products.some((p) => p.id === requestedProduct)
+        ? requestedProduct
+        : "";
       const products = data.products.filter(
         (p) =>
-          (!requestedProduct || p.id === requestedProduct) &&
+          (!linked || p.id === linked) &&
           `${p.title} ${p.description} ${p.collection} ${Object.values(
             p.translations,
           )
@@ -415,8 +439,11 @@ export function Storefront({ siteId }: { siteId: string }) {
               ].map((c) => (
                 <button
                   key={c || "all"}
-                  aria-pressed={collection === c}
-                  onClick={() => setCollection(c)}
+                  aria-pressed={!linked && collection === c}
+                  onClick={() => {
+                    showAll();
+                    setCollection(c);
+                  }}
                 >
                   {c || "All"}
                 </button>
@@ -430,10 +457,21 @@ export function Storefront({ siteId }: { siteId: string }) {
                 aria-label="Search store products"
                 placeholder="Search products"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  showAll();
+                  setSearch(e.target.value);
+                }}
               />
             </label>
           </div>
+          {linked && (
+            <p className="commerce-muted store-showing">
+              Showing one product.{" "}
+              <button className="commerce-link" onClick={showAll}>
+                See all products
+              </button>
+            </p>
+          )}
           <div className="store-grid">
             {products.map((product) => (
               <ProductCard
@@ -558,7 +596,9 @@ export function Storefront({ siteId }: { siteId: string }) {
                     }
                   >
                     {market.countries.map((c) => (
-                      <option key={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {countryName(c)}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -585,14 +625,14 @@ export function Storefront({ siteId }: { siteId: string }) {
                 <Totals quote={cart.quote} />
                 {data?.checkout === false ? (
                   <div className="commerce-notice" role="status">
-                    This store doesn’t take online orders yet.{" "}
+                    This store doesn’t take online orders yet. To order,{" "}
                     <button
                       className="commerce-link"
                       onClick={() => navigate("contact")}
                     >
-                      Contact the store
-                    </button>{" "}
-                    to order.
+                      contact the store
+                    </button>
+                    .
                   </div>
                 ) : (
                   <button
@@ -733,7 +773,7 @@ export function Storefront({ siteId }: { siteId: string }) {
                 </label>
               </div>
               <p className="commerce-muted">
-                Delivery country: {country}.{" "}
+                Delivery country: {countryName(country)}.{" "}
                 <button
                   type="button"
                   className="commerce-link"

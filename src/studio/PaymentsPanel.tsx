@@ -402,7 +402,7 @@ function OnlinePayments() {
                 maxLength={220}
                 hint={
                   provider === "stripe"
-                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write."
+                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write and Refunds: Write (so you can refund from the Inbox)."
                     : "In Razorpay → Account & Settings → API keys."
                 }
                 onChange={setSecret}

@@ -10,7 +10,7 @@ import type { AppTable } from "../../apps/model";
 import { OWNER_LINK } from "../model";
 import { appSection, createSection, item, page, type SiteParts } from "./kit";
 
-const ORANGE = "#e07400";
+const ORANGE = "#b85600";
 /** A list item with an icon and, for tabs, a link. */
 const entry = (
   title: string,

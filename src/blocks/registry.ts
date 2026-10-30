@@ -530,7 +530,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
   },
   video: {
     label: "Video",
-    icon: "eye",
+    icon: "play",
     category: "media",
     description: "A YouTube or Vimeo video",
     fields: [

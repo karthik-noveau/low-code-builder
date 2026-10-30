@@ -378,10 +378,15 @@ export function CanvasOverlay({
     const right = geo?.site
       ? Math.min(frame.width, geo.site.left + geo.site.width - frame.left)
       : frame.width;
-    const tagLeft = Math.max(0, Math.min(sel.left, right - widths.tag));
+    // A narrow block keeps the name and the tools side by side, moved left
+    // together near the site's right edge so the tools never cover the name.
+    const tagLeft = Math.max(
+      0,
+      Math.min(sel.left, right - widths.tag - (fits ? 0 : widths.tools + 4)),
+    );
     const toolsLeft = fits
       ? Math.min(sel.left + sel.width - widths.tools, right - widths.tools)
-      : Math.min(tagLeft + widths.tag + 4, right - widths.tools);
+      : tagLeft + widths.tag + 4;
     return { where, top, tagLeft, toolsLeft: Math.max(0, toolsLeft) };
   })();
 

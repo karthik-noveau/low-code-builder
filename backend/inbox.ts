@@ -1,15 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { config as settings, HttpError, idPattern, insist } from "./config";
-import {
-  audit,
-  event,
-  key,
-  now,
-  put,
-  read,
-  transact,
-} from "./commerce-data";
+import { audit, event, key, now, put, read, transact } from "./commerce-data";
 import { db, getItem, putItem } from "./database";
 import { readObject, writeObject } from "./objects";
 import {
@@ -316,8 +308,21 @@ export async function receiveRequest(
 export const paymentPageUrl = (siteId: string, requestId: string) =>
   `${settings.apiOrigin}/inbox/${siteId}/requests/${requestId}`;
 const requestIdPattern = /^\d{13}-[a-f0-9-]{36}$/;
-const safeAccent = (value?: string) =>
-  value && /^#[\da-f]{6}$/i.test(value) ? value : "#1c1c1c";
+/** The site's accent, darkened until the white button text on it reads at 4.5:1. */
+function safeAccent(value?: string) {
+  if (!value || !/^#[\da-f]{6}$/i.test(value)) return "#1c1c1c";
+  let rgb = [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16));
+  const luminance = (c: number[]) =>
+    c
+      .map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      })
+      .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+  while (1.05 / (luminance(rgb) + 0.05) < 4.5)
+    rgb = rgb.map((v) => Math.floor(v * 0.92));
+  return `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
 type StoredRequest = InboxRequest & { revision: number };
 /** Marks a request paid when its provider checkout was paid in full. */
 async function confirmWithProvider(

@@ -277,7 +277,7 @@ export function glow(brand: string): SiteParts {
     collections: [services],
     app,
     theme: {
-      accent: "#b5655a",
+      accent: "#a65a50",
       background: "#fdf8f6",
       color: "#3a2a27",
       font: "classic",

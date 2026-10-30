@@ -48,7 +48,7 @@ function storeCard(block: Block): Node {
         { variant: "plain" },
         [block("icon", { icon: "image", variant: "plain", size: 32 })],
         {
-          name: "Image",
+          name: "Photo placeholder",
           bind: { link: "item:link" },
           when: when("item:image", "empty"),
         },

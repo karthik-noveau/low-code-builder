@@ -44,6 +44,7 @@ const paths: Record<string, string> = {
   tablet: "M5 2h14v20H5V2ZM11 18h2",
   mobile: "M7 2h10v20H7V2ZM11 18h2",
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
+  play: "M3 5h18v14H3V5Zm7 4v6l5-3-5-3Z",
   eyeOff:
     "m3 3 18 18M10 5h2c6 0 10 7 10 7a23 23 0 0 1-3 4M6 6a23 23 0 0 0-4 6s4 7 10 7c2 0 4-1 5-2",
   export: "M12 15V2m-5 5 5-5 5 5M4 13v8h16v-8",

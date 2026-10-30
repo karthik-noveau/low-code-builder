@@ -170,7 +170,7 @@ html body .studio.canvas-first .primary-button {
   min-height: 32px;
   border: 0;
   border-radius: 8px;
-  background: var(--ui-accent);
+  background: var(--fx-accent-fill, var(--ui-accent));
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -180,7 +180,7 @@ html body .studio.canvas-first .primary-button {
     0 1px 1px rgba(29, 38, 35, 0.14);
 }
 html body .studio.canvas-first .primary-button:hover:not(:disabled) {
-  background: var(--ui-accent-hover);
+  background: var(--fx-accent-fill-hover, var(--ui-accent-hover));
 }
 html body .studio.canvas-first .header-actions .preview-button {
   border-radius: 8px;
@@ -245,23 +245,42 @@ html
   :is(input, textarea)::placeholder {
   color: var(--fx-faint);
 }
-html body .studio.canvas-first select option {
+/* The website's own selects (on the canvas) keep the site's look. */
+html body .studio.canvas-first select:not(.canvas-device select) option {
   background: var(--fx-surface-2);
   color: var(--fx-text);
 }
-html body .studio.canvas-first select {
+html body .studio.canvas-first select:not(.canvas-device select) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
 /* Search boxes that wrap their input keep the wrapper as the visible field. */
-html body .studio.canvas-first :is(.search-box, .navigator-search) input {
+html
+  body
+  .studio.canvas-first
+  :is(.search-box, .navigator-search, .data-search)
+  input {
   background-color: transparent;
   border-color: transparent;
 }
 html body .studio.canvas-first :is(.search-box, .navigator-search) {
   background: var(--fx-bg-raised);
   border-color: var(--fx-border-strong);
+}
+html
+  body
+  .studio.canvas-first
+  :is(.search-box, .navigator-search, .data-search)
+  input:focus {
+  outline: none;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.search-box, .navigator-search, .data-search):focus-within {
+  border-color: var(--fx-border-focus);
+  box-shadow: var(--fx-ring);
 }
 html body .studio.canvas-first,
 html body .studio.canvas-first * {

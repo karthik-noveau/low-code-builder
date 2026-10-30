@@ -152,3 +152,7 @@
 .dp-group .dp-warning {
   margin: 0;
 }
+/* The panel's group headings carry a bottom margin; here the gap spaces them. */
+html body .studio.canvas-first .inspector-group.dp-group > h4 {
+  margin: 0;
+}

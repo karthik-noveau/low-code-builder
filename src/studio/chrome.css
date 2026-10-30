@@ -290,6 +290,9 @@
   .studio.canvas-first .studio-header .header-actions > .icon-button {
     display: none;
   }
+  .studio.canvas-first .studio-header .header-actions > .theme-cycle {
+    flex-shrink: 0;
+  }
 }
 /* On phones the top-left corner is the site's own header; keep tools out of it. */
 @media (max-width: 760px) {
