@@ -1348,7 +1348,9 @@ function WhenEditor({
     ? sourceFields(project, repeat.props.source).filter(
         (f) =>
           f.source !== "item:link" &&
-          /^(field:|item:(title|index))/.test(f.source),
+          /^(field:|item:(title|index|price|image|description|category))/.test(
+            f.source,
+          ),
       )
     : [];
   const save = (next: Condition | undefined, coalesce?: string) =>

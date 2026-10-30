@@ -34,6 +34,7 @@ import { digest } from "./project";
 import { walk, type Node } from "../src/blocks/model";
 import { createNode } from "../src/blocks/registry";
 import { productCards } from "../src/blocks/legacy";
+import { STORE_SOURCE } from "../src/blocks/data/store";
 import { inboxForms } from "../src/blocks/project";
 import { config, insist } from "./config";
 import type { CommerceBinding } from "./commerce-publishing";
@@ -126,15 +127,18 @@ export async function compileSite(
         section.buttonUrl = commerce.shopUrl;
       } else if (section.root?.props.tag === "header")
         shopButton(section.root, commerce.shopUrl);
-  if (commerce?.products)
+  // Store repeats list the catalogue (any number); blocks that stayed
+  // classic products blocks show its first 12, as they always have.
+  const store = commerce?.products?.map((p) => ({ ...p }));
+  if (store)
     for (const page of project.pages)
       for (const section of page.sections)
         if (section.type === "products")
-          section.items = structuredClone(commerce.products);
+          section.items = structuredClone(store.slice(0, 12));
         else
           for (const node of walk(section.root ? [section.root] : []))
             if (node.type === "products")
-              node.children = productCards(commerce.products, node.id);
+              node.children = productCards(store.slice(0, 12), node.id);
   const artifacts: Artifact[] = [];
   let totalBytes = 0;
   const add = (artifact: Artifact) => {
@@ -171,8 +175,16 @@ export async function compileSite(
       : "";
   if (project.theme.logo && project.theme.logo !== "bolt" && !logo)
     delete project.theme.logo;
+  const listsStore = sections.some((s) =>
+    [...walk(s.root ? [s.root] : [])].some(
+      (n) => n.type === "repeat" && n.props.source === STORE_SOURCE,
+    ),
+  );
   const sources = new Set([
     ...sections.flatMap(sectionImages),
+    ...(store && listsStore
+      ? store.map((p) => p.image).filter((src) => !!src)
+      : []),
     ...collectionImages(project.collections),
     ...(logo ? [logo] : []),
   ]);
@@ -236,6 +248,7 @@ export async function compileSite(
     project.collections,
     (src) => replacements.get(src) || undefined,
   );
+  for (const p of store ?? []) p.image = replacements.get(p.image) || p.image;
   if (logo && replacements.has(logo))
     project.theme.logo = replacements.get(logo);
   for (const page of project.pages)
@@ -243,7 +256,7 @@ export async function compileSite(
       name: pageHref(page.slug),
       type: "text/html; charset=utf-8",
       body: Buffer.from(
-        renderPage(project, page, { inbox, appApi, owner }).replace(
+        renderPage(project, page, { inbox, appApi, owner, store }).replace(
           'href="styles.css"',
           `href="${releaseBase}/styles.css"`,
         ),
@@ -258,6 +271,7 @@ export async function compileSite(
           inbox,
           appApi,
           owner,
+          store,
         }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
       ),
     });

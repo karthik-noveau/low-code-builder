@@ -3,6 +3,7 @@
  * site. In the editor every block carries data-node-id (the canvas selects by
  * it) and text blocks edit in place.
  */
+import type { StoreProduct } from "./data/store";
 import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "../studio/Icon";
 import { InlineText } from "../studio/InlineText";
@@ -46,6 +47,8 @@ export interface RenderContext {
   inbox?: string;
   /** Published sites: the public app API app forms talk to. */
   appApi?: string;
+  /** Published sites: Forma Store's products for store repeats (none without a catalogue on the website). */
+  store?: StoreProduct[];
   /** Preview only: the theme switch. */
   dark?: boolean;
   /** Inside a repeat: the item its template is drawn for (bindings read it). */

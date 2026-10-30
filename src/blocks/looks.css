@@ -863,7 +863,7 @@
   margin-bottom: 32px;
 }
 :is(.lk-collection, .lk-gallery, .lk-testimonials)
-  :is(.blk-grid, .blk-products) {
+  :is(.blk-grid, .blk-products, .rl-products) {
   --cols-t: 3;
 }
 :is(.lk-collection, .lk-gallery) .blk-image.blk {
@@ -954,7 +954,7 @@
     gap: 12px;
   }
   :is(.lk-collection, .lk-gallery, .lk-testimonials)
-    :is(.blk-grid, .blk-products) {
+    :is(.blk-grid, .blk-products, .rl-products) {
     gap: 15px;
   }
   :is(.lk-collection, .lk-gallery) .blk-box > .blk-row {
@@ -985,7 +985,7 @@
     flex-basis: auto;
   }
   :is(.lk-collection, .lk-gallery, .lk-testimonials)
-    :is(.blk-grid, .blk-products) {
+    :is(.blk-grid, .blk-products, .rl-products) {
     gap: 28px;
   }
   .lk-collection .blk-image.blk {
@@ -1217,6 +1217,21 @@
   .rl-listing.l-grid > .blk-repeat-items:has(> :nth-child(3)) {
     grid-template-columns: repeat(var(--cols-m, 1), minmax(0, 1fr));
   }
+}
+
+/* A products block as a repeat over the store's products (look "products",
+   data/storeCard.ts): the cards sit as in .blk-products, the gap comes from
+   the block (inherited by the list), and a card's title row stays under its
+   photo instead of dropping to the bottom. */
+.rl-products .blk-repeat-item > .blk-box > .blk-row:last-child {
+  margin-top: 0;
+}
+:is(.lk-collection, .lk-gallery)
+  .rl-products
+  .blk-repeat-item
+  > .blk-box
+  > .blk-row:last-child {
+  margin-top: 14px;
 }
 
 /* App form */

@@ -7,6 +7,8 @@
  *   item:title   the collection item's title
  *   item:link    the item's own page (or its call-to-action link)
  *   item:index   its place in the list, 1, 2, 3… (leaderboards)
+ *   item:price, item:image, item:description, item:category
+ *                a Forma Store product's (store.ts)
  *
  * Collections are resolved here at render time (static HTML on publish).
  * App views are filled in the visitor's browser: the published page carries
@@ -23,6 +25,7 @@ import {
   type CollectionItem,
 } from "../../studio/collections";
 import { viewColumns } from "./views";
+import { STORE_PATHS, storeFields } from "./store";
 import { pathTo, type Node, type Props, type PropValue } from "../model";
 
 export interface DataItem {
@@ -33,6 +36,8 @@ export interface DataItem {
   raw: Record<string, string>;
   title?: string;
   link?: string;
+  /** Store products: price, image, description, category (`item:<path>`). */
+  paths?: Record<string, string>;
   /** The published template for app views: values become markers. */
   marker?: boolean;
 }
@@ -72,6 +77,8 @@ export function resolveBinding(
   if (source === "item:index") return String(item.index + 1);
   if (source === "item:title") return item.title ?? "";
   if (source === "item:link") return item.link ?? "";
+  if (source.startsWith("item:") && STORE_PATHS.includes(source.slice(5)))
+    return item.paths?.[source.slice(5)] ?? "";
   if (source.startsWith("field:")) {
     const id = source.slice(6);
     return (url ? item.raw[id] : item.values[id]) ?? "";
@@ -92,8 +99,10 @@ export type SourceRef =
   | { kind: "view"; id: string }
   | { kind: "card"; id: string }
   | { kind: "chart"; id: string }
+  | { kind: "store"; id: "products" }
   | { kind: "none"; id: "" };
 export function parseSource(value: PropValue | undefined): SourceRef {
+  if (value === "store:products") return { kind: "store", id: "products" };
   const m = /^(collection|view|card|chart):([\w-]{1,64})$/.exec(
     typeof value === "string" ? value : "",
   );
@@ -106,6 +115,7 @@ export function sourceFields(
   source: PropValue | undefined,
 ): SourceField[] {
   const ref = parseSource(source);
+  if (ref.kind === "store") return storeFields();
   const index: SourceField = {
     source: "item:index",
     name: "Place in list (1, 2, 3…)",

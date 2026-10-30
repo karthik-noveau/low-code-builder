@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { request } from "../../cloud/client";
 import type { LinkTitles, RecordList } from "../../apps/api-types";
 import type { AppRecord } from "../../apps/model";
+import type { StoreProduct } from "./store";
 
 export interface TableData {
   status: "none" | "loading" | "ready" | "error";
@@ -62,6 +63,7 @@ export function refreshTables() {
     const [site, table] = key.split(":");
     load(site, table, true);
   }
+  for (const site of catalogs.keys()) loadCatalog(site, true);
 }
 // Coming back to the editor (e.g. from the app page) shows new records.
 if (typeof window !== "undefined")
@@ -84,4 +86,58 @@ export function useTableData(table: string | undefined, enabled = true) {
   }, [site, table]);
   if (!site || !table) return NONE;
   return cache.get(`${site}:${table}`) ?? LOADING;
+}
+
+/**
+ * The site's Forma Store as its website shows it: whether there is an open
+ * store, whether it puts its catalogue on the website, and the products the
+ * publisher would draw (GET /sites/:id/commerce/catalog, owner API). Read
+ * once per editor session, again on refresh.
+ */
+export interface StoreCatalog {
+  status: "none" | "loading" | "ready" | "error";
+  /** The store is open (the site has the store app). */
+  open: boolean;
+  /** Published pages show the catalogue. */
+  website: boolean;
+  products: StoreProduct[];
+}
+const NO_STORE: StoreCatalog = {
+  status: "none",
+  open: false,
+  website: false,
+  products: [],
+};
+const catalogs = new Map<string, StoreCatalog>();
+function loadCatalog(site: string, again = false) {
+  if (catalogs.has(site) && !again) return;
+  if (!catalogs.has(site))
+    catalogs.set(site, { ...NO_STORE, status: "loading" });
+  request<Omit<StoreCatalog, "status">>(
+    `/sites/${encodeURIComponent(site)}/commerce/catalog`,
+  ).then(
+    (c) => {
+      catalogs.set(site, { ...c, status: "ready" });
+      changed();
+    },
+    () => {
+      if (!again) catalogs.set(site, { ...NO_STORE, status: "error" });
+      changed();
+    },
+  );
+}
+export function useStoreCatalog(enabled = true): StoreCatalog {
+  const site = enabled ? editorSite() : null;
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!site) return;
+    const listener = () => setTick((n) => n + 1);
+    listeners.add(listener);
+    loadCatalog(site);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [site]);
+  if (!site) return NO_STORE;
+  return catalogs.get(site) ?? { ...NO_STORE, status: "loading" };
 }

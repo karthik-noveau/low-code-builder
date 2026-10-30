@@ -140,10 +140,13 @@ describe.each(business.map((t) => [t.id, t.name] as const))(
       for (const n of blocksOf(sections(p), "form"))
         if (n.props.target !== "inbox")
           expect(p.app?.forms.some((f) => f.id === n.props.form)).toBe(true);
+      // Products blocks open as repeats over the store's products.
+      expect(blocksOf(sections(p), "products")).toEqual([]);
       for (const n of blocksOf(sections(p), "repeat"))
-        expect(collectionIds).toContain(
-          String(n.props.source).replace("collection:", ""),
-        );
+        if (n.props.source !== "store:products")
+          expect(collectionIds).toContain(
+            String(n.props.source).replace("collection:", ""),
+          );
       expect(p.pages.length).toBeLessThanOrEqual(7);
       const hero = p.pages[0].sections.find((s) =>
         String(s.root?.props.look).startsWith("hero"),

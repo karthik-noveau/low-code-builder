@@ -1,3 +1,4 @@
+import type { StoreProduct } from "../blocks/data/store";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Website } from "./Website";
 import { createSection } from "./templates";
@@ -99,7 +100,13 @@ function logicParts(project: Project, page: Page, sections: Section[]) {
   };
 }
 /** Options for a published page: form endpoints and where OWNER_LINK goes. */
-type RenderOptions = { inbox?: string; appApi?: string; owner?: string };
+type RenderOptions = {
+  inbox?: string;
+  appApi?: string;
+  owner?: string;
+  /** Forma Store's products, when its catalogue is on the website. */
+  store?: StoreProduct[];
+};
 export function renderPage(
   project: Project,
   page: Page,
@@ -110,7 +117,7 @@ export function renderPage(
     ...page.sections,
     ...project.footer,
   ]);
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`;
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`;
 }
 /** An item's own page. It lives one folder down, so <base> keeps every relative link working. */
 export function renderItemPage(
@@ -130,7 +137,7 @@ export function renderItemPage(
     { ...project.pages[0], variables: undefined },
     [...project.header, ...project.footer],
   );
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={{ ...project.pages[0], variables: undefined }} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`.replace(
+  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={{ ...project.pages[0], variables: undefined }} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`.replace(
     // <base href="../"> would send in-page "#" links to the home page.
     /href="#/g,
     `href="${itemHref(collection, item)}#`,

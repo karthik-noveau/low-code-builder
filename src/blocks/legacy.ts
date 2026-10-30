@@ -28,6 +28,7 @@ import { identityField } from "./forms/model";
 import { formChildren } from "./forms/sync";
 import { inboxFormNode } from "./forms/inbox";
 import type { Condition } from "./logic/model";
+import { gridStyles, storeRepeat } from "./data/storeCard";
 
 /** Section types whose title isn't the page's main heading (as Website.tsx). */
 const PLAIN_TITLES = new Set<SectionType>([
@@ -940,6 +941,7 @@ const SMART = new Set<NodeType>([
   "contactForm",
   "newsletter",
   "collectionList",
+  "products",
 ]);
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 /** The block's own place: id, name, styles, visibility, logic. */
@@ -1168,6 +1170,24 @@ function listingBlock(n: Node, project: Project): Node | undefined {
   } as Node;
 }
 
+/**
+ * A products block as a repeat over the store's products with the classic
+ * card (look "products", data/storeCard.ts). Its own cards, which visitors
+ * see while the store's catalogue isn't on the website, move unchanged into
+ * the repeat's "When there are no products" box, in a grid styled as the
+ * block was. The classic block showed at most 12 of the store's products,
+ * so the repeat shows 12.
+ */
+function productsBlock(n: Node): Node | undefined {
+  if (!n.children?.every((c) => c.type === "box")) return undefined;
+  return storeRepeat(block, n.id, {
+    own: own(n),
+    cards: n.children,
+    grid: gridStyles(n),
+    limit: 12,
+  });
+}
+
 /** A smart block as form or repeat blocks; the same block when it can't be. */
 function fromSmart(n: Node, project: Project): Node {
   switch (n.type) {
@@ -1178,6 +1198,8 @@ function fromSmart(n: Node, project: Project): Node {
       return inboxBlock(n);
     case "collectionList":
       return listingBlock(n, project) ?? n;
+    case "products":
+      return productsBlock(n) ?? n;
     default:
       return n;
   }
@@ -1187,8 +1209,8 @@ const hasSmart = (root: Node | undefined) =>
   !!root && [...walk([root])].some((n) => SMART.has(n.type));
 
 /**
- * A blocks section with its app form, contact, signup and collection list
- * blocks converted (phases 3–4). Ids come from the replaced blocks, so
+ * A blocks section with its app form, contact, signup, collection list and
+ * products blocks converted (phases 3–4). Ids come from the replaced blocks, so
  * converting again changes nothing; a tree that wouldn't validate stays.
  */
 export function upgradeSmart(s: Section, project: Project): Section {

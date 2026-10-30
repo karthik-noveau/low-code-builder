@@ -12,6 +12,7 @@ import {
   type Style,
 } from "./model";
 import { inboxFormNode } from "./forms/inbox";
+import { storeRepeat } from "./data/storeCard";
 import { DATA_BLOCKS } from "./data/registry";
 import { FORM_BLOCKS } from "./forms/registry";
 import { LOGIC_BLOCKS } from "./logic/registry";
@@ -760,8 +761,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     label: "Products",
     icon: "store",
     category: "data",
-    description:
-      "Product cards; Forma Store fills in your products when you publish",
+    description: "Your Forma Store products as cards you lay out",
     container: true,
     accepts: ["box"],
     fields: [],
@@ -787,6 +787,32 @@ export function createNode(type: NodeType, props: Props = {}): Node {
           : "Send message",
       typeof props.action === "string" ? props.action : "",
     );
+  // Products are a repeat over the store's products now.
+  if (type === "products") {
+    const id = nodeId();
+    const make = (
+      t: NodeType,
+      p: Props = {},
+      children?: Node[],
+      extra: Partial<Node> = {},
+    ): Node => ({
+      id: "",
+      type: t,
+      props: { ...BLOCKS[t].props(), ...p },
+      ...(BLOCKS[t].container ? { children: children ?? [] } : {}),
+      ...extra,
+    });
+    const soon = make("text", {
+      text: "New products are on their way. Check back soon.",
+      variant: "muted",
+    });
+    soon.id = `${id}-e2`;
+    return storeRepeat(make, id, {
+      own: { name: "Products", style: { columns: 3, gap: 20 } },
+      cards: [soon],
+      grid: { style: { columns: 1 } },
+    });
+  }
   const def = BLOCKS[type];
   const children = def.children?.() ?? (def.container ? [] : undefined);
   return {

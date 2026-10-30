@@ -142,7 +142,9 @@ export function bindValid(bind: unknown): boolean {
       ([k, v]) =>
         /^[a-zA-Z]{1,20}$/.test(k) &&
         typeof v === "string" &&
-        /^(?:field:[\w-]{1,64}|item:(?:title|link|index))$/.test(v),
+        /^(?:field:[\w-]{1,64}|item:(?:title|link|index|price|image|description|category))$/.test(
+          v,
+        ),
     )
   );
 }

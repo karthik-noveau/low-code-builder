@@ -81,6 +81,7 @@ export function itemValues(item: DataItem): Record<string, string> {
     "item:title": item.title ?? "",
   };
   for (const [k, v] of Object.entries(item.values)) out[`field:${k}`] = v;
+  for (const [k, v] of Object.entries(item.paths ?? {})) out[`item:${k}`] = v;
   return out;
 }
 

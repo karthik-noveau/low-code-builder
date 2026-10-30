@@ -103,7 +103,8 @@ const PHONE = /^\+?[0-9][0-9 ()-]{2,19}$/;
 const EMAIL = /^[^\s@<>"'()]{1,64}@[^\s@<>"'()]{1,190}\.[a-z]{2,24}$/i;
 const DAY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const PARAM = /^[A-Za-z0-9_-]{1,40}$/;
-const ITEM_FIELD = /^(?:field:[\w-]{1,64}|item:(?:title|index))$/;
+const ITEM_FIELD =
+  /^(?:field:[\w-]{1,64}|item:(?:title|index|price|image|description|category))$/;
 const NUMBER = /^-?\d{1,12}(?:\.\d{1,4})?$/;
 
 /**

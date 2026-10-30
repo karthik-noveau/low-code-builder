@@ -145,6 +145,12 @@ describe("smart blocks on the published site", () => {
     expect(home).toMatch(/>Shop</);
     // The template's own placeholder products are replaced.
     expect(home).not.toContain("Fiddle leaf fig");
+    // Products blocks open as store repeats; their photos are published with the site.
+    expect(home).toContain("rl-products");
+    expect(home).toMatch(
+      /<img[^>]*src="https:\/\/sites\.test\/r\/images\/[\w]+\.jpeg"[^>]*alt="Monstera"/,
+    );
+    expect(home).toContain('href="/shop/monstera"');
   });
   it("keeps the orbits, the theme switch and the phone tab bar working", () => {
     const p = createProject("dhanlaxmi");

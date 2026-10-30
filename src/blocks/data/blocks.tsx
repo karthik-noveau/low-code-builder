@@ -23,7 +23,8 @@ import {
   rowItem,
   type DataItem,
 } from "./bind";
-import { useTableData } from "./live";
+import { useStoreCatalog, useTableData } from "./live";
+import { queryStore, SAMPLE_PRODUCTS, storeItem } from "./store";
 import { chartPoints, runView, viewColumns, PAGE_SIZE } from "./views";
 
 const str = (v: PropValue | undefined) => (typeof v === "string" ? v : "");
@@ -156,6 +157,49 @@ function sampleNote(status: string) {
         : "";
 }
 
+/**
+ * A store repeat's products: on a published page those the publisher read
+ * (none without a catalogue on the website, so visitors see the empty box);
+ * in the editor the site's own (live.ts), or samples with a note saying what
+ * visitors see.
+ */
+function useStoreProducts(
+  ctx: RenderContext,
+  on: boolean,
+  n: Node,
+): { items: DataItem[]; note: string } | undefined {
+  const catalog = useStoreCatalog(on && !ctx.exporting);
+  if (!on) return undefined;
+  const category = str(n.props.category);
+  const limit = num(n.props.limit, 0);
+  const items = (list: typeof SAMPLE_PRODUCTS) =>
+    queryStore(list, category, limit).map(storeItem);
+  // Template and site previews outside the editor show what a site without
+  // a store shows.
+  if (ctx.exporting || (!ctx.edit && catalog.status === "none"))
+    return { items: items(ctx.store ?? []), note: "" };
+  const live = catalog.status === "ready" && catalog.open && catalog.website;
+  const mine = live ? items(catalog.products) : [];
+  if (mine.length)
+    return {
+      items: mine,
+      note: "Live from your store: names, prices and photos as the published site shows them.",
+    };
+  if (catalog.status === "loading")
+    return { items: [], note: "Loading your products…" };
+  return {
+    items: queryStore(SAMPLE_PRODUCTS, "", limit).map(storeItem),
+    note:
+      catalog.status !== "ready"
+        ? "Sample products. On a workspace site with Forma Store, your products show here."
+        : !catalog.open
+          ? "Sample products. Open your store in Store management and its products show here."
+          : !catalog.website
+            ? "Sample products. Your store doesn’t fill the website’s product blocks, so visitors see “When there are no products”. Turn it on in Store management."
+            : `No active products${category ? ` in “${category}”` : ""} yet, so these are samples. Visitors see “When there are no products”.`,
+  };
+}
+
 // ---------------------------------------------------------------- repeat
 
 export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
@@ -175,10 +219,11 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
   const view =
     ref.kind === "view" ? viewOf(ctx.project.app, ref.id) : undefined;
   const viewRows = useViewRows(ctx, view, size);
+  const store = useStoreProducts(ctx, ref.kind === "store", n);
   // A classic look (converted collection lists: "listing", see looks.css).
   const look = /^[a-z-]{1,20}$/.test(str(p.look)) ? ` rl-${str(p.look)}` : "";
   const cls = `${className} l-${layout}${look}`;
-  if (!collection && !view)
+  if (!collection && !view && !store)
     return ctx.edit ? (
       <Placeholder
         icon="layers"
@@ -203,7 +248,11 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
       />
     ) : null;
   const label =
-    n.name || str(p.label) || collection?.name || view?.name || "Items";
+    n.name ||
+    str(p.label) ||
+    collection?.name ||
+    view?.name ||
+    (store ? "Products" : "Items");
   const editingInside = !!ctx.edit?.selected && contains(n, ctx.edit.selected);
   const emptyView = (shown: boolean, extra: Attrs = {}) =>
     empty ? (
@@ -283,7 +332,9 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
         sortDir: str(p.sortDir),
         limit: num(p.limit, 0),
       }).map((item, i) => collectionItem(collection, item, i, ctx.exporting))
-    : viewRows.rows.map(rowItem);
+    : store
+      ? store.items
+      : viewRows.rows.map(rowItem);
   const status = view ? viewRows.status : "ready";
   return (
     <div {...attrs} className={cls}>
@@ -299,7 +350,11 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
       {ctx.edit && empty && (items.length === 0 || editingInside) && (
         <div
           className="blk-repeat-empty is-editing"
-          data-label="Shown when the list is empty"
+          data-label={
+            store
+              ? "Shown when there are no store products on the website"
+              : "Shown when the list is empty"
+          }
         >
           <NodeView node={empty} ctx={ctx} />
         </div>
@@ -309,6 +364,7 @@ export function RepeatBlock({ node: n, ctx, className, attrs }: Props) {
           {str(p.moreLabel) || "Load more"}
         </button>
       )}
+      {store?.note && <EditorNote ctx={ctx}>{store.note}</EditorNote>}
       {view && (
         <EditorNote ctx={ctx}>
           {sampleNote(status) ||

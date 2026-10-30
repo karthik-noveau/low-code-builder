@@ -162,11 +162,10 @@ long text) stays classic.
   least 63 % (70 % across the whole hero on phones) so white text keeps
   4.5:1, and the far side keeps the owner's value. The moving background is
   `effect: "orbits"`.
-- **Smart blocks** that remain: `products` (cards the publisher replaces
-  with Forma Store products) and `tabBar` (the phone's bottom bar, drawn at
-  the end of the page). The app form, contact, email signup and collection
-  list smart blocks convert to form and repeat blocks ("Converted smart
-  blocks" below); their types stay valid and still draw the classic markup
+- **Smart blocks** that remain: `tabBar` (the phone's bottom bar, drawn at
+  the end of the page). The app form, contact, email signup, collection
+  list and products smart blocks convert to form and repeat blocks
+  ("Converted smart blocks" below); their types stay valid and still draw the classic markup
   (`src/studio/siteParts.tsx`) for any block that couldn't convert.
   `src/blocks/project.ts` answers site-wide questions across all kinds:
   placed app forms, inbox forms, listed collections, orbits, tab bar.
@@ -253,12 +252,30 @@ read API in `backend/apps.ts`.
   `stat` (a dashboard card's figure or a collection's count), `chart` (a
   dashboard chart, bars or a line) and `table` (a view's rows; one card per
   row on phones). `props.source` is `collection:<id>`, `view:<id>`,
-  `card:<id>` or `chart:<id>`.
+  `card:<id>`, `chart:<id>` or `store:products` (Forma Store, below).
 - **Bindings.** Inside a repeat, `node.bind` maps a prop to `field:<id>`,
-  `item:title`, `item:link` or `item:index`. Text props get the shown value
+  `item:title`, `item:link` or `item:index`; store products also give
+  `item:price`, `item:image`, `item:description` and `item:category`. Text props get the shown value
   (prices and dates formatted), `src`/`url`/`link` the stored one.
 - **Collections** resolve while rendering: published pages carry the items
   as HTML (filter, sort and limit are the repeat's).
+- **Store products** (`store:products`, `src/blocks/data/store.ts`; only
+  `props.category` if set, matched to the product's collection without
+  case; the repeat's limit). The catalogue isn't in the project: at publish
+  `publicationCommerce` (backend/commerce-publishing.ts `websiteProducts`)
+  reads the active products, sorted by name, up to 100, as the website
+  shows them: name, description, photo, the lowest variant price formatted
+  as the store formats it (`storePrice`, the store's currency), the
+  product's page in the store (`/store?site=…&product=…`) and its category.
+  The compiler draws them into the page as HTML (`RenderContext.store`) and
+  publishes their photos with the site. Without the store's catalogue on
+  the website ("Fill published product blocks…" off, no open store, or the
+  hosted mode, where Forma Store doesn't run) a store repeat shows its
+  "When there are no products" box. Changing products or prices changes the
+  release's `commerceChecksum`, so publishing again rebuilds (stock alone
+  doesn't). The classic cards have no add-to-cart button (the header's Shop
+  button links to the store), so there is no cart path; `item:link` opens
+  the product's page, where it is added to the cart.
 - **App data** is private unless the owner makes a **view**
   (`app.views`): the only fields visitors get (allow-list), statuses, a fixed
   filter, order and a limit (1–100), `public` on/off. Phone and email fields
@@ -277,8 +294,17 @@ read API in `backend/apps.ts`.
 - **Editor.** Blocks show the owner's real records (owner API, the same view
   rules) or sample rows on a local draft; the Data tab picks the source,
   sets up views ("Show on your website: these fields only") and bindings.
-- **Classic smart blocks**: `collectionList` converts to a repeat (below);
-  `products` stays as it is (Forma Store fills it at publish).
+  Store repeats read `GET /sites/:id/commerce/catalog` (owner API, any
+  member; read only, so it never sets up a store): whether the store is
+  open, whether it fills the website, and the same products the publisher
+  draws (`useStoreCatalog`, live.ts). They show those products, or sample
+  products with a note saying what visitors see (a local draft, no open
+  store, the catalogue off, or nothing in the category). Previews outside
+  the editor (template gallery, site thumbnails) show the "no products" box,
+  as a site without a store does. The Data tab offers "Store products" when
+  the site's store is open (or the repeat already lists it) and a Category.
+- **Classic smart blocks**: `collectionList` and `products` convert to
+  repeats (below).
 
 ## Converted smart blocks
 
@@ -336,18 +362,33 @@ stays as it was; the smart types still render.
   `item:title`, the price), the subtitle (eyebrow) and the summary, and,
   without item pages, the call-to-action link. Parts show only when the
   item has them (`when` item rules, decided at publish, no logic.js).
-- **Products stay a smart block.** Its cards are already editable blocks,
-  but at publish the compiler replaces them wholesale with Forma Store's
-  catalogue (product links, prices, the Shop button). A repeat would need a
-  store source that the data layer doesn't have (the catalogue isn't in the
-  project, so the editor has nothing to bind or preview), so converting it
-  would change what visitors see; it is left as it is.
+- **Products → repeat** over `store:products` with look `products`
+  (`rl-products`, looks.css: the cards sit as in `.blk-products`, the
+  block's columns and gap), limit 12 (the classic block showed the first
+  12), built by `storeRepeat` (data/storeCard.ts). The card is the classic
+  card (`itemCard`) bound to the item: the photo (`item:image`, alt the
+  name, linking to `item:link`, radius from the theme) or, without one, the
+  placeholder tile linking there; the "Title" row with the name and the
+  price (shown when set); the description (shown when set). The block's own
+  cards, which visitors saw while the store didn't fill the website, move
+  unchanged (same ids) into the repeat's "When there are no products" box,
+  in a grid with the block's columns and gap, so those sites look as
+  before. A block holding anything but boxes stays smart. The Add panel's
+  Products makes a store repeat (`createNode`), its empty box saying new
+  products are on their way. One difference: with the catalogue on but no
+  active products, the classic block was an empty grid; the repeat shows
+  its "no products" box (the owner's cards, which the editor shows too).
 - **Parity.** For all 12 templates (Dhanlaxmi included) the published
   pages render pixel-identically at 1280 and 390 px before and after (every
   page 0.000% different, section heights equal); app form and inbox pages
   publish the same body HTML (only CSS rules for blocks that the classic
   look doesn't draw are added). `src/blocks/convert.test.tsx` checks this
-  for every template. Publishing bumps `compilerVersion` to 11.
+  for every template. Publishing bumps `compilerVersion` to 11. Products
+  (Botanical, its Home and Collection pages) publish pixel-identically at
+  1280 and 390 px both with Forma Store's catalogue and without a store;
+  the test compares what the pages show (tags, links, images, words) with
+  and without a catalogue. `compilerVersion` 12 republishes products blocks
+  as store repeats.
 
 ## Logic (phase 5)
 

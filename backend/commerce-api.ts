@@ -30,6 +30,7 @@ import {
 } from "./commerce";
 import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
+import { storeOnWebsite, websiteProducts } from "./commerce-publishing";
 import type {
   Address,
   AuditEvent,
@@ -311,6 +312,20 @@ export async function commerceApi(
   insist(idPattern.test(siteId), 404, "Site not found.");
   if (!action && method === "GET")
     return { value: await overview(actor, siteId) };
+  // The editor's store repeats: the products published pages would show
+  // (read only, so opening the editor never sets up a store).
+  if (action === "catalog" && method === "GET") {
+    await siteAccess(actor, siteId);
+    const stored = await settings(siteId);
+    const open = storeOnWebsite(stored);
+    return {
+      value: {
+        open,
+        website: open && !!stored?.useCatalogOnWebsite,
+        products: open && stored ? await websiteProducts(siteId, stored) : [],
+      },
+    };
+  }
   const input = method === "POST" || method === "PUT" ? body(request) : {};
   if (action === "settings" && method === "PUT")
     return { value: { settings: await saveSettings(actor, siteId, input) } };

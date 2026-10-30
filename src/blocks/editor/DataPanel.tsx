@@ -29,6 +29,8 @@ import {
   type SourceField,
 } from "../data/bind";
 import { viewWarnings } from "../data/views";
+import { useStoreCatalog } from "../data/live";
+import { storeCategories } from "../data/store";
 import { suggestedView } from "../data/presets";
 import { Switch } from "./fields";
 import "../data/data-panel.css";
@@ -163,7 +165,19 @@ function RepeatSource({
   const store = useStudio();
   const project = store.project;
   const ref = parseSource(node.props.source);
+  const catalog = useStoreCatalog();
   const options = [
+    ...(catalog.open || ref.kind === "store"
+      ? [
+          {
+            value: "store:products",
+            label: catalog.open
+              ? `Store products (${catalog.products.length})`
+              : "Store products",
+            group: "Your store",
+          },
+        ]
+      : []),
     ...(project.collections ?? []).map((c) => ({
       value: `collection:${c.id}`,
       label: `${c.name} (${c.items.filter((i) => !i.hidden).length})`,
@@ -288,8 +302,32 @@ function RepeatSource({
         placeholder={
           options.length ? undefined : "Add a collection or an app first"
         }
-        hint="Collections are written into the page when you publish. App lists load live, and show only the fields you allow."
+        hint={
+          ref.kind === "store"
+            ? "Your Forma Store’s active products, written into the page when you publish. Publish again after changing products."
+            : "Collections are written into the page when you publish. App lists load live, and show only the fields you allow."
+        }
       />
+      {ref.kind === "store" && (
+        <Select
+          label="Category"
+          value={str(node.props.category)}
+          placeholder="Every product"
+          options={[
+            ...new Set([
+              ...storeCategories(catalog.products),
+              ...(str(node.props.category) ? [str(node.props.category)] : []),
+            ]),
+          ].map((c) => ({ value: c, label: c }))}
+          onChange={(v) => setProps({ category: v })}
+        />
+      )}
+      {ref.kind === "store" && catalog.open && !catalog.website && (
+        <small className="block-hint">
+          Your store doesn’t fill the website’s product blocks yet, so visitors
+          see “When there are no products”. Turn it on in Store management.
+        </small>
+      )}
       {collection && (
         <>
           <div className="dp-row">

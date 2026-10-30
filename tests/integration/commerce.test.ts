@@ -591,6 +591,19 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
         })
       ).status,
     ).toBe(200);
+    // The editor's store repeats read what published pages will show.
+    const catalog = await admin("catalog");
+    expect(catalog.data).toMatchObject({ open: true, website: true });
+    expect(
+      catalog.data.products.find((p: { id: string }) => p.id === product.id),
+    ).toMatchObject({
+      title: "Handmade planter",
+      category: "Home",
+      url: expect.stringContaining(`product=${product.id}`),
+    });
+    expect((await admin("catalog", "GET", undefined, outsider)).status).toBe(
+      404,
+    );
     const draft = await fetch(`${base}/sites/${site}/draft`, {
       method: "PUT",
       headers: {
@@ -609,6 +622,7 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
     expect(published.status).toBe("published");
     const html = await (await fetch(published.url)).text();
     expect(html).toContain("Handmade planter");
+    expect(html).toContain("rl-products");
     expect(html).toContain(`product=${product.id}`);
     expect(html).toContain(`/store?site=${site}`);
     const current = ((await admin()).data as CommerceOverview).products.find(

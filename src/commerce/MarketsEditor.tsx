@@ -102,8 +102,7 @@ export function MarketsEditor({
               setDraft({ ...draft, useCatalogOnWebsite: e.target.checked })
             }
           />{" "}
-          Fill published product sections with the first 12 active catalog
-          products
+          Fill published product blocks with your active catalog products
         </label>
         <p className="commerce-muted wide">
           Publish your website after changing these settings or catalog content.

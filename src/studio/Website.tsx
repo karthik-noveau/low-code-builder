@@ -51,6 +51,7 @@ import {
   type PreviewAs,
 } from "../blocks/logic/blocks";
 import "./website.css";
+import type { StoreProduct } from "../blocks/data/store";
 import "../blocks/blocks.css";
 import "../blocks/looks.css";
 import "../blocks/forms/forms.css";
@@ -492,6 +493,7 @@ export function SectionContent({
   main = false,
   inbox,
   appApi,
+  store,
   ownerHref,
   currentPage,
   dark,
@@ -518,6 +520,8 @@ export function SectionContent({
   inbox?: string;
   /** Published sites: the public app API app forms talk to, e.g. https://api…/apps/<site id>. */
   appApi?: string;
+  /** Published sites: Forma Store's products for store repeats. */
+  store?: StoreProduct[];
   /** This section's title is the page's main heading (pages without a hero). */
   main?: boolean;
   selectedBlock?: string | null;
@@ -1065,6 +1069,7 @@ export function SectionContent({
               page: project.pages.find((p) => p.id === currentPage),
               inbox,
               appApi,
+              store,
               dark,
               onToggleTheme,
               edit: blockEdit,
@@ -1196,6 +1201,7 @@ export function Website({
   onOpenItem,
   inbox,
   appApi,
+  store,
   ownerHref,
   previewAs = NO_PREVIEW,
 }: {
@@ -1209,6 +1215,8 @@ export function Website({
   inbox?: string;
   /** Published sites: the public app API (`{appApi}/forms/:formId…`) app forms use. */
   appApi?: string;
+  /** Published sites: Forma Store's products for store repeats. */
+  store?: StoreProduct[];
   /** Render this collection item's page instead of `page`'s sections. */
   item?: { collection: Collection; item: CollectionItem };
   /** In preview, open an item page instead of leaving the editor. */
@@ -1362,6 +1370,7 @@ export function Website({
             exporting={exporting}
             inbox={inbox}
             appApi={appApi}
+            store={store}
             onEdit={
               !preview && onEdit
                 ? (field, value) => onEdit(s.id, { [field]: value })

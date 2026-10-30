@@ -25,7 +25,7 @@ export const config = {
   maxCompressed: 3 * 1024 * 1024,
   maxExpanded: 20 * 1024 * 1024,
   keepReleases: 3,
-  compilerVersion: 11,
+  compilerVersion: 12,
   lockSeconds: 600,
 };
 
