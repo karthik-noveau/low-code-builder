@@ -1729,6 +1729,7 @@ html body .studio.canvas-first .node-inspector .sp-device .device-note {
   background: #4f7cff;
 }
 .sp-reset {
+  position: relative;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1743,6 +1744,12 @@ html body .studio.canvas-first .node-inspector .sp-device .device-note {
 .sp-reset:hover {
   background: var(--ui-surface-alt);
   color: var(--ui-ink);
+}
+/* A 24px target around the small icon, without moving the row. */
+.sp-reset::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
 }
 .sp-control {
   display: flex;

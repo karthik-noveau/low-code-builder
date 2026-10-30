@@ -145,14 +145,14 @@ export const blueprints: Record<Blueprint, BlueprintSpec> = {
       [
         "Fiddle leaf fig",
         "48",
-        "/images/plant-1.jpg",
+        "/images/plant-6.jpg",
         "Big leaves, bright corners.",
         "#",
       ],
       [
         "Desert succulent trio",
         "26",
-        "/images/plant-2.jpg",
+        "/images/plant-8.jpg",
         "Three easy-going companions.",
         "#",
       ],

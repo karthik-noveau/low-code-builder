@@ -55,7 +55,7 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Fiddle leaf fig",
     "Plants",
-    "/images/plant-3.jpg",
+    "/images/plant-6.jpg",
     "Big, glossy leaves for a bright corner. Arrives 90–100 cm tall in a nursery pot. Water when the top 5 cm of soil is dry.",
     [
       ["Medium, 60 cm", 899, 14],
@@ -65,14 +65,14 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Desert succulent trio",
     "Plants",
-    "/images/plant-2.jpg",
+    "/images/plant-8.jpg",
     "Three easy-going succulents for a sunny windowsill. Water every two weeks; less in winter.",
     [["Default", 549, 30]],
   ),
   product(
     "Rubber plant",
     "Plants",
-    "/images/plant-1.jpg",
+    "/images/plant-3.jpg",
     "Forgiving, fast-growing and happy in medium light. A great first plant.",
     [
       ["Small, 30 cm", 449, 25],
@@ -89,7 +89,7 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Monstera deliciosa",
     "Plants",
-    "/images/botanical.jpg",
+    "/images/plant-7.jpg",
     "Dramatic split leaves that grow bigger every season. Bright, indirect light.",
     [["Medium, 50 cm", 999, 10]],
   ),
@@ -286,7 +286,7 @@ export function botanical(brand: string): SiteParts {
             item(
               "Slow mornings",
               "A fig in the light",
-              "/images/botanical.jpg",
+              "/images/plant-6.jpg",
             ),
           ],
         }),

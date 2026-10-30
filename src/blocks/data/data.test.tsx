@@ -417,7 +417,7 @@ describe("data blocks on the page", () => {
     expect(html).toContain("Fiddle leaf fig");
     expect(html).toContain("$48");
     expect(html).toContain(`href="./${products.slug}/fiddle-leaf-fig.html"`);
-    expect(html).toContain('src="/images/plant-1.jpg"');
+    expect(html).toContain('src="/images/plant-6.jpg"');
     expect(html).toContain("<ul");
     expect(html).not.toContain("data-view");
   });

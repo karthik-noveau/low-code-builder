@@ -172,8 +172,8 @@ describe("publishing collections", () => {
     const page = await zip
       .file(`${c.slug}/${c.items[0].slug}.html`)!
       .async("string");
-    expect(page).toContain('src="images/plant-1.jpg"');
-    expect(zip.file("images/plant-1.jpg")).not.toBeNull();
+    expect(page).toContain('src="images/plant-6.jpg"');
+    expect(zip.file("images/plant-6.jpg")).not.toBeNull();
   });
 });
 
