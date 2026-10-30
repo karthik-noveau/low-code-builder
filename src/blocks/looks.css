@@ -459,15 +459,47 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(90deg, #051c0ef0 0%, #102c1555 100%);
-  opacity: var(--shade, 0.25);
+  /* Deep enough behind the copy (and the name in the corner) for white
+     text at 4.5:1 over a bright photo, tinted with the site's accent; the
+     far side keeps the owner's shade. */
+  --hero-ink: color-mix(in srgb, var(--site-accent, #102c15) 15%, #05080a);
+  --hero-copy: max(0.63, calc(var(--shade, 0.25) * 0.94));
+  background:
+    radial-gradient(
+      60% 160px at 100% 100%,
+      color-mix(
+          in srgb,
+          var(--hero-ink) calc(max(0.7, var(--hero-copy)) * 100%),
+          transparent
+        )
+        30%,
+      transparent
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(
+          in srgb,
+          var(--hero-ink) calc(var(--hero-copy) * 100%),
+          transparent
+        )
+        calc(7% + 700px),
+      color-mix(
+        in srgb,
+        var(--hero-ink) calc(var(--shade, 0.25) * 33%),
+        transparent
+      )
+    );
   pointer-events: none;
 }
 /* On phones the copy runs the full width, over the light end of the shade:
    keep that end darker so the white text stays readable. */
 @container (max-width: 480px) {
   .lk-hero.blk-section::before {
-    background: linear-gradient(90deg, #051c0ef0 0%, #0a2412eb 100%);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--hero-ink) 94%, transparent),
+      color-mix(in srgb, var(--hero-ink) 92%, transparent)
+    );
     opacity: max(var(--shade, 0.25), 0.7);
   }
 }

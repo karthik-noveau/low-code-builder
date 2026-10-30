@@ -157,7 +157,10 @@ long text) stays classic.
   selectors so owner styles still win). The owner's settings become styles:
   colours, padding (top/bottom), alignment, height, tablet/phone overrides.
   A hero's photo shade is the section prop `shade` ("Darken the photo",
-  shown only on the image banner look; on phones it is at least 70 %); the moving background is
+  shown only on the image banner look). The shade is a near-black tinted
+  with the site's accent; behind the copy and the corner name it is at
+  least 63 % (70 % across the whole hero on phones) so white text keeps
+  4.5:1, and the far side keeps the owner's value. The moving background is
   `effect: "orbits"`.
 - **Smart blocks** that remain: `products` (cards the publisher replaces
   with Forma Store products) and `tabBar` (the phone's bottom bar, drawn at
