@@ -467,8 +467,8 @@
    keep that end darker so the white text stays readable. */
 @container (max-width: 480px) {
   .lk-hero.blk-section::before {
-    background: linear-gradient(90deg, #051c0ef0 0%, #102c15c0 100%);
-    opacity: max(var(--shade, 0.25), 0.45);
+    background: linear-gradient(90deg, #051c0ef0 0%, #0a2412eb 100%);
+    opacity: max(var(--shade, 0.25), 0.7);
   }
 }
 :is(.lk-hero, .lk-hero-plain, .lk-hero-split) > .blk-inner > .blk-image {

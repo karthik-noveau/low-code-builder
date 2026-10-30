@@ -195,7 +195,12 @@ export function treeCss(roots: Node[], editing = false) {
         n.type === "row" && s.direction === "column"
           ? `${sel}>.blk{flex-basis:auto}`
           : "";
-      return (d.length ? `${sel}{${d.join(";")}}` : "") + stacked;
+      // A repeat's space between goes to its cards too (looks set their own).
+      const cards =
+        n.type === "repeat" && s.gap !== undefined
+          ? `${sel}>.blk-repeat-items{gap:${px(s.gap)}}`
+          : "";
+      return (d.length ? `${sel}{${d.join(";")}}` : "") + stacked + cards;
     };
     base.push(rule(n.style));
     at.tablet.push(rule(n.tablet, "tablet"));

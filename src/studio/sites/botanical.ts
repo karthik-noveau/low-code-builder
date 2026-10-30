@@ -96,7 +96,7 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Money plant in hanging basket",
     "Plants",
-    "/images/plant-1.jpg",
+    "/images/plant-5.jpg",
     "Trailing golden pothos in a jute basket, ready to hang.",
     [["Default", 399, 35]],
   ),

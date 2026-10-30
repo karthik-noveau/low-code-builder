@@ -285,6 +285,8 @@ export function StylePanel({
     device === "desktop" ? 0 : keys.filter((k) => own[k] !== undefined).length;
   const def = BLOCKS[node.type];
   const isGrid = node.type === "grid" || node.type === "columns";
+  // A repeat lays its cards out by "Show as": only columns and space apply.
+  const isRepeat = node.type === "repeat";
   const hasText = !NO_TEXT.has(node.type);
   const width = get("width");
   const radius = get("radius");
@@ -298,6 +300,14 @@ export function StylePanel({
     const isRow = direction === "row";
     const align = get("align") ?? (isRow ? "center" : "stretch");
     const justify = get("justify") ?? "start";
+    const repeatLayout = ["list", "carousel"].includes(
+      String(node.props.layout),
+    )
+      ? String(node.props.layout)
+      : "grid";
+    // The space the cards have while it's unset (blocks.css, looks.css).
+    const repeatGap =
+      node.props.look === "listing" ? (repeatLayout === "list" ? 0 : 28) : 20;
     return (
       <div className="style-panel">
         <Group
@@ -331,6 +341,7 @@ export function StylePanel({
               true,
             )}
           {!isGrid &&
+            !isRepeat &&
             row(
               "Direction",
               ["direction"],
@@ -346,6 +357,7 @@ export function StylePanel({
               />,
             )}
           {!isGrid &&
+            !isRepeat &&
             row(
               "Position",
               ["align", "justify"],
@@ -398,6 +410,22 @@ export function StylePanel({
                 onChange={(columns) => write({ columns })}
               />,
             )}
+          {isRepeat &&
+            (repeatLayout === "grid" ||
+              (repeatLayout === "carousel" && device === "desktop")) &&
+            row(
+              "Per row",
+              ["columns"],
+              <NumberInput
+                label="Cards per row"
+                value={device === "desktop" ? get("columns") : own.columns}
+                min={1}
+                max={6}
+                unit=""
+                placeholder={device === "desktop" ? "3" : "Auto"}
+                onChange={(columns) => write({ columns })}
+              />,
+            )}
           {node.type === "columns" &&
             device !== "desktop" &&
             row(
@@ -433,11 +461,11 @@ export function StylePanel({
             "Space between",
             ["gap"],
             <SliderInput
-              label="Space between blocks"
+              label={isRepeat ? "Space between cards" : "Space between blocks"}
               value={get("gap")}
               min={0}
               max={120}
-              fallback={0}
+              fallback={isRepeat ? repeatGap : 0}
               onChange={(gap) => write({ gap })}
             />,
           )}

@@ -59,6 +59,8 @@ interface Geometry {
   section?: { id: string; rect: Rect };
   /** Text being typed. */
   typing?: Rect;
+  /** Bottom of the header on every page, which the tag and tools keep clear of. */
+  ceiling?: number;
   /** Where the hovered Add panel item would go. */
   preview?: DropHint["line"] & { box?: Rect };
 }
@@ -166,6 +168,7 @@ export function CanvasOverlay({
               )
             : undefined,
           preview: previewLine(site),
+          ceiling: node ? headerBottom(site, node.id) : undefined,
         };
         setGeo((prev) =>
           JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
@@ -177,6 +180,18 @@ export function CanvasOverlay({
         setWidths((p) => (p.tools === w.tools && p.tag === w.tag ? p : w));
       }
       frame = requestAnimationFrame(tick);
+    };
+    /** Where the header ends, unless the block is in it. */
+    const headerBottom = (site: HTMLElement, id: string) => {
+      const header = useStudio.getState().project.header;
+      if (header.some((s) => s.root && findNode([s.root], id))) return;
+      const bottoms = header.flatMap((s) => {
+        const r = box(
+          site.querySelector(`[data-section-id="${CSS.escape(s.id)}"]`),
+        );
+        return r ? [r.top + r.height] : [];
+      });
+      return bottoms.length ? Math.max(...bottoms) : undefined;
     };
     /** The line where the hovered Add panel item would land. */
     const previewLine = (site: HTMLElement): Geometry["preview"] => {
@@ -343,19 +358,21 @@ export function CanvasOverlay({
 
   // The name tag sits on the outline's top-left corner and the tools on its
   // top-right, both outside the block. With no room above they go below it;
-  // with no room either side (a tall block), just inside its top edge.
+  // with no room either side (a tall block), or when they'd cover the
+  // header (a section right below it), just inside its top edge.
   const place = (() => {
     if (!sel) return null;
     const room = BAR + 2;
-    const above = sel.top >= room;
+    const ceiling = Math.max(0, (geo?.ceiling ?? 0) - frame.top);
+    const above = sel.top - ceiling >= room;
     const below = frame.height - (sel.top + sel.height) >= room;
-    const where = above ? "above" : below ? "below" : "inside";
+    const where = above ? "above" : below && !ceiling ? "below" : "inside";
     const top =
       where === "above"
         ? sel.top - BAR
         : where === "below"
           ? sel.top + sel.height
-          : Math.max(sel.top, 0) + 2;
+          : Math.max(sel.top, ceiling) + 2;
     const fits = widths.tag + widths.tools + 8 <= sel.width;
     const right = geo?.site
       ? Math.min(frame.width, geo.site.left + geo.site.width - frame.left)

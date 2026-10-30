@@ -79,7 +79,8 @@ plus a renderer case.
 - **Canvas** (`CanvasOverlay.tsx`): click selects the deepest block, drawn
   with a blue outline and a name tag (click it for the blocks it sits in) and
   a toolbar (select parent, drag, move, duplicate, more, delete) that sits
-  above the block, flips below it, or goes inside when there's no room. "+"
+  above the block, flips below it, or goes inside when there's no room (or
+  when it would cover the header, for a section right below it). "+"
   buttons sit between sections and inside the selected layout block.
   Double-click edits text in place with text tools: bold, italic and link on
   the selected words (see "Formatted text"), accent words in headings; with
@@ -109,7 +110,8 @@ plus a renderer case.
 - **Inspector** (`NodeInspector.tsx`): content blocks open on Content
   (registry fields), layout blocks on Layout (their settings, an "Arrange"
   control — direction, a 3 × 3 position grid, fill/spread/wrap, space
-  between — and what's inside). Style (`StylePanel.tsx`) is per screen size:
+  between — and what's inside; a repeat shows cards per row and the space
+  between them instead). Style (`StylePanel.tsx`) is per screen size:
   text, size (two-column numbers), spacing (a box model: outside and inside),
   background, border and corners, effects. Numbers take arrow keys (Shift:
   ×10), "24px", and scrubbing by dragging the unit; colours open a picker
@@ -155,7 +157,7 @@ long text) stays classic.
   selectors so owner styles still win). The owner's settings become styles:
   colours, padding (top/bottom), alignment, height, tablet/phone overrides.
   A hero's photo shade is the section prop `shade` ("Darken the photo",
-  shown only on the image banner look; on phones it is at least 45 %); the moving background is
+  shown only on the image banner look; on phones it is at least 70 %); the moving background is
   `effect: "orbits"`.
 - **Smart blocks** that remain: `products` (cards the publisher replaces
   with Forma Store products) and `tabBar` (the phone's bottom bar, drawn at
