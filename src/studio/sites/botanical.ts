@@ -113,7 +113,7 @@ export const botanicalProducts: SeedProduct[] = [
   product(
     "Ceramic planter, sage",
     "Pots & planters",
-    "/images/interior.jpg",
+    "/images/planter-sage.jpg",
     "Matte glazed planter with a drainage hole. Fits a medium nursery pot.",
     [["Default", 699, 20]],
   ),
