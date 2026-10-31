@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
 import { storeRequest } from "./client";
 import { ApiError, request } from "../cloud/client";
 import { useSession } from "../brand/useSession";
@@ -7,6 +7,7 @@ import {
   type CartLine,
   type Address,
   type ContentEntry,
+  type Market,
   type Order,
   type Product,
   type Quote,
@@ -235,7 +236,8 @@ export function Storefront({ siteId }: { siteId: string }) {
     history.replaceState(history.state, "", url);
     let saved: { orderId: string; receipt: string } | undefined;
     try {
-      saved = JSON.parse(localStorage.getItem(receiptKey) || "null") ?? undefined;
+      saved =
+        JSON.parse(localStorage.getItem(receiptKey) || "null") ?? undefined;
     } catch {
       /* Nothing saved in this browser. */
     }
@@ -303,19 +305,21 @@ export function Storefront({ siteId }: { siteId: string }) {
       setBusy(false);
     }
   };
-  const add = async (productId: string, variantId: string) => {
+  const add = async (productId: string, variantId: string, quantity = 1) => {
     const lines = [...(cart?.cart.lines || [])];
     const existing = lines.find(
       (line) => line.productId === productId && line.variantId === variantId,
     );
     const updated = existing
       ? lines.map((line) =>
-          line === existing ? { ...line, quantity: line.quantity + 1 } : line,
+          line === existing
+            ? { ...line, quantity: line.quantity + quantity }
+            : line,
         )
-      : [...lines, { productId, variantId, quantity: 1 }];
+      : [...lines, { productId, variantId, quantity }];
     if (await updateCart(updated)) setNotice("Added to your cart.");
   };
-  /** Leaves a product linked from the website (?product=) for the whole catalog. */
+  /** Leaves a product's page (?product=) for the whole catalog. */
   const showAll = () => {
     setRequestedProduct("");
     const url = new URL(location.href);
@@ -323,13 +327,56 @@ export function Storefront({ siteId }: { siteId: string }) {
     url.searchParams.delete("product");
     history.replaceState(history.state, "", url);
   };
+  /** The store page scrolls itself (the app pins the window; commerce.css). */
+  const toTop = (behavior: ScrollBehavior = "auto") =>
+    document
+      .querySelector(".commerce-app.storefront")
+      ?.scrollTo({ top: 0, behavior });
+  /** A product's own page; its address is ?product=<id>, so Back returns. */
+  const openProduct = (id: string) => {
+    const url = new URL(location.href);
+    url.searchParams.set("product", id);
+    history.pushState(history.state, "", url);
+    setRequestedProduct(id);
+    setPage("shop");
+    setError("");
+    setNotice("");
+    toTop();
+  };
+  useEffect(() => {
+    const back = () =>
+      setRequestedProduct(
+        new URLSearchParams(location.search).get("product") || "",
+      );
+    addEventListener("popstate", back);
+    return () => removeEventListener("popstate", back);
+  }, []);
+  // Each product page opened counts once per visit.
+  useEffect(() => {
+    if (
+      !requestedProduct ||
+      !data?.products.some((p) => p.id === requestedProduct)
+    )
+      return;
+    try {
+      const key = `forma-store-view-${siteId}-${requestedProduct}`;
+      if (sessionStorage.getItem(key)) return;
+      const id = crypto.randomUUID();
+      sessionStorage.setItem(key, id);
+      void storeRequest(siteId, "events", { id, name: "product.view" }).catch(
+        () => undefined,
+      );
+    } catch {
+      /* Analytics must never prevent shopping. */
+    }
+  }, [requestedProduct, data, siteId]);
   const navigate = (next: Page) => {
     if (next === "shop") showAll();
     if (article) setArticle(undefined);
     setPage(next);
     setError("");
     setNotice("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    toTop("smooth");
   };
   const placeOrder = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -341,21 +388,17 @@ export function Storefront({ siteId }: { siteId: string }) {
         orderId: string;
         receipt: string;
         url?: string;
-      }>(
-        siteId,
-        "checkout",
-        {
-          token,
-          email: values.get("email"),
-          address: {
-            name: values.get("name"),
-            line1: values.get("line1"),
-            city: values.get("city"),
-            postalCode: values.get("postalCode"),
-            country,
-          },
+      }>(siteId, "checkout", {
+        token,
+        email: values.get("email"),
+        address: {
+          name: values.get("name"),
+          line1: values.get("line1"),
+          city: values.get("city"),
+          postalCode: values.get("postalCode"),
+          country,
         },
-      );
+      });
       const saved = { orderId: result.orderId, receipt: result.receipt };
       try {
         localStorage.setItem(receiptKey, JSON.stringify(saved));
@@ -446,12 +489,30 @@ export function Storefront({ siteId }: { siteId: string }) {
     if (!data || !market) return null;
     if (page === "shop") {
       // A link to a product that's gone (or hidden) shows the whole catalog.
-      const linked = data.products.some((p) => p.id === requestedProduct)
-        ? requestedProduct
-        : "";
+      const linked = data.products.find((p) => p.id === requestedProduct);
+      if (linked)
+        return (
+          <ProductPage
+            key={`${linked.id}-${market.id}`}
+            product={linked}
+            related={data.products
+              .filter(
+                (p) =>
+                  p.id !== linked.id &&
+                  !!linked.collection &&
+                  p.collection === linked.collection,
+              )
+              .slice(0, 3)}
+            market={market}
+            baseCurrency={data.settings.currency}
+            busy={busy}
+            onAdd={(variant, quantity) => add(linked.id, variant, quantity)}
+            onOpen={openProduct}
+            onBack={() => navigate("shop")}
+          />
+        );
       const products = data.products.filter(
         (p) =>
-          (!linked || p.id === linked) &&
           `${p.title} ${p.description} ${p.collection} ${Object.values(
             p.translations,
           )
@@ -514,7 +575,7 @@ export function Storefront({ siteId }: { siteId: string }) {
               ].map((c) => (
                 <button
                   key={c || "all"}
-                  aria-pressed={!linked && collection === c}
+                  aria-pressed={collection === c}
                   onClick={() => {
                     showAll();
                     setCollection(c);
@@ -539,14 +600,6 @@ export function Storefront({ siteId }: { siteId: string }) {
               />
             </label>
           </div>
-          {linked && (
-            <p className="commerce-muted store-showing">
-              Showing one product.{" "}
-              <button className="commerce-link" onClick={showAll}>
-                See all products
-              </button>
-            </p>
-          )}
           <div className="store-grid">
             {products.map((product) => (
               <ProductCard
@@ -557,6 +610,7 @@ export function Storefront({ siteId }: { siteId: string }) {
                 baseCurrency={data.settings.currency}
                 busy={busy}
                 onAdd={(variant) => add(product.id, variant)}
+                onOpen={() => openProduct(product.id)}
               />
             ))}
           </div>
@@ -965,29 +1019,30 @@ export function Storefront({ siteId }: { siteId: string }) {
                 </form>
               )
             )}
-            {order.status === "pending" && order.payment !== "local-sandbox" && (
-              <div className="commerce-form">
-                <div className="commerce-notice" role="status">
-                  {order.payUrl && order.holdUntil
-                    ? `Your items are held for you until ${new Date(order.holdUntil).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}. Nothing is charged until you pay.`
-                    : "We’re waiting to hear from the payment provider."}
+            {order.status === "pending" &&
+              order.payment !== "local-sandbox" && (
+                <div className="commerce-form">
+                  <div className="commerce-notice" role="status">
+                    {order.payUrl && order.holdUntil
+                      ? `Your items are held for you until ${new Date(order.holdUntil).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}. Nothing is charged until you pay.`
+                      : "We’re waiting to hear from the payment provider."}
+                  </div>
+                  <div className="commerce-actions">
+                    {order.payUrl && (
+                      <a className="commerce-button" href={order.payUrl}>
+                        Go to payment
+                      </a>
+                    )}
+                    <button
+                      className="commerce-button secondary"
+                      disabled={busy}
+                      onClick={() => void checkPayment()}
+                    >
+                      I’ve paid, check again
+                    </button>
+                  </div>
                 </div>
-                <div className="commerce-actions">
-                  {order.payUrl && (
-                    <a className="commerce-button" href={order.payUrl}>
-                      Go to payment
-                    </a>
-                  )}
-                  <button
-                    className="commerce-button secondary"
-                    disabled={busy}
-                    onClick={() => void checkPayment()}
-                  >
-                    I’ve paid, check again
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
             {order.status === "cancelled" && order.expired && (
               <div className="commerce-form">
                 <div className="commerce-notice" role="status">
@@ -1008,30 +1063,31 @@ export function Storefront({ siteId }: { siteId: string }) {
                 contact you about a refund for them.
               </div>
             )}
-            {order.status === "pending" && order.payment === "local-sandbox" && (
-              <div className="commerce-form">
-                <div className="commerce-notice">
-                  This is a test payment, so no money is taken. Don’t enter card
-                  details. Choose a result to try the order flow.
+            {order.status === "pending" &&
+              order.payment === "local-sandbox" && (
+                <div className="commerce-form">
+                  <div className="commerce-notice">
+                    This is a test payment, so no money is taken. Don’t enter
+                    card details. Choose a result to try the order flow.
+                  </div>
+                  <div className="commerce-actions">
+                    <button
+                      className="commerce-button"
+                      disabled={busy}
+                      onClick={() => void pay("approved")}
+                    >
+                      Simulate successful payment
+                    </button>
+                    <button
+                      className="commerce-button secondary"
+                      disabled={busy}
+                      onClick={() => void pay("declined")}
+                    >
+                      Simulate declined payment
+                    </button>
+                  </div>
                 </div>
-                <div className="commerce-actions">
-                  <button
-                    className="commerce-button"
-                    disabled={busy}
-                    onClick={() => void pay("approved")}
-                  >
-                    Simulate successful payment
-                  </button>
-                  <button
-                    className="commerce-button secondary"
-                    disabled={busy}
-                    onClick={() => void pay("declined")}
-                  >
-                    Simulate declined payment
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
             <button className="commerce-link" onClick={() => navigate("shop")}>
               Continue shopping
             </button>
@@ -1267,6 +1323,7 @@ function ProductCard({
   baseCurrency,
   busy,
   onAdd,
+  onOpen,
 }: {
   product: Product;
   language: string;
@@ -1274,25 +1331,45 @@ function ProductCard({
   baseCurrency: string;
   busy: boolean;
   onAdd: (variant: string) => Promise<void>;
+  onOpen: () => void;
 }) {
   const [variantId, setVariantId] = useState(product.variants[0].id);
+  const open = (e: MouseEvent) => {
+    // A new tab or window opens the page by its address.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    onOpen();
+  };
+  const href = `?${new URLSearchParams({ site: new URLSearchParams(location.search).get("site") || "", product: product.id })}`;
   const variant = product.variants.find((v) => v.id === variantId)!;
   const price =
     currency === baseCurrency ? variant.price : variant.prices[currency];
   const translation = product.translations[language];
   return (
     <article className="store-product">
-      <ProductThumb
-        title={translation?.title || product.title}
-        image={product.image}
-        large
-      />
+      <a
+        href={href}
+        onClick={open}
+        className="store-product-link"
+        tabIndex={-1}
+        aria-hidden="true"
+      >
+        <ProductThumb
+          title={translation?.title || product.title}
+          image={product.image}
+          large
+        />
+      </a>
       <div className="store-product-body">
         <span className="store-eyebrow">
           {product.collection || "Collection"}
         </span>
         <div className="store-product-title">
-          <h2>{translation?.title || product.title}</h2>
+          <h2>
+            <a href={href} onClick={open}>
+              {translation?.title || product.title}
+            </a>
+          </h2>
           <strong>
             {price === undefined
               ? "Not sold in this market"
@@ -1325,6 +1402,161 @@ function ProductCard({
         </button>
       </div>
     </article>
+  );
+}
+/**
+ * A product's own page: the photo large, the options as buttons, a quantity,
+ * the whole description and what delivery costs, then more from its
+ * collection.
+ */
+function ProductPage({
+  product,
+  related,
+  market,
+  baseCurrency,
+  busy,
+  onAdd,
+  onOpen,
+  onBack,
+}: {
+  product: Product;
+  related: Product[];
+  market: Market;
+  baseCurrency: string;
+  busy: boolean;
+  onAdd: (variant: string, quantity: number) => Promise<void>;
+  onOpen: (id: string) => void;
+  onBack: () => void;
+}) {
+  const firstInStock =
+    product.variants.find((v) => v.stock > 0) ?? product.variants[0];
+  const [variantId, setVariantId] = useState(firstInStock.id);
+  const [quantity, setQuantity] = useState(1);
+  const variant =
+    product.variants.find((v) => v.id === variantId) ?? firstInStock;
+  const price =
+    market.currency === baseCurrency
+      ? variant.price
+      : variant.prices[market.currency];
+  const translation = product.translations[market.language];
+  const title = translation?.title || product.title;
+  const description = translation?.description || product.description;
+  const most = Math.max(1, Math.min(variant.stock, 20));
+  const amount = Math.min(quantity, most);
+  return (
+    <>
+      <nav className="store-crumbs" aria-label="Breadcrumb">
+        <button className="commerce-link" onClick={onBack}>
+          All products
+        </button>
+        {product.collection && (
+          <>
+            <span aria-hidden="true">/</span>
+            <span>{product.collection}</span>
+          </>
+        )}
+      </nav>
+      <article className="store-detail">
+        <div className="store-detail-media">
+          <ProductThumb title={title} image={product.image} large />
+        </div>
+        <div className="store-detail-body">
+          {product.collection && (
+            <span className="store-eyebrow">{product.collection}</span>
+          )}
+          <h1>{title}</h1>
+          <p className="store-detail-price">
+            {price === undefined
+              ? "Not sold in this market"
+              : money(price, market.currency)}
+          </p>
+          {product.variants.length > 1 && (
+            <fieldset className="store-options">
+              <legend>Option</legend>
+              <div>
+                {product.variants.map((v) => (
+                  <label key={v.id} className={v.stock ? "" : "is-out"}>
+                    <input
+                      type="radio"
+                      name={`option-${product.id}`}
+                      checked={v.id === variant.id}
+                      onChange={() => {
+                        setVariantId(v.id);
+                        setQuantity(1);
+                      }}
+                    />
+                    <span>
+                      {v.title}
+                      {v.stock ? "" : " · sold out"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <p className="store-stock" role="status">
+            {!variant.stock
+              ? "Sold out"
+              : variant.stock <= 3
+                ? `Only ${variant.stock} left`
+                : "In stock"}
+          </p>
+          <div className="store-buy">
+            <div className="store-qty" role="group" aria-label="Quantity">
+              <button
+                type="button"
+                aria-label="One fewer"
+                disabled={amount <= 1}
+                onClick={() => setQuantity(amount - 1)}
+              >
+                −
+              </button>
+              <output aria-live="polite">{amount}</output>
+              <button
+                type="button"
+                aria-label="One more"
+                disabled={!variant.stock || amount >= most}
+                onClick={() => setQuantity(amount + 1)}
+              >
+                +
+              </button>
+            </div>
+            <button
+              className="commerce-button store-add"
+              disabled={busy || !variant.stock || price === undefined}
+              onClick={() => void onAdd(variant.id, amount)}
+            >
+              {!variant.stock ? "Sold out" : "Add to cart"}
+            </button>
+          </div>
+          {description && <p className="store-detail-text">{description}</p>}
+          <p className="commerce-muted store-delivery">
+            {market.shipping
+              ? `Delivery in ${market.name}: ${money(market.shipping, market.currency)}${market.freeShippingFrom ? `, free on orders over ${money(market.freeShippingFrom, market.currency)}` : ""}.`
+              : `Free delivery in ${market.name}.`}
+          </p>
+        </div>
+      </article>
+      {!!related.length && (
+        <section className="store-related">
+          <h2>More from {product.collection}</h2>
+          <div className="store-grid">
+            {related.map((p) => (
+              <ProductCard
+                key={`${p.id}-${market.id}`}
+                product={p}
+                language={market.language}
+                currency={market.currency}
+                baseCurrency={baseCurrency}
+                busy={busy}
+                onAdd={(v) => onAdd(v, 1)}
+                onOpen={() => onOpen(p.id)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
   );
 }
 /** A product image, or a calm lettered tile when there is none. */

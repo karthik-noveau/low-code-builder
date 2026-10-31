@@ -4,6 +4,12 @@
   color: var(--ui-ink);
   font-family: var(--ui-font);
 }
+/* The app pins html, body and #root to the window (index.css), so a store
+   page of its own scrolls itself; inside the workspace the workspace does. */
+.commerce-app:not(.commerce-embedded) {
+  height: 100%;
+  overflow-y: auto;
+}
 .commerce-app * {
   box-sizing: border-box;
 }
