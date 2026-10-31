@@ -115,7 +115,10 @@ plus a renderer case.
   text, size (two-column numbers), spacing (a box model: outside and inside),
   background, border and corners, effects. Numbers take arrow keys (Shift:
   ×10), "24px", and scrubbing by dragging the unit; colours open a picker
-  with theme swatches, a hex field and a readability hint. Rows changed for
+  with theme swatches, a hex field and a readability hint. A typed colour
+  doesn't follow the theme, so `style.ts` writes dark text and light
+  backgrounds as `light-dark()`: where the site is dark (the visitor's dark
+  theme, a dark section) they swap for readable ones. Rows changed for
   tablet/phone are blue, groups show how many, and the device switch has a
   dot. Group open/closed state is remembered. Data blocks add a Data tab.
 - **Pages** (the site map, `Navigator.tsx`) keeps the Layers and Inspector

@@ -206,7 +206,7 @@ export function pulse(brand: string): SiteParts {
     collections: [plans],
     app,
     theme: {
-      accent: "#e5484d",
+      accent: "#cf3439",
       background: "#f7f7f9",
       color: "#151a25",
       font: "modern",

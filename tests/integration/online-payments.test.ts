@@ -684,6 +684,10 @@ describe.skipIf(!enabled)(
         await call(`/sites/${id}/inbox/${request.id}`, "POST", { sync: true })
       ).data.request;
       expect(stored.payment!.status).toBe("refunded");
+      // The list names the signed-in account, so the Inbox can say "by you".
+      expect(stored.payment!.refund!.by).toBe(
+        (await call(`/sites/${id}/inbox`)).data.you,
+      );
       const html = await (
         await fetch(`${base}/inbox/${id}/requests/${request.id}`)
       ).text();

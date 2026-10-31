@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNode } from "./registry";
-import { color, declarations, treeCss } from "./style";
+import { color, declarations, lightness, treeCss } from "./style";
 import type { Node, Style } from "./model";
 
 const node = (
@@ -41,6 +41,29 @@ describe("style tokens", () => {
     expect(declarations({ background: "accent" })).toContain(
       "background:var(--site-accent)",
     );
+  });
+
+  it("swaps typed light backgrounds and dark text where the site is dark", () => {
+    expect(declarations({ background: "#f2f3ed" })).toEqual([
+      "background:#f2f3ed",
+      "background:light-dark(#f2f3ed, color-mix(in srgb, #f2f3ed 10%, var(--site-background)))",
+    ]);
+    expect(declarations({ color: "#1a1a1a" })).toEqual([
+      "color:#1a1a1a",
+      "color:light-dark(#1a1a1a, color-mix(in srgb, #1a1a1a 40%, #fff))",
+    ]);
+    // Already dark backgrounds, light text, tokens and see-through colours stay.
+    for (const s of [
+      { background: "#102c15" },
+      { color: "#ffffff" },
+      { background: "surface" },
+      { background: "rgba(255, 255, 255, 0.1)" },
+    ])
+      expect(declarations(s).join()).not.toContain("light-dark");
+    expect(lightness("#fff")).toBeCloseTo(1);
+    expect(lightness("rgb(0 0 0)")).toBe(0);
+    expect(lightness("#ffffff10")).toBeNull();
+    expect(lightness("accent")).toBeNull();
   });
 
   it("turns font-size tokens and px into sizes", () => {

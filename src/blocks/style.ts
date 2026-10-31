@@ -51,6 +51,25 @@ export function color(value: string | undefined) {
     ? value
     : "";
 }
+/** How light a typed (opaque hex or rgb) colour is, 0–1; null for tokens and see-through colours. */
+export function lightness(value: string | undefined): number | null {
+  if (!value || value in COLORS || !color(value)) return null;
+  let rgba: number[];
+  if (value.startsWith("#")) {
+    const h = value.slice(1);
+    const full = h.length <= 4 ? [...h].map((c) => c + c).join("") : h;
+    rgba = (full.match(/../g) ?? []).map((x) => parseInt(x, 16));
+    if (rgba.length > 3) rgba[3] /= 255;
+  } else {
+    rgba = (value.match(/[\d.]+%?/g) ?? []).map((x, i) =>
+      x.endsWith("%") ? (parseFloat(x) / 100) * (i < 3 ? 255 : 1) : Number(x),
+    );
+  }
+  if (rgba.length < 3 || (rgba[3] ?? 1) < 0.9) return null;
+  const lin = (v: number) =>
+    (v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  return 0.2126 * lin(rgba[0]) + 0.7152 * lin(rgba[1]) + 0.0722 * lin(rgba[2]);
+}
 const px = (n: number) => `${Math.round(n * 10) / 10}px`;
 const sides = (s: number[]) => s.map(px).join(" ");
 
@@ -118,8 +137,23 @@ export function declarations(
   if (s.italic !== undefined) add("font-style", s.italic ? "italic" : "normal");
   if (s.font)
     add("font-family", s.font === "heading" ? "var(--site-heading-font, inherit)" : "inherit");
+  // A typed colour doesn't follow the theme, so where the site is dark (the
+  // visitor's dark theme, a dark section) dark text and light backgrounds swap
+  // for readable ones. The plain value stays first for older browsers.
+  const scheme = (prop: string, value: string, dark: string | false) => {
+    add(prop, value);
+    if (dark) add(prop, `light-dark(${value}, ${dark})`);
+  };
+  const ink = lightness(s.color);
   // As a text colour the accent is lifted on dark backgrounds (blocks.css).
-  add("color", s.color === "accent" ? "var(--blk-ink, var(--site-accent))" : color(s.color));
+  if (s.color === "accent") add("color", "var(--blk-ink, var(--site-accent))");
+  else
+    scheme(
+      "color",
+      color(s.color),
+      ink !== null && ink < 0.4 && `color-mix(in srgb, ${s.color} 40%, #fff)`,
+    );
+  const fill = lightness(s.background);
   const image = s.backgroundImage ? safeImage(s.backgroundImage) : "";
   const overlay = Math.max(0, Math.min(90, s.overlay ?? 0)) / 100;
   if (image)
@@ -127,7 +161,14 @@ export function declarations(
       "background",
       `${overlay ? `linear-gradient(rgb(0 0 0 / ${overlay}), rgb(0 0 0 / ${overlay})), ` : ""}url("${image.replace(/["\\\n]/g, "")}") center / cover no-repeat${color(s.background) ? ` ${color(s.background)}` : ""}`,
     );
-  else add("background", color(s.background));
+  else
+    scheme(
+      "background",
+      color(s.background),
+      fill !== null &&
+        fill > 0.35 &&
+        `color-mix(in srgb, ${s.background} 10%, var(--site-background))`,
+    );
   if (s.borderWidth !== undefined)
     add(
       "border",

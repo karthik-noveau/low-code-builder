@@ -368,7 +368,7 @@
 }
 .lk-header-brand .blk-menu-links a:hover {
   background: var(--rw-brand-soft);
-  color: var(--site-accent);
+  color: var(--blk-ink);
 }
 .lk-header-brand .blk-menu-links a[aria-current="page"]:hover {
   background: var(--rw-brand-hover);
@@ -624,7 +624,7 @@
   padding: 4px 12px;
   border: 1px solid var(--rw-brand-border);
   background: var(--rw-brand-soft);
-  color: var(--site-accent);
+  color: color-mix(in srgb, var(--blk-ink) 82%, var(--site-color));
   font-size: 13px;
   font-weight: 600;
   line-height: 1.55;
@@ -642,7 +642,7 @@
   text-wrap: balance;
 }
 .lk-hero-badge .blk-heading em {
-  color: var(--site-accent);
+  color: var(--blk-ink);
 }
 .lk-hero-badge .blk-text.v-lead {
   max-width: 46ch;
@@ -828,13 +828,13 @@
   margin-bottom: 12px;
   border-radius: 10px;
   background: var(--rw-brand-soft);
-  color: var(--site-accent);
+  color: var(--blk-ink);
 }
 .lk-steps .blk-row.blk {
   align-items: baseline;
 }
 .lk-steps .blk-text.v-small {
-  color: var(--site-accent);
+  color: var(--blk-ink);
   font-size: 12px;
   font-weight: 700;
 }
@@ -936,7 +936,8 @@
   font-size: 13px;
 }
 .lk-testimonials .blk-text.v-muted {
-  color: var(--site-accent);
+  /* A shade deeper than the accent so the stars read on the soft cards. */
+  color: color-mix(in srgb, var(--blk-ink) 65%, var(--site-color));
   font-size: 11px;
   letter-spacing: 3px;
 }
@@ -1321,7 +1322,7 @@
 .lk-footer .blk-box .blk-text {
   margin-top: 13px;
   font-size: 11px;
-  opacity: 0.6;
+  opacity: 0.72;
 }
 .lk-footer .v-inline .blk-menu-links {
   gap: 22px;
@@ -1372,7 +1373,7 @@
   font-size: inherit;
 }
 .lk-footer-centered .blk-menu-links a:hover {
-  color: var(--site-accent);
+  color: var(--blk-ink);
 }
 .lk-footer-centered .blk-text.blk {
   margin: 0;
@@ -1440,4 +1441,14 @@
   margin: 6px 0;
   border-top-color: currentColor;
   opacity: 0.18;
+}
+
+/* Products sit two to a row on phones, like a shop, unless the block sets its
+   own phone columns. The sample cards shown before the store has products too. */
+@container (max-width: 480px) {
+  .blk-repeat.rl-products.l-grid > .blk-repeat-items,
+  .rl-products > .blk-repeat-empty > .blk-box > .blk-grid {
+    grid-template-columns: repeat(var(--cols-m, 2), minmax(0, 1fr));
+    gap: 24px 12px;
+  }
 }

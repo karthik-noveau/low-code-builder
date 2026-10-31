@@ -211,6 +211,7 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         return jsonResponse({
           requests: await listRequests(siteId),
           canRefund: access?.role === "owner",
+          you: request.owner,
         });
       if (requestId && operation === "/refund" && method === "POST")
         return jsonResponse({

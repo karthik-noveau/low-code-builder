@@ -324,7 +324,7 @@ export function freshBasket(brand: string): SiteParts {
     collections: [products],
     app,
     theme: {
-      accent: "#2f9e44",
+      accent: "#28803a",
       background: "#f8fbf5",
       color: "#1d2b1f",
       font: "modern",

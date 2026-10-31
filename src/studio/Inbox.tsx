@@ -45,6 +45,8 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   const [removing, setRemoving] = useState(false);
   /** Only the site's owner can send money back. */
   const [canRefund, setCanRefund] = useState(false);
+  /** The signed-in account, so refunds it made read "by you". */
+  const [you, setYou] = useState("");
   /** The request whose refund is being confirmed, and the amount typed. */
   const [refunding, setRefunding] = useState<{
     id: string;
@@ -55,11 +57,14 @@ export function Inbox({ onClose }: { onClose: () => void }) {
   const fetchRequests = useCallback(
     () =>
       cloud
-        .request<{ requests: InboxRequest[]; canRefund?: boolean }>(
-          `/sites/${siteId}/inbox`,
-        )
-        .then(({ requests, canRefund }) => {
+        .request<{
+          requests: InboxRequest[];
+          canRefund?: boolean;
+          you?: string;
+        }>(`/sites/${siteId}/inbox`)
+        .then(({ requests, canRefund, you }) => {
           setCanRefund(!!canRefund);
+          setYou(you ?? "");
           return requests;
         }),
     [siteId],
@@ -366,6 +371,9 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                       <strong>{r.name || r.email}</strong>
                       <small>
                         {r.itemTitle} · {r.collectionName}
+                        {r.status === "done" && (
+                          <span className="inbox-done"> · Done</span>
+                        )}
                       </small>
                     </span>
                     {r.payment && (
@@ -395,6 +403,8 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                                 (r.payment.confirmedBy === "provider"
                                   ? " · paid online"
                                   : " · marked paid")}
+                              {r.payment.status === "refunded" &&
+                                ", then refunded"}
                               {r.payment.status === "unpaid" &&
                                 r.payment.checkout &&
                                 ` · checkout started with ${r.payment.checkout.provider === "stripe" ? "Stripe" : "Razorpay"}`}
@@ -404,7 +414,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
                         {r.payment?.refund && (
                           <div>
                             <dt>Refund</dt>
-                            <dd>{refundText(r.payment)}</dd>
+                            <dd>{refundText(r.payment, you)}</dd>
                           </div>
                         )}
                         {INBOX_KINDS[r.kind].fields
@@ -534,8 +544,11 @@ export function Inbox({ onClose }: { onClose: () => void }) {
 
 const providerName = (p?: "stripe" | "razorpay") =>
   p === "stripe" ? "Stripe" : "Razorpay";
-/** "₹520 through Stripe · Oct 30, 4:12 PM · by you@example.com", or that it's still being made. */
-function refundText(payment: NonNullable<InboxRequest["payment"]>) {
+/** "₹520 through Stripe · Oct 30, 4:12 PM · by you", or that it's still being made. */
+function refundText(
+  payment: NonNullable<InboxRequest["payment"]>,
+  you: string,
+) {
   const refund = payment.refund!;
   const amount = formatAmount(refund.amount, payment.currency);
   if (!refund.refundedAt)
@@ -543,9 +556,11 @@ function refundText(payment: NonNullable<InboxRequest["payment"]>) {
   return [
     refund.provider
       ? `${amount} through ${providerName(refund.provider)}`
-      : `${amount} · recorded, paid back by you`,
+      : `${amount} · recorded as paid back`,
     when(refund.refundedAt),
-    refund.byEmail && `by ${refund.byEmail}`,
+    you && refund.by === you
+      ? "by you"
+      : refund.byEmail && `by ${refund.byEmail}`,
     refund.id,
   ]
     .filter(Boolean)

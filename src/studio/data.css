@@ -446,6 +446,10 @@ button.data-row:hover,
   background: var(--ui-surface-alt);
   color: var(--ui-muted);
 }
+.inbox-done {
+  color: var(--ui-text);
+  font-weight: 600;
+}
 .inbox-who {
   display: flex;
   flex-direction: column;

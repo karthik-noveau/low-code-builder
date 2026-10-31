@@ -3160,7 +3160,7 @@ a.site-listing-card:hover .site-listing-image {
   background: var(--rw-surface-sunken);
 }
 .website .site-tab[aria-current="page"] {
-  color: var(--site-accent);
+  color: var(--blk-ink, var(--site-accent));
 }
 .site-tab-icon {
   position: relative;

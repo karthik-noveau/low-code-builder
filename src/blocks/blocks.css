@@ -3,6 +3,9 @@
    Colours come from the theme variables, so blocks follow the theme and its
    dark palette. */
 .website {
+  /* Light unless the site's dark theme or a dark section says otherwise, so
+     typed colours (light-dark() in style.ts) don't follow the editor's theme. */
+  color-scheme: light;
   --blk-muted: color-mix(in srgb, var(--site-color) 64%, transparent);
   --blk-line: color-mix(in srgb, var(--site-color) 13%, transparent);
   --blk-surface: color-mix(
@@ -404,7 +407,7 @@ a.blk-box.v-card:hover {
 }
 .website.buttons-outline .blk-button.v-primary {
   background: transparent;
-  color: var(--site-accent) !important;
+  color: var(--blk-ink) !important;
   box-shadow: inset 0 0 0 1.5px currentColor;
 }
 .website.buttons-pill .blk-button {
@@ -484,7 +487,8 @@ a.blk-box.v-card:hover {
 }
 .blk-badge.v-soft {
   background: color-mix(in srgb, var(--site-accent) 12%, transparent);
-  color: var(--blk-ink);
+  /* A little deeper than the accent, so it reads on its own tint. */
+  color: color-mix(in srgb, var(--blk-ink) 82%, var(--site-color));
 }
 .blk-badge.v-solid {
   background: var(--site-accent);
@@ -640,7 +644,7 @@ a.blk-box.v-card:hover {
   border-radius: 8px;
 }
 .blk-menu-phone nav a[aria-current="page"] {
-  color: var(--site-accent);
+  color: color-mix(in srgb, var(--blk-ink) 82%, var(--site-color));
   font-weight: 600;
 }
 /* Links in a row or a column, shown at every width (footers). */
