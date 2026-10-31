@@ -1461,9 +1461,10 @@ html body .admin-ui .commerce-table .commerce-select-cell {
   padding-right: 0;
 }
 html body .admin-ui .commerce-select-cell input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
+  /* 20px, with 2px around: a 24px target. */
+  width: 20px;
+  height: 20px;
+  margin: 2px;
   accent-color: var(--a-ink);
   cursor: pointer;
   vertical-align: middle;
