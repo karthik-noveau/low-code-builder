@@ -1,5 +1,7 @@
 # CI and optional AWS deployment
 
+For a step-by-step list of everything the first deploy needs, see [the deploy checklist](deploy-checklist.md).
+
 The application is implemented and exercised locally. No AWS account is required, and no cloud resources are created by local setup, development, tests, builds, or CI. The AWS template and deployment workflow are prepared separately; they still need an account-specific IAM/bootstrap review and a real staging deployment before being treated as production-verified.
 
 The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Forma Store ([below](#forma-store-on-aws)), but checkout, customer accounts and team invitations stay closed on AWS, and none of it has been verified on a real deployment.
@@ -101,14 +103,17 @@ The deployment script requires AWS CLI v2, verifies the target account, packages
 
 Owners can always paste their own Stripe or Razorpay keys. To also offer **Connect with Stripe** / **Connect with Razorpay**, create Forma's own platform apps and give the deployment their credentials. Leave them empty and the buttons stay hidden.
 
-| GitHub environment value                    | Kind     | Stack parameter → Lambda variable                                    |
-| ------------------------------------------- | -------- | -------------------------------------------------------------------- |
-| `STRIPE_CONNECT_CLIENT_ID` (`ca_…`)         | variable | `StripeConnectClientId` → `STRIPE_CONNECT_CLIENT_ID`                 |
-| `STRIPE_PLATFORM_SECRET` (`sk_test_…`/`sk_live_…`) | secret   | `StripePlatformSecret` (NoEcho) → `STRIPE_PLATFORM_SECRET`           |
-| `RAZORPAY_PARTNER_CLIENT_ID`                | variable | `RazorpayPartnerClientId` → `RAZORPAY_PARTNER_CLIENT_ID`             |
-| `RAZORPAY_PARTNER_CLIENT_SECRET`            | secret   | `RazorpayPartnerClientSecret` (NoEcho) → `RAZORPAY_PARTNER_CLIENT_SECRET` |
+| GitHub environment value                           | Kind     | Stack parameter → Lambda variable                                         |
+| -------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
+| `STRIPE_CONNECT_CLIENT_ID` (`ca_…`)                | variable | `StripeConnectClientId` → `STRIPE_CONNECT_CLIENT_ID`                      |
+| `STRIPE_PLATFORM_SECRET` (`sk_test_…`/`sk_live_…`) | secret   | `StripePlatformSecret` (NoEcho) → `STRIPE_PLATFORM_SECRET`                |
+| `RAZORPAY_PARTNER_CLIENT_ID`                       | variable | `RazorpayPartnerClientId` → `RAZORPAY_PARTNER_CLIENT_ID`                  |
+| `RAZORPAY_PARTNER_CLIENT_SECRET`                   | secret   | `RazorpayPartnerClientSecret` (NoEcho) → `RAZORPAY_PARTNER_CLIENT_SECRET` |
+| `STRIPE_WEBHOOK_SECRET` (`whsec_…`)                | secret   | `StripeWebhookSecret` (NoEcho) → `STRIPE_WEBHOOK_SECRET`                  |
+| `RAZORPAY_WEBHOOK_SECRET`                          | secret   | `RazorpayWebhookSecret` (NoEcho) → `RAZORPAY_WEBHOOK_SECRET`              |
+| `MAIL_FROM` (a verified SES address)               | variable | `MailFrom` → `MAIL_FROM` (shopper emails; empty keeps previews)           |
 
-Only the **Deploy the tested revision** step sees them; `scripts/deploy-aws.mjs` passes each one that is set as a parameter override (an unset one keeps the stack's current value; an empty one clears it). Like `PAYMENT_ENCRYPTION_KEY`, they end up in the API function's environment, so limit who can read the Lambda configuration. In each provider's app settings, allow exactly one redirect URL: `{ApiUrl}/payments/sign-in/stripe/return` or `{ApiUrl}/payments/sign-in/razorpay/return` (`ApiUrl` is a stack output; Stripe needs HTTPS for live mode). Use a test-mode Stripe key and a Razorpay development app in development, and live ones in production. Never commit these values. See [the backend guide](backend.md#connecting-by-signing-in) for the flow.
+The two webhook secrets are the signing secrets of the platform apps' webhooks (`{ApiUrl}/payments/webhooks/stripe` for Connect events, `{ApiUrl}/payments/webhooks/razorpay` for the partner app); they confirm payments for signed-in accounts when the visitor never comes back. Only the **Deploy the tested revision** step sees them; `scripts/deploy-aws.mjs` passes each one that is set as a parameter override (an unset one keeps the stack's current value; an empty one clears it). Like `PAYMENT_ENCRYPTION_KEY`, they end up in the API function's environment, so limit who can read the Lambda configuration. In each provider's app settings, allow exactly one redirect URL: `{ApiUrl}/payments/sign-in/stripe/return` or `{ApiUrl}/payments/sign-in/razorpay/return` (`ApiUrl` is a stack output; Stripe needs HTTPS for live mode). Use a test-mode Stripe key and a Razorpay development app in development, and live ones in production. Never commit these values. See [the backend guide](backend.md#connecting-by-signing-in) for the flow.
 
 The initial Cognito pool is invitation-only. Create invited users in the output pool through AWS's console or CLI. If you want public registration, change `AdminCreateUserConfig`, configure production email delivery/rate controls, and test in development first. The deployment files are implemented and locally validated; a real AWS run and its account-specific verification remain required before calling an environment live.
 
@@ -131,7 +136,8 @@ Never rename a deployed route's `id`: CloudFormation would create the new route 
 - **Routes:** the store workspace (`/sites/{id}/commerce…`, JWT; roles are checked in the API), the storefront (`/store/{id}`, cart, cart read, events, forms, unsubscribe, checkout, receipts, returns: public, throttled), and the customer account (`/store/{id}/account…`, JWT, answering 503 until shoppers have their own identity provider).
 - **IAM:** the API and publisher roles also have `dynamodb:ConditionCheckItem` on the table. Store, inbox and app-record writes are DynamoDB transactions that guard on the site's lifecycle row with a `ConditionCheck`; without it those transactions are denied (this also affected the Inbox and business apps already on AWS). There are still no scans, batch writes or wildcards.
 - **Pages:** nothing new. `/store`, `/customer` and `/commerce` are prerendered editor pages that the editor router already serves; the Lambda's `EDITOR_ORIGIN` makes the website's Shop link and product sections point at them.
-- **Closed on AWS:** checkout and refunds, the sandbox payment, customer accounts, inviting collaborators, and email delivery (previews only, as locally). See [the commerce guide](commerce.md#on-aws) for why and what deciding them involves.
+- **Checkout and refunds** work once an owner connects Stripe or Razorpay (15-minute stock holds, provider-confirmed payment, webhooks); **shopper emails** send through SES with `MAIL_FROM` (the API role may `ses:SendEmail` from the account's identities).
+- **Closed on AWS:** the sandbox payment, customer accounts and inviting collaborators. See [the commerce guide](commerce.md#on-aws).
 - **Verify on a staging deployment:** the transactions with real IAM, the per-route throttles, CORS from the editor origin, and a published site's Shop link to the editor's `/store` page.
 
 ### Branded pages

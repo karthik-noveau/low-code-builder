@@ -16,8 +16,8 @@
     {
       "id": "payments",
       "title": "Live payment provider, signed webhooks, reconciliation and refunds",
-      "status": "requires-provider-selection",
-      "evidence": ""
+      "status": "local-verified-live-pending",
+      "evidence": "Checkout through owners' Stripe/Razorpay (15-minute stock holds, provider-confirmed payment, signed webhooks for orders, requests and app records), full and partial refunds with idempotency keys: integration-tested against fake provider APIs. Live provider accounts and reconciliation not yet verified."
     },
     {
       "id": "shipping-tax",
@@ -28,8 +28,8 @@
     {
       "id": "notifications",
       "title": "Production email delivery and deliverability management",
-      "status": "local-preview-only",
-      "evidence": "Local order/return notification previews, consented signup, unsubscribe and recipient exclusion are tested; no live email delivery."
+      "status": "local-verified-live-pending",
+      "evidence": "Order, refund and return emails are sent through SES when MAIL_FROM is set (claimed once, retried up to five times), integration-tested against a stand-in SES endpoint. No live SES delivery or bounce/complaint handling yet."
     },
     {
       "id": "billing",
