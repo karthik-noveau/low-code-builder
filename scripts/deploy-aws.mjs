@@ -125,6 +125,8 @@ aws(
     ["StripePlatformSecret", "STRIPE_PLATFORM_SECRET"],
     ["RazorpayPartnerClientId", "RAZORPAY_PARTNER_CLIENT_ID"],
     ["RazorpayPartnerClientSecret", "RAZORPAY_PARTNER_CLIENT_SECRET"],
+    ["StripeWebhookSecret", "STRIPE_WEBHOOK_SECRET"],
+    ["RazorpayWebhookSecret", "RAZORPAY_WEBHOOK_SECRET"],
   ]
     .filter(([, name]) => process.env[name] !== undefined)
     .map(([parameter, name]) => `${parameter}=${process.env[name]}`),

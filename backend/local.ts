@@ -235,6 +235,8 @@ const server = createServer(async (req, res) => {
           headers: {
             "content-type": req.headers["content-type"],
             "if-match": req.headers["if-match"],
+            "stripe-signature": req.headers["stripe-signature"] as string | undefined,
+            "x-razorpay-signature": req.headers["x-razorpay-signature"] as string | undefined,
           },
         });
     }

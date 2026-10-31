@@ -55,6 +55,11 @@ export const apiRoutes = [
   { id: "Route18", route: "GET /sites/{id}/payments", auth: "jwt" },
   { id: "Route19", route: "POST /sites/{id}/payments", auth: "jwt" },
   { id: "Route20", route: "POST /sites/{id}/payments/disconnect", auth: "jwt" },
+  {
+    id: "PaymentWebhookSetupRoute",
+    route: "POST /sites/{id}/payments/webhook",
+    auth: "jwt",
+  },
   { id: "Route21", route: "GET /sites/{id}/app", auth: "jwt" },
   { id: "Route22", route: "GET /sites/{id}/app/{proxy+}", auth: "jwt" },
   { id: "Route23", route: "POST /sites/{id}/app/{proxy+}", auth: "jwt" },
@@ -105,6 +110,21 @@ export const apiRoutes = [
     route: "GET /payments/sign-in/{provider}/return",
     auth: "none",
     throttle: { burst: 5, rate: 2 },
+  },
+  // Stripe or Razorpay says a checkout was paid: Forma's platform webhook
+  // (signed-in accounts) and each site's own (pasted keys). Signed; the API
+  // still asks the provider before marking anything paid.
+  {
+    id: "PaymentWebhookRoute",
+    route: "POST /payments/webhooks/{provider}",
+    auth: "none",
+    throttle: { burst: 20, rate: 10 },
+  },
+  {
+    id: "PaymentSiteWebhookRoute",
+    route: "POST /payments/webhooks/{provider}/{id}",
+    auth: "none",
+    throttle: { burst: 20, rate: 10 },
   },
   // Business app forms, lookups and views on published sites, and the push
   // key. Per-IP lookup limits live in the API; these cap the whole route.

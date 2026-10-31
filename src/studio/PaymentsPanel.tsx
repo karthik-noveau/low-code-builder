@@ -105,6 +105,16 @@ interface Connection {
   hint: string;
   via?: "oauth";
   account?: string;
+  /** Whether Stripe or Razorpay tells Forma about store payments (pasted keys need a webhook). */
+  webhook?: "ready" | "setup";
+}
+interface WebhookSetup {
+  provider: Connection["provider"];
+  ready: boolean;
+  url: string;
+  /** Razorpay: the secret to paste with the URL. */
+  secret?: string;
+  events?: string[];
 }
 type SignIn = Record<Connection["provider"], boolean>;
 const PROVIDERS = { stripe: "Stripe", razorpay: "Razorpay" } as const;
@@ -139,6 +149,104 @@ function finishSignIn(siteId: string) {
     ).connection;
   })();
   return finishing;
+}
+/**
+ * Store orders are confirmed when the provider tells Forma a checkout was
+ * paid, even if the shopper never comes back. Signed-in accounts and Stripe
+ * keys with the permission get that automatically; a Razorpay key needs the
+ * owner to add a webhook, and a Stripe key without the permission can retry.
+ */
+function OrderNotifications({
+  siteId,
+  provider,
+}: {
+  siteId: string;
+  provider: Connection["provider"];
+}) {
+  const [setup, setSetup] = useState<WebhookSetup | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      setSetup(
+        (
+          await cloud.request<{ webhook: WebhookSetup }>(
+            `/sites/${siteId}/payments/webhook`,
+            { method: "POST", body: "{}" },
+          )
+        ).webhook,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That didn’t work. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = (value: string) => void navigator.clipboard?.writeText(value);
+  if (setup?.ready)
+    return <small>Store payments are confirmed automatically.</small>;
+  return (
+    <div className="payments-webhook">
+      <small>
+        {provider === "stripe"
+          ? "Store orders are confirmed when shoppers come back from Stripe. So orders are confirmed even when they don’t, give your key Webhook Endpoints: Write, then try again."
+          : "Store orders are confirmed when shoppers come back from Razorpay. So orders are confirmed even when they don’t, add a webhook in Razorpay."}
+      </small>
+      {setup?.provider === "razorpay" && setup.secret ? (
+        <ol className="payments-webhook-steps">
+          <li>
+            In Razorpay → Account & Settings → Webhooks, add a new webhook.
+          </li>
+          <li>
+            Webhook URL: <code>{setup.url}</code>{" "}
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => copy(setup.url)}
+            >
+              Copy
+            </button>
+          </li>
+          <li>
+            Secret: <code>{setup.secret}</code>{" "}
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => copy(setup.secret!)}
+            >
+              Copy
+            </button>
+          </li>
+          <li>Active event: {setup.events?.join(", ")}. Save it.</li>
+          <li>It shows as set up here after Razorpay’s first notification.</li>
+        </ol>
+      ) : (
+        <button
+          type="button"
+          className="subtle-button"
+          disabled={busy}
+          onClick={() => void load()}
+        >
+          {provider === "stripe"
+            ? busy
+              ? "Trying…"
+              : setup
+                ? "Still not allowed. Try again"
+                : "Try again"
+            : busy
+              ? "Loading…"
+              : "Show webhook details"}
+        </button>
+      )}
+      {error && (
+        <small className="danger-text" role="alert">
+          {error}
+        </small>
+      )}
+    </div>
+  );
 }
 const accountLabel = (c: Connection) =>
   c.via
@@ -326,6 +434,12 @@ function OnlinePayments() {
             {accountLabel(connection)}. Visitors pay the exact total and
             requests are marked paid automatically.
           </small>
+          {connection.webhook === "setup" && siteId && (
+            <OrderNotifications
+              siteId={siteId}
+              provider={connection.provider}
+            />
+          )}
           {messages}
           {confirming ? (
             <InlineConfirm
@@ -402,7 +516,7 @@ function OnlinePayments() {
                 maxLength={220}
                 hint={
                   provider === "stripe"
-                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write and Refunds: Write (so you can refund from the Inbox)."
+                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write, Refunds: Write (to refund from Forma) and Webhook Endpoints: Write (so store orders confirm even when shoppers don’t come back)."
                     : "In Razorpay → Account & Settings → API keys."
                 }
                 onChange={setSecret}

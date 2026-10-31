@@ -2,7 +2,9 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
+  createHmac,
   randomBytes,
+  timingSafeEqual,
 } from "node:crypto";
 import { DeleteCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { config, epoch, HttpError, insist, isConditional, local } from "./config";
@@ -12,7 +14,8 @@ import { db, deleteItem, getItem, putItem } from "./database";
 /**
  * Online payments through the owner's own Stripe or Razorpay account. Forma
  * creates a checkout for the exact total and asks the provider whether it was
- * paid, so no webhook setup is needed and the money never passes through us.
+ * paid, so the money never passes through us. Webhooks only say which
+ * checkout to ask about (store orders whose shopper never comes back).
  * Owners either paste API keys or sign in with the provider (Stripe Connect
  * OAuth, Razorpay partner OAuth). Secret keys and tokens are encrypted at rest
  * and never sent back to the browser.
@@ -33,6 +36,12 @@ interface StoredConnection {
   account?: string;
   /** Razorpay sign-in: when the access token runs out (epoch seconds). */
   tokenExpires?: number;
+  /**
+   * The site's own webhook, for pasted keys (signed-in accounts use Forma's
+   * platform webhook): Stripe's endpoint id and signing secret, made through
+   * the key; for Razorpay a secret Forma made for the owner to paste.
+   */
+  webhook?: { id?: string; secret: string; confirmed?: boolean };
 }
 export interface Connection {
   provider: ProviderId;
@@ -41,6 +50,12 @@ export interface Connection {
   connectedAt: string;
   via?: "oauth";
   account?: string;
+  /**
+   * Whether payment notifications reach Forma: "ready", or "setup" when the
+   * owner still has to add the webhook in Razorpay (or Stripe refused to make
+   * one with that key).
+   */
+  webhook: "ready" | "setup";
 }
 export interface Checkout {
   provider: ProviderId;
@@ -157,6 +172,10 @@ const publicConnection = (c: StoredConnection): Connection => ({
   hint: c.hint,
   connectedAt: c.connectedAt,
   ...(c.via ? { via: c.via, account: c.account } : {}),
+  webhook:
+    c.via || c.webhook?.id || (c.provider === "razorpay" && c.webhook?.confirmed)
+      ? "ready"
+      : "setup",
 });
 export async function getConnection(siteId: string) {
   const stored = await read<StoredConnection>(siteId, "PAYCONN");
@@ -214,6 +233,8 @@ export async function connect(siteId: string, input: Record<string, unknown>) {
     const check = await razorpay(keyId, secret, "/v1/payment_links?count=1");
     insist(check.ok, 422, "Razorpay didn’t accept that key ID and secret.");
   }
+  const previous = await read<StoredConnection>(siteId, "PAYCONN");
+  if (previous?.webhook?.id) await dropStripeWebhook(previous);
   return save(siteId, {
     provider: name,
     mode,
@@ -221,11 +242,79 @@ export async function connect(siteId: string, input: Record<string, unknown>) {
     secret: seal(secret),
     hint: secret.slice(-4),
     connectedAt: now(),
+    webhook:
+      name === "stripe"
+        ? await makeStripeWebhook(siteId, secret)
+        : { secret: seal(randomBytes(24).toString("hex")) },
   });
+}
+/** Where a site's own webhook points (pasted keys). */
+export const webhookUrl = (siteId: string, name: ProviderId) =>
+  `${config.apiOrigin}/payments/webhooks/${name}/${siteId}`;
+const STRIPE_EVENTS = [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+];
+/** Asks Stripe for a webhook with the owner's key; a key without that permission just leaves it to set up. */
+async function makeStripeWebhook(siteId: string, secret: string) {
+  const form = new URLSearchParams({
+    url: webhookUrl(siteId, "stripe"),
+    description: "Forma store orders",
+  });
+  STRIPE_EVENTS.forEach((e, i) => form.set(`enabled_events[${i}]`, e));
+  const made = await stripe<{ id?: string; secret?: string }>(
+    secret,
+    "/v1/webhook_endpoints",
+    form,
+  ).catch(() => null);
+  return made?.ok && made.data.id && made.data.secret
+    ? { id: made.data.id, secret: seal(made.data.secret) }
+    : undefined;
+}
+async function dropStripeWebhook(stored: StoredConnection) {
+  if (stored.provider !== "stripe" || stored.via || !stored.webhook?.id) return;
+  await provider(
+    `${stripeBase()}/v1/webhook_endpoints/${encodeURIComponent(stored.webhook.id)}`,
+    {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${unseal(stored.secret)}` },
+    },
+    "Stripe",
+  ).catch(() => undefined);
+}
+/**
+ * What the owner pastes into Razorpay's dashboard (pasted keys): the URL and
+ * the secret Razorpay signs with. Asking for it is also how the owner says
+ * it's done; a signed notification confirms it for good.
+ */
+export async function webhookSetup(siteId: string) {
+  const stored = await read<StoredConnection>(siteId, "PAYCONN");
+  insist(stored && !stored.via, 404, "There’s no webhook to set up.");
+  if (stored.provider === "stripe") {
+    // Try again, for a key given the permission since it was pasted.
+    if (!stored.webhook?.id) {
+      const webhook = await makeStripeWebhook(siteId, unseal(stored.secret));
+      if (webhook) await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
+      return { provider: "stripe", ready: !!webhook, url: webhookUrl(siteId, "stripe") };
+    }
+    return { provider: "stripe", ready: true, url: webhookUrl(siteId, "stripe") };
+  }
+  const webhook = stored.webhook ?? {
+    secret: seal(randomBytes(24).toString("hex")),
+  };
+  if (!stored.webhook) await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
+  return {
+    provider: "razorpay",
+    ready: !!webhook.confirmed,
+    url: webhookUrl(siteId, "razorpay"),
+    secret: unseal(webhook.secret),
+    events: ["payment_link.paid"],
+  };
 }
 /** Removes the connection. False when a signed-in account couldn't be told to forget Forma. */
 export async function disconnect(siteId: string) {
   const stored = await read<StoredConnection>(siteId, "PAYCONN");
+  if (stored) await dropStripeWebhook(stored);
   const k = key(siteId, "PAYCONN");
   await deleteItem(k.pk, k.sk);
   return stored?.via ? release(stored) : true;
@@ -672,6 +761,10 @@ export interface CheckoutInput {
   name: string;
   email: string;
   returnUrl: string;
+  /** Store orders: when the checkout stops taking payment (epoch seconds). */
+  expiresAt?: number;
+  /** What the checkout pays for, so a webhook can find it. */
+  kind?: "order";
 }
 export async function createCheckout(
   siteId: string,
@@ -692,7 +785,10 @@ export async function createCheckout(
       "metadata[forma_reference]": input.reference,
       success_url: input.returnUrl,
       cancel_url: input.returnUrl,
+      "metadata[forma_site]": siteId,
     });
+    if (input.kind) form.set("metadata[forma_kind]", input.kind);
+    if (input.expiresAt) form.set("expires_at", String(input.expiresAt));
     // App forms may have no email field; Stripe refuses an empty one.
     if (input.email) form.set("customer_email", input.email);
     const { ok, data } = await call<{
@@ -725,6 +821,12 @@ export async function createCheckout(
       notify: { email: false, sms: false },
       callback_url: input.returnUrl,
       callback_method: "get",
+      notes: {
+        forma_site: siteId,
+        forma_id: input.requestId,
+        ...(input.kind ? { forma_kind: input.kind } : {}),
+      },
+      ...(input.expiresAt ? { expire_by: input.expiresAt } : {}),
     },
   );
   insist(
@@ -761,6 +863,130 @@ export async function checkoutPaid(
     amount_paid?: number;
   }>(`/v1/payment_links/${encodeURIComponent(checkout.id)}`);
   return ok && data.status === "paid" && (data.amount_paid ?? 0) >= amount;
+}
+
+/**
+ * Stops a checkout taking payment (a store hold ran out). False when the
+ * provider says no, which is what happens if it was paid in the meantime.
+ */
+export async function cancelCheckout(siteId: string, checkout: Checkout) {
+  const stored = await read<StoredConnection>(siteId, "PAYCONN");
+  if (!stored || stored.provider !== checkout.provider) return false;
+  const call = await caller(siteId, stored);
+  const id = encodeURIComponent(checkout.id);
+  const { ok } =
+    checkout.provider === "stripe"
+      ? await call(`/v1/checkout/sessions/${id}/expire`, new URLSearchParams())
+      : await call(`/v1/payment_links/${id}/cancel`, {});
+  return ok;
+}
+
+/** A payment notification Forma acts on: which site's checkout to check. */
+export interface PaymentNotice {
+  provider: ProviderId;
+  siteId: string;
+  kind: string;
+  /** The order (or request) id the checkout was made for. */
+  id: string;
+  checkoutId: string;
+}
+const safeEqual = (a: string, b: string) => {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
+const hmac = (secret: string, value: string | Buffer) =>
+  createHmac("sha256", secret).update(value).digest("hex");
+/** Stripe-Signature: t=…,v1=…; signed over "t.body", five minutes' grace. */
+function stripeSigned(header: string, body: Buffer, secret: string) {
+  const parts = header.split(",").map((p) => p.split("="));
+  const t = parts.find(([k]) => k === "t")?.[1] ?? "";
+  if (!/^\d{1,12}$/.test(t) || Math.abs(epoch() - Number(t)) > 300) return false;
+  const expected = hmac(secret, Buffer.concat([Buffer.from(`${t}.`), body]));
+  return parts.some(([k, v]) => k === "v1" && !!v && safeEqual(v, expected));
+}
+/**
+ * Checks a webhook's signature and says which checkout it's about; null for
+ * events Forma doesn't act on. `siteId` is set for a site's own webhook
+ * (pasted keys), absent for Forma's platform webhook (signed-in accounts).
+ */
+export async function readWebhook(
+  name: ProviderId,
+  siteId: string | undefined,
+  body: Buffer,
+  headers: Record<string, string | undefined>,
+): Promise<PaymentNotice | null> {
+  const stored = siteId
+    ? await read<StoredConnection>(siteId, "PAYCONN")
+    : undefined;
+  const secret = siteId
+    ? stored?.provider === name && !stored.via && stored.webhook
+      ? unseal(stored.webhook.secret)
+      : undefined
+    : name === "stripe"
+      ? process.env.STRIPE_WEBHOOK_SECRET
+      : process.env.RAZORPAY_WEBHOOK_SECRET;
+  insist(
+    secret,
+    siteId ? 404 : 503,
+    siteId ? "Not found." : "This webhook isn’t set up.",
+  );
+  const signed =
+    name === "stripe"
+      ? stripeSigned(headers["stripe-signature"] ?? "", body, secret)
+      : safeEqual(headers["x-razorpay-signature"] ?? "", hmac(secret, body));
+  insist(signed, 400, "Invalid signature.");
+  let event: Record<string, unknown>;
+  try {
+    event = JSON.parse(body.toString()) as Record<string, unknown>;
+  } catch {
+    throw new HttpError(400, "Invalid JSON.");
+  }
+  // A signed notification proves the owner's Razorpay webhook works.
+  if (siteId && stored?.webhook && !stored.webhook.confirmed && name === "razorpay")
+    await putItem({
+      ...key(siteId, "PAYCONN"),
+      ...stored,
+      webhook: { ...stored.webhook, confirmed: true },
+    });
+  const pick = (o: unknown, ...path: string[]) =>
+    path.reduce<unknown>(
+      (v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined),
+      o,
+    );
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  let notice: PaymentNotice;
+  if (name === "stripe") {
+    if (!STRIPE_EVENTS.includes(str(event.type))) return null;
+    const session = pick(event, "data", "object");
+    notice = {
+      provider: name,
+      siteId: str(pick(session, "metadata", "forma_site")),
+      kind: str(pick(session, "metadata", "forma_kind")),
+      id: str(pick(session, "client_reference_id")),
+      checkoutId: str(pick(session, "id")),
+    };
+  } else {
+    if (event.event !== "payment_link.paid") return null;
+    const link = pick(event, "payload", "payment_link", "entity");
+    notice = {
+      provider: name,
+      siteId: str(pick(link, "notes", "forma_site")),
+      kind: str(pick(link, "notes", "forma_kind")),
+      id: str(pick(link, "notes", "forma_id")),
+      checkoutId: str(pick(link, "id")),
+    };
+  }
+  if (!notice.siteId || !notice.id || !notice.checkoutId) return null;
+  // A site's own webhook only speaks for that site; the platform's only for
+  // the account the site signed in with.
+  if (siteId) return notice.siteId === siteId ? notice : null;
+  const account = str(
+    name === "stripe" ? event.account : pick(event, "account_id"),
+  );
+  const site = await read<StoredConnection>(notice.siteId, "PAYCONN");
+  return site?.via && site.provider === name && site.account === account
+    ? notice
+    : null;
 }
 
 interface ProviderError {

@@ -82,7 +82,16 @@ export interface Order extends Quote {
   email: string;
   address: Address;
   status: "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
-  payment: "local-sandbox";
+  /** How it's paid: the local sandbox, or the owner's Stripe or Razorpay. */
+  payment: "local-sandbox" | "stripe" | "razorpay";
+  /** Until when its stock is held for the shopper to pay. */
+  holdUntil?: string;
+  /** Where the shopper pays, while the hold lasts. */
+  payUrl?: string;
+  /** The hold ran out before payment; its stock went back. */
+  expired?: boolean;
+  /** Paid after its hold ran out, when the stock had gone: refund it. */
+  stockShort?: boolean;
   tracking: string;
   createdAt: string;
   updatedAt: string;

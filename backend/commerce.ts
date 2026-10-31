@@ -30,6 +30,13 @@ import type {
   Submission,
   Variant,
 } from "../src/commerce/types";
+import { getConnection, refundCheckout, type Checkout } from "./payments";
+import {
+  confirmOrder,
+  release,
+  startPaidCheckout,
+  sweepHolds,
+} from "./store-checkout";
 
 export const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -415,6 +422,9 @@ export async function storefront(siteId: string) {
   const stored = await settings(siteId);
   insist(stored?.enabled, 404, "This store is not open.");
   await requireNotDeleting(stored.owner, siteId);
+  // Stock held by checkouts that ran out goes back on the shelf first.
+  await sweepHolds(siteId);
+  const connection = await getConnection(siteId);
   const { owner: _owner, ...publicSettings } = stored;
   void _owner;
   return {
@@ -425,10 +435,11 @@ export async function storefront(siteId: string) {
     content: (await list<ContentEntry>(siteId, "CONTENT")).filter(
       (p) => p.status === "published",
     ),
-    sandbox: local,
-    // What this host can do: hosted stores have no payment flow or customer
-    // sign-in yet (docs/commerce.md), so the storefront doesn't offer them.
-    checkout: local,
+    // Checkout needs the owner's Stripe or Razorpay; locally, without one,
+    // a sandbox stands in. Hosted stores have no customer sign-in yet
+    // (docs/commerce.md), so the storefront doesn't offer it.
+    sandbox: local && !connection,
+    checkout: local || !!connection,
     accounts: local,
   };
 }
@@ -442,7 +453,7 @@ export interface Cart {
   createdAt: string;
   updatedAt: string;
 }
-function cartKey(token: string) {
+export function cartKey(token: string) {
   insist(/^[a-f0-9]{64}$/.test(token), 404, "Cart not found.");
   return digest(token);
 }
@@ -632,28 +643,40 @@ export async function quote(siteId: string, cart: Cart) {
   );
   return { quote: result, products, promotion, store };
 }
-interface PrivateOrder extends Order {
+export interface PrivateOrder extends Order {
   cartHash: string;
   cartRevision: number;
   receiptHash: string;
+  /** The provider's checkout (Stripe Checkout Session or Razorpay payment link). */
+  checkout?: Checkout;
+  /** Its stock is taken and held until `holdUntil` (store-checkout.ts). */
+  held?: boolean;
 }
 export async function checkout(siteId: string, input: Record<string, unknown>) {
+  const connection = await getConnection(siteId);
   insist(
-    local,
+    local || connection,
     503,
-    "Live payments are not configured. Checkout is unavailable.",
+    "This store can’t take payments yet. Checkout is unavailable.",
   );
   const token = text(input.token, "cart token", 64);
   const cart = await getCart(siteId, token);
   insist(cart.lines.length > 0, 422, "Add a product before checking out.");
+  await sweepHolds(siteId);
   const checkoutKey = `${cartKey(token)}-${cart.revision}`;
   const prior = await read<{ orderId: string; receipt: string }>(
     siteId,
     "CHECKOUT",
     checkoutKey,
   );
-  if (prior) return prior;
-  const { quote: priced } = await quote(siteId, cart);
+  if (prior) {
+    // Pressing "Pay" twice goes back to the same checkout.
+    const order = await read<PrivateOrder>(siteId, "ORDER", prior.orderId);
+    return order?.status === "pending" && order.checkout
+      ? { ...prior, url: order.checkout.url }
+      : prior;
+  }
+  const { quote: priced, store } = await quote(siteId, cart);
   const rawAddress = object(input.address);
   const address: Address = {
     name: text(rawAddress.name, "full name", 100),
@@ -684,6 +707,15 @@ export async function checkout(siteId: string, input: Record<string, unknown>) {
     cartRevision: cart.revision,
     receiptHash: digest(receipt),
   };
+  if (connection)
+    return startPaidCheckout(
+      siteId,
+      connection.provider,
+      order,
+      receipt,
+      checkoutKey,
+      store.name,
+    );
   await transact([
     put(siteId, "ORDER", id, order),
     put(siteId, "CHECKOUT", checkoutKey, { orderId: id, receipt }),
@@ -696,12 +728,21 @@ export function publicOrder(order: PrivateOrder): Order {
     cartHash: _cart,
     cartRevision: _revision,
     receiptHash: _receipt,
+    checkout,
+    held: _held,
     ...result
   } = order;
   void _cart;
   void _revision;
   void _receipt;
-  return result;
+  void _held;
+  return {
+    ...result,
+    // While it's open, the shopper can go back to pay.
+    ...(checkout && order.status === "pending" && order.held
+      ? { payUrl: checkout.url }
+      : {}),
+  };
 }
 export async function receiptOrder(siteId: string, id: string, secret: string) {
   const order = await read<PrivateOrder>(siteId, "ORDER", id);
@@ -710,7 +751,8 @@ export async function receiptOrder(siteId: string, id: string, secret: string) {
     404,
     "Order not found.",
   );
-  return publicOrder(order);
+  // Back from Stripe or Razorpay: ask whether it's paid.
+  return publicOrder(await confirmOrder(siteId, order));
 }
 export async function payLocal(
   siteId: string,
@@ -722,7 +764,8 @@ export async function payLocal(
   const secret = text(input.receipt, "receipt token", 64);
   await receiptOrder(siteId, id, secret);
   const order = (await read<PrivateOrder>(siteId, "ORDER", id))!;
-  if (order.status !== "pending") return publicOrder(order);
+  if (order.status !== "pending" || order.payment !== "local-sandbox")
+    return publicOrder(order);
   insist(
     input.outcome === "approved" || input.outcome === "declined",
     422,
@@ -903,6 +946,20 @@ export async function orderAction(
     ]);
     return publicOrder(next);
   }
+  // Ask Stripe or Razorpay about a pending order now.
+  if (action === "check")
+    return publicOrder(await confirmOrder(siteId, order));
+  // A held order gives its stock back (and its checkout stops taking payment).
+  if (action === "cancel" && order.status === "pending" && order.held) {
+    const next = await release(siteId, id, { force: true, actor });
+    insist(next, 404, "Order not found.");
+    insist(
+      next.status === "cancelled",
+      409,
+      "This order was just paid. Refund it instead.",
+    );
+    return publicOrder(next);
+  }
   insist(
     ["fulfill", "cancel", "refund"].includes(String(action)),
     422,
@@ -916,13 +973,30 @@ export async function orderAction(
       409,
       "Paid orders must be refunded, not cancelled.",
     );
+  let providerRefund: { id: string; amount: number } | undefined;
   if (action === "refund") {
-    insist(local, 503, "Live refunds are not configured.");
     insist(
       order.status === "paid" || order.status === "fulfilled",
       409,
       "Only paid orders can be refunded.",
     );
+    insist(
+      order.checkout || local,
+      503,
+      "This order wasn’t paid online, so Forma can’t refund it.",
+    );
+    // The money goes back through the provider it was paid with. The key
+    // makes a retried refund find the first one instead of paying twice.
+    if (order.checkout) {
+      allow(access, "owner");
+      providerRefund = await refundCheckout(
+        siteId,
+        order.checkout,
+        order.total,
+        `forma_rf_${id.replace(/-/g, "")}`,
+        id.slice(0, 8).toUpperCase(),
+      );
+    }
   }
   const next = {
     ...order,
@@ -954,7 +1028,7 @@ export async function orderAction(
       siteId,
       order.email,
       `Order ${id.slice(0, 8)} ${next.status}`,
-      `Your sandbox order is ${next.status}.${next.tracking ? ` Tracking: ${next.tracking}` : ""}`,
+      `Your ${order.checkout ? "" : "sandbox "}order is ${next.status}.${next.tracking ? ` Tracking: ${next.tracking}` : ""}`,
     ),
   ];
   if (action === "refund") {
@@ -963,6 +1037,9 @@ export async function orderAction(
         orderId: id,
         amount: order.total,
         currency: order.currency,
+        ...(providerRefund
+          ? { provider: order.payment, providerId: providerRefund.id }
+          : {}),
         createdAt: now(),
       }),
     );

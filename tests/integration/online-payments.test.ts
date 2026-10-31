@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer, type Server } from "node:http";
 import { gzipSync } from "node:zlib";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { db } from "../../backend/database";
 import { config } from "../../backend/config";
@@ -46,6 +46,9 @@ interface Session {
   payment_intent: string;
   /** The connected account it was made on; "" for pasted keys. */
   account: string;
+  status: "open" | "complete" | "expired";
+  metadata: Record<string, string>;
+  expires_at?: number;
 }
 interface Link {
   id: string;
@@ -57,6 +60,9 @@ interface Link {
   amount_paid: number;
   payments: { payment_id: string; status: string; amount: number }[];
   account: string;
+  notes?: Record<string, string>;
+  expire_by?: number;
+  cancelled?: boolean;
 }
 interface Refund {
   id: string;
@@ -67,6 +73,8 @@ interface Refund {
   key: string;
 }
 const sessions = new Map<string, Session>();
+/** Webhook endpoints made through pasted Stripe keys. */
+const stripeHooks = new Map<string, { url: string; secret: string; events: string[] }>();
 const links = new Map<string, Link>();
 const refunds: Refund[] = [];
 /** Makes the next refund go through but loses the answer, like a timeout. */
@@ -243,6 +251,15 @@ function startFake() {
             payment_status: "unpaid",
             payment_intent: `pi_${id}`,
             account,
+            status: "open",
+            metadata: Object.fromEntries(
+              [...form]
+                .filter(([k]) => k.startsWith("metadata["))
+                .map(([k, v]) => [k.slice(9, -1), v]),
+            ),
+            ...(form.get("expires_at")
+              ? { expires_at: Number(form.get("expires_at")) }
+              : {}),
           };
           sessions.set(id, session);
           return send(200, session);
@@ -250,6 +267,33 @@ function startFake() {
         const one = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(path);
         if (one && sessions.get(one[1])?.account === account)
           return send(200, sessions.get(one[1]));
+        const expire = /^\/v1\/checkout\/sessions\/([^/]+)\/expire$/.exec(path);
+        if (expire && req.method === "POST") {
+          const session = sessions.get(expire[1]);
+          if (!session || session.account !== account) return send(404, {});
+          if (session.status !== "open")
+            return send(400, {
+              error: { message: "Only open sessions can be expired." },
+            });
+          session.status = "expired";
+          return send(200, session);
+        }
+        if (path === "/v1/webhook_endpoints" && req.method === "POST" && !account) {
+          const form = new URLSearchParams(body);
+          const hook = {
+            url: form.get("url")!,
+            secret: `whsec_FormaFake${stripeHooks.size + 1}`,
+            events: [...form].filter(([k]) => k.startsWith("enabled_events")).map(([, v]) => v),
+          };
+          const hookId = `we_${stripeHooks.size + 1}`;
+          stripeHooks.set(hookId, hook);
+          return send(200, { id: hookId, ...hook });
+        }
+        const dropHook = /^\/v1\/webhook_endpoints\/([^/]+)$/.exec(path);
+        if (dropHook && req.method === "DELETE") {
+          stripeHooks.delete(dropHook[1]);
+          return send(200, { id: dropHook[1], deleted: true });
+        }
         if (path === "/v1/refunds" && req.method === "POST") {
           const form = new URLSearchParams(body);
           const key = String(req.headers["idempotency-key"] ?? "");
@@ -315,6 +359,8 @@ function startFake() {
             amount_paid: 0,
             payments: [],
             account,
+            notes: input.notes,
+            expire_by: input.expire_by,
           };
           links.set(id, link);
           return send(200, link);
@@ -322,6 +368,17 @@ function startFake() {
         const one = /^\/v1\/payment_links\/([^/]+)$/.exec(path);
         if (one && links.get(one[1])?.account === account)
           return send(200, links.get(one[1]));
+        const cancel = /^\/v1\/payment_links\/([^/]+)\/cancel$/.exec(path);
+        if (cancel && req.method === "POST") {
+          const link = links.get(cancel[1]);
+          if (!link || link.account !== account) return send(404, {});
+          if (link.status !== "created")
+            return send(400, {
+              error: { description: "Payment link cannot be cancelled" },
+            });
+          link.cancelled = true;
+          return send(200, link);
+        }
         const pay = /^\/v1\/payments\/([^/]+)\/(refunds|refund)$/.exec(path);
         const link = [...links.values()].find(
           (l) =>
@@ -507,6 +564,7 @@ describe.skipIf(!enabled)(
         mode: "test",
         hint: STRIPE_KEY.slice(-4),
         connectedAt: expect.any(String),
+        webhook: "ready",
       });
       const read = await call(payments);
       expect(JSON.stringify(read.data)).not.toContain(STRIPE_KEY);
@@ -885,6 +943,7 @@ describe.skipIf(!enabled)(
         connectedAt: expect.any(String),
         via: "oauth",
         account: STRIPE_ACCOUNT,
+        webhook: "ready",
       });
       expect((await finish(state)).response.status).toBe(409);
       const read = JSON.stringify((await call(`/sites/${id}/payments`)).data);
@@ -989,6 +1048,267 @@ describe.skipIf(!enabled)(
         ]),
       );
       expect(oauth.refresh.size + oauth.access.size).toBe(0);
+    });
+    describe("store checkout", { concurrent: false }, () => {
+      let store = "";
+      let product: {
+        id: string;
+        variants: { id: string; stock: number }[];
+      };
+      const shop = async (path = "", input?: unknown) => {
+        const response = await fetch(
+          `${base}/store/${store}${path ? `/${path}` : ""}`,
+          input === undefined
+            ? {}
+            : {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(input),
+              },
+        );
+        return { status: response.status, data: await response.json() };
+      };
+      const stock = async () =>
+        (await shop()).data.products.find(
+          (p: { id: string }) => p.id === product.id,
+        ).variants[0].stock as number;
+      const cart = async (quantity: number) =>
+        (
+          await shop("cart", {
+            lines: [
+              {
+                productId: product.id,
+                variantId: product.variants[0].id,
+                quantity,
+              },
+            ],
+            marketId: "default",
+            country: "US",
+          })
+        ).data.token as string;
+      const shopper = {
+        email: "shopper@example.com",
+        address: {
+          name: "Asha Rao",
+          line1: "1 Example Street",
+          city: "Pune",
+          postalCode: "411001",
+          country: "US",
+        },
+      };
+      const stripeHook = (siteId: string, event: object, secret: string) => {
+        const body = JSON.stringify(event);
+        const t = Math.floor(Date.now() / 1000);
+        const v1 = createHmac("sha256", secret).update(`${t}.${body}`).digest("hex");
+        return fetch(`${base}/payments/webhooks/stripe/${siteId}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "stripe-signature": `t=${t},v1=${v1}` },
+          body,
+        });
+      };
+      /** Moves an order's hold into the past, as if 15 minutes went by. */
+      const expire = async (orderId: string) => {
+        const past = new Date(Date.now() - 60_000).toISOString();
+        for (const [sk, field] of [
+          [`ORDER#${orderId}`, "holdUntil"],
+          [`HOLD#${orderId}`, "until"],
+        ])
+          await db.send(
+            new UpdateCommand({
+              TableName: config.table,
+              Key: { pk: `COMMERCE#${store}`, sk },
+              UpdateExpression: "SET #f = :v",
+              ExpressionAttributeNames: { "#f": field },
+              ExpressionAttributeValues: { ":v": past },
+            }),
+          );
+      };
+      beforeAll(async () => {
+        store = (await call("/sites", "POST", { name: "Paid store" })).data.site.id;
+        const o = (await call(`/sites/${store}/commerce`)).data;
+        await call(`/sites/${store}/commerce/settings`, "PUT", {
+          ...o.settings,
+          enabled: true,
+        });
+        product = (
+          await call(`/sites/${store}/commerce/products`, "POST", {
+            title: "Sage planter",
+            description: "Glazed",
+            image: "/images/planter-sage.jpg",
+            collection: "Pots",
+            status: "active",
+            variants: [
+              { id: randomUUID(), title: "Medium", sku: "POT-M", stock: 3, price: 2500, prices: {} },
+            ],
+          })
+        ).data.product;
+      });
+
+      it("uses the owner’s Stripe instead of the sandbox once connected", async () => {
+        // Locally the sandbox stands in; it steps aside once Stripe is connected.
+        expect((await shop()).data).toMatchObject({ sandbox: true, checkout: true });
+        const connected = await call(`/sites/${store}/payments`, "POST", {
+          provider: "stripe",
+          secret: STRIPE_KEY,
+        });
+        expect(connected.data.connection.webhook).toBe("ready");
+        const hook = [...stripeHooks.values()].at(-1)!;
+        expect(hook.url).toBe(`${base}/payments/webhooks/stripe/${store}`);
+        expect(hook.events).toContain("checkout.session.completed");
+        expect((await shop()).data).toMatchObject({ sandbox: false, checkout: true });
+      });
+
+      it("holds the stock, pays through Stripe and confirms from a signed webhook", async () => {
+        const token = await cart(2);
+        const started = await shop("checkout", { token, ...shopper });
+        expect(started.status).toBe(201);
+        expect(started.data.url).toMatch(/^https:\/\/checkout\.stripe\.test\//);
+        const session = [...sessions.values()].at(-1)!;
+        expect(session).toMatchObject({
+          amount_total: 5000,
+          client_reference_id: started.data.orderId,
+          metadata: { forma_site: store, forma_kind: "order" },
+        });
+        expect(session.expires_at! - Date.now() / 1000).toBeGreaterThan(29 * 60);
+        // Held: the shelf shows what's left, and pressing pay again reuses it.
+        expect(await stock()).toBe(1);
+        const again = await shop("checkout", { token, ...shopper });
+        expect(again.data).toEqual(started.data);
+        const receipt = { receipt: started.data.receipt };
+        const pending = await shop(`orders/${started.data.orderId}/receipt`, receipt);
+        expect(pending.data.order).toMatchObject({
+          status: "pending",
+          payment: "stripe",
+          payUrl: session.url,
+        });
+        expect(Date.parse(pending.data.order.holdUntil) - Date.now()).toBeGreaterThan(14 * 60_000);
+
+        session.payment_status = "paid";
+        session.status = "complete";
+        const event = {
+          type: "checkout.session.completed",
+          data: { object: { ...session } },
+        };
+        const secret = [...stripeHooks.values()].at(-1)!.secret;
+        expect((await stripeHook(store, event, "whsec_wrong")).status).toBe(400);
+        // Signed by a different site's webhook: ignored there.
+        expect((await stripeHook(id, event, secret)).status).toBe(404);
+        expect((await stripeHook(store, event, secret)).status).toBe(200);
+        const paid = await shop(`orders/${started.data.orderId}/receipt`, receipt);
+        expect(paid.data.order).toMatchObject({ status: "paid" });
+        expect(paid.data.order.payUrl).toBeUndefined();
+        expect(await stock()).toBe(1);
+        expect((await shop("cart/read", { token })).data.cart.lines).toEqual([]);
+        // Delivered twice: still one order, one payment.
+        expect((await stripeHook(store, event, secret)).status).toBe(200);
+        const overview = (await call(`/sites/${store}/commerce`)).data;
+        expect(overview.usage.currencyTotals.USD).toBe(5000);
+
+        const order = overview.orders.find((o: { id: string }) => o.id === started.data.orderId);
+        const refunded = await call(`/sites/${store}/commerce/orders/${order.id}`, "POST", {
+          revision: order.revision,
+          action: "refund",
+        });
+        expect(refunded.data.order.status).toBe("refunded");
+        expect(refundsOf(session.payment_intent)).toEqual([
+          expect.objectContaining({ amount: 5000, key: `forma_rf_${order.id.replace(/-/g, "")}` }),
+        ]);
+      });
+
+      it("lets a hold run out: the checkout is cancelled and the stock comes back", async () => {
+        const token = await cart(1);
+        const started = (await shop("checkout", { token, ...shopper })).data;
+        const session = [...sessions.values()].at(-1)!;
+        expect(await stock()).toBe(0);
+        // Sold out while held: nobody else can take it.
+        const other = await shop("cart", {
+          lines: [{ productId: product.id, variantId: product.variants[0].id, quantity: 1 }],
+          marketId: "default",
+          country: "US",
+        });
+        expect(other.status).toBe(409);
+        await expire(started.orderId);
+        expect(await stock()).toBe(1);
+        expect(session.status).toBe("expired");
+        const gone = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        expect(gone.data.order).toMatchObject({ status: "cancelled", expired: true });
+        // The same cart can check out again.
+        const retry = await shop("checkout", { token, ...shopper });
+        expect(retry.status).toBe(201);
+        expect(retry.data.orderId).not.toBe(started.orderId);
+        // The owner cancels that one: its checkout stops and the stock is back.
+        const order = (await call(`/sites/${store}/commerce`)).data.orders.find(
+          (o: { id: string }) => o.id === retry.data.orderId,
+        );
+        const cancelled = await call(`/sites/${store}/commerce/orders/${order.id}`, "POST", {
+          revision: order.revision,
+          action: "cancel",
+        });
+        expect(cancelled.data.order).toMatchObject({ status: "cancelled" });
+        expect(cancelled.data.order.expired).toBeFalsy();
+        expect([...sessions.values()].at(-1)!.status).toBe("expired");
+        expect(await stock()).toBe(1);
+      });
+
+      it("keeps a payment that landed just as its hold ran out", async () => {
+        const token = await cart(1);
+        const started = (await shop("checkout", { token, ...shopper })).data;
+        const session = [...sessions.values()].at(-1)!;
+        session.payment_status = "paid";
+        session.status = "complete";
+        await expire(started.orderId);
+        expect(await stock()).toBe(0);
+        const order = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        expect(order.data.order).toMatchObject({ status: "paid" });
+        expect(order.data.order.stockShort).toBeUndefined();
+      });
+
+      it("confirms Razorpay orders from the webhook the owner adds", async () => {
+        await call(`/sites/${store}/commerce/products`, "POST", {
+          ...product,
+          revision: (await call(`/sites/${store}/commerce`)).data.products[0].revision,
+          variants: [{ ...product.variants[0], stock: 2, price: 2500, prices: {}, title: "Medium", sku: "POT-M" }],
+        });
+        const connected = await call(`/sites/${store}/payments`, "POST", {
+          provider: "razorpay",
+          keyId: RZP_ID,
+          secret: RZP_SECRET,
+        });
+        expect(connected.data.connection.webhook).toBe("setup");
+        // The Stripe webhook made with the old key is removed.
+        expect([...stripeHooks.values()].some((h) => h.url.endsWith(store))).toBe(false);
+        expect((await call(`/sites/${store}/payments/webhook`, "POST", {}, manager)).response.status).toBe(404);
+        const setup = (await call(`/sites/${store}/payments/webhook`, "POST", {})).data.webhook;
+        expect(setup).toMatchObject({
+          provider: "razorpay",
+          ready: false,
+          url: `${base}/payments/webhooks/razorpay/${store}`,
+          events: ["payment_link.paid"],
+        });
+        expect(JSON.stringify((await call(`/sites/${store}/payments`)).data)).not.toContain(setup.secret);
+        const token = await cart(1);
+        const started = (await shop("checkout", { token, ...shopper })).data;
+        const link = [...links.values()].at(-1)!;
+        expect(link.notes).toEqual({ forma_site: store, forma_id: started.orderId, forma_kind: "order" });
+        expect(link.expire_by! - Date.now() / 1000).toBeGreaterThan(15 * 60);
+        link.status = "paid";
+        link.amount_paid = link.amount;
+        const body = JSON.stringify({
+          event: "payment_link.paid",
+          payload: { payment_link: { entity: { ...link } } },
+        });
+        const post = (signature: string) =>
+          fetch(`${base}/payments/webhooks/razorpay/${store}`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-razorpay-signature": signature },
+            body,
+          });
+        expect((await post("0".repeat(64))).status).toBe(400);
+        expect((await post(createHmac("sha256", setup.secret).update(body).digest("hex"))).status).toBe(200);
+        const paid = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        expect(paid.data.order).toMatchObject({ status: "paid", payment: "razorpay" });
+        expect((await call(`/sites/${store}/payments`)).data.connection.webhook).toBe("ready");
+      });
     });
   },
 );

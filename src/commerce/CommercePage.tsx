@@ -1041,8 +1041,22 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 </span>
               </div>
               <p className="commerce-muted">
-                {date(selected.createdAt)} · Test payment, no money taken
+                {date(selected.createdAt)} ·{" "}
+                {selected.payment === "local-sandbox"
+                  ? "Test payment, no money taken"
+                  : `Through ${selected.payment === "stripe" ? "Stripe" : "Razorpay"}`}
+                {selected.status === "pending" &&
+                  selected.holdUntil &&
+                  selected.payUrl &&
+                  ` · stock held until ${new Date(selected.holdUntil).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                {selected.expired && " · checkout expired, stock returned"}
               </p>
+              {selected.stockShort && (
+                <div className="commerce-notice" role="alert">
+                  Paid after its hold ran out, when some items had already sold.
+                  Refund it, or contact {selected.email} about waiting for stock.
+                </div>
+              )}
               <div className="commerce-order-lines">
                 {selected.lines.map((line) => (
                   <div key={line.variantId}>
@@ -1148,6 +1162,22 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                       </button>
                     </>
                   )}
+                  {selected.status === "pending" &&
+                    selected.payment !== "local-sandbox" && (
+                      <button
+                        className="commerce-button secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          void perform(
+                            `orders/${selected.id}`,
+                            { revision: selected.revision, action: "check" },
+                            "Checked with the payment provider.",
+                          )
+                        }
+                      >
+                        Check payment
+                      </button>
+                    )}
                   {selected.status === "pending" && (
                     <ConfirmButton
                       label="Cancel order"
@@ -1175,8 +1205,16 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                         Return items to inventory
                       </label>
                       <ConfirmButton
-                        label="Refund full order (test)"
-                        question={`Refund ${money(selected.total, selected.currency)} to ${selected.email}? This can’t be undone.`}
+                        label={
+                          selected.payment === "local-sandbox"
+                            ? "Refund full order (test)"
+                            : "Refund full order"
+                        }
+                        question={
+                          selected.payment === "local-sandbox"
+                            ? `Refund ${money(selected.total, selected.currency)} to ${selected.email}? This can’t be undone.`
+                            : `Refund ${money(selected.total, selected.currency)} to ${selected.email} through ${selected.payment === "stripe" ? "Stripe" : "Razorpay"}? The money goes back to how they paid. This can’t be undone.`
+                        }
                         confirm="Refund"
                         disabled={busy}
                         onConfirm={() =>
@@ -1187,7 +1225,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                               action: "refund",
                               restock,
                             },
-                            "Refund recorded. This was a test, so no money moved.",
+                            selected.payment === "local-sandbox"
+                              ? "Refund recorded. This was a test, so no money moved."
+                              : "Refunded. It can take a few days to reach the shopper.",
                           )
                         }
                       />

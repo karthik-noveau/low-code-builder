@@ -33,7 +33,7 @@ interface StoreData {
   products: Product[];
   content: ContentEntry[];
   sandbox: boolean;
-  /** Whether this host takes orders; hosted stores don't have payments yet. */
+  /** Whether this store takes orders (the owner connected Stripe or Razorpay, or the local sandbox). */
   checkout?: boolean;
   /** Whether shoppers can sign in to a customer account here. */
   accounts?: boolean;
@@ -118,6 +118,17 @@ export function Storefront({ siteId }: { siteId: string }) {
     history.replaceState(history.state, "", url);
   };
   const storageKey = `forma-store-cart-${siteId}`;
+  const receiptKey = `forma-store-receipt-${siteId}`;
+  /** The bought cart is done with: start a fresh one. */
+  const clearCart = () => {
+    setCart(undefined);
+    setToken("");
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      /* No persistent cart. */
+    }
+  };
   useEffect(() => {
     if (page !== "checkout" || !session.account || data?.accounts === false)
       return;
@@ -213,6 +224,47 @@ export function Storefront({ siteId }: { siteId: string }) {
       active = false;
     };
   }, [siteId, storageKey]);
+  // Back from Stripe or Razorpay (?order=<id>): show that order's receipt.
+  const loaded = !!data;
+  useEffect(() => {
+    if (!loaded) return;
+    const url = new URL(location.href);
+    const id = url.searchParams.get("order");
+    if (!id) return;
+    url.searchParams.delete("order");
+    history.replaceState(history.state, "", url);
+    let saved: { orderId: string; receipt: string } | undefined;
+    try {
+      saved = JSON.parse(localStorage.getItem(receiptKey) || "null") ?? undefined;
+    } catch {
+      /* Nothing saved in this browser. */
+    }
+    if (saved?.orderId !== id) {
+      setError(
+        "This order was placed in another browser. Its confirmation is in your email.",
+      );
+      return;
+    }
+    const { receipt: secret } = saved;
+    void storeRequest<{ order: Order }>(siteId, `orders/${id}/receipt`, {
+      receipt: secret,
+    })
+      .then((result) => {
+        setOrder(result.order);
+        setReceipt(secret);
+        setPage("receipt");
+        if (result.order.status === "paid") {
+          setCart(undefined);
+          setToken("");
+          try {
+            localStorage.removeItem(storageKey);
+          } catch {
+            /* No persistent cart. */
+          }
+        }
+      })
+      .catch((e) => setError(messageOf(e)));
+  }, [loaded, siteId, receiptKey, storageKey]);
   const market =
     data?.settings.markets.find((m) => m.id === marketId) ||
     data?.settings.markets[0];
@@ -285,7 +337,11 @@ export function Storefront({ siteId }: { siteId: string }) {
     setBusy(true);
     setError("");
     try {
-      const result = await storeRequest<{ orderId: string; receipt: string }>(
+      const result = await storeRequest<{
+        orderId: string;
+        receipt: string;
+        url?: string;
+      }>(
         siteId,
         "checkout",
         {
@@ -300,6 +356,18 @@ export function Storefront({ siteId }: { siteId: string }) {
           },
         },
       );
+      const saved = { orderId: result.orderId, receipt: result.receipt };
+      try {
+        localStorage.setItem(receiptKey, JSON.stringify(saved));
+      } catch {
+        /* Receipt remains available in the current visit. */
+      }
+      // Paying happens on Stripe or Razorpay, which send the shopper back
+      // here with ?order=<id>.
+      if (result.url) {
+        location.assign(result.url);
+        return;
+      }
       setReceipt(result.receipt);
       const receiptData = await storeRequest<{ order: Order }>(
         siteId,
@@ -308,14 +376,6 @@ export function Storefront({ siteId }: { siteId: string }) {
       );
       setOrder(receiptData.order);
       navigate("receipt");
-      try {
-        localStorage.setItem(
-          `forma-store-receipt-${siteId}`,
-          JSON.stringify(result),
-        );
-      } catch {
-        /* Receipt remains available in the current visit. */
-      }
     } catch (err) {
       setError(messageOf(err));
     } finally {
@@ -334,13 +394,7 @@ export function Storefront({ siteId }: { siteId: string }) {
       );
       setOrder(result.order);
       if (result.order.status !== "pending") {
-        setCart(undefined);
-        setToken("");
-        try {
-          localStorage.removeItem(storageKey);
-        } catch {
-          /* No persistent cart. */
-        }
+        clearCart();
         setNotice("Test payment completed. No money was taken.");
       }
     } catch (e) {
@@ -349,9 +403,30 @@ export function Storefront({ siteId }: { siteId: string }) {
       setBusy(false);
     }
   };
+  /** Asks again whether a pending order is paid (after paying elsewhere). */
+  const checkPayment = async () => {
+    if (!order) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await storeRequest<{ order: Order }>(
+        siteId,
+        `orders/${order.id}/receipt`,
+        { receipt },
+      );
+      setOrder(result.order);
+      if (result.order.status === "paid") clearCart();
+      else if (result.order.status === "pending")
+        setNotice("No payment yet. If you’ve just paid, give it a minute.");
+    } catch (e) {
+      setError(messageOf(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const restoreReceipt = async () => {
     try {
-      const stored = localStorage.getItem(`forma-store-receipt-${siteId}`);
+      const stored = localStorage.getItem(receiptKey);
       if (!stored)
         throw new Error("No previous order is saved in this browser.");
       const saved = JSON.parse(stored) as { orderId: string; receipt: string };
@@ -783,7 +858,11 @@ export function Storefront({ siteId }: { siteId: string }) {
                 </button>
               </p>
               <button className="commerce-button" disabled={busy}>
-                {busy ? "Preparing order…" : "Continue to test payment"}
+                {busy
+                  ? "Preparing order…"
+                  : data?.sandbox
+                    ? "Continue to test payment"
+                    : "Continue to payment"}
               </button>
               <button
                 className="commerce-link"
@@ -815,9 +894,13 @@ export function Storefront({ siteId }: { siteId: string }) {
         <div className="store-cart">
           <h1>
             {order.status === "pending"
-              ? "Complete your test payment"
+              ? order.payment === "local-sandbox"
+                ? "Complete your test payment"
+                : "Finishing your payment"
               : order.status === "cancelled"
-                ? "Order cancelled"
+                ? order.expired
+                  ? "This checkout expired"
+                  : "Order cancelled"
                 : order.status === "refunded"
                   ? "Order refunded"
                   : "Thank you for your order."}
@@ -882,7 +965,50 @@ export function Storefront({ siteId }: { siteId: string }) {
                 </form>
               )
             )}
-            {order.status === "pending" && (
+            {order.status === "pending" && order.payment !== "local-sandbox" && (
+              <div className="commerce-form">
+                <div className="commerce-notice" role="status">
+                  {order.payUrl && order.holdUntil
+                    ? `Your items are held for you until ${new Date(order.holdUntil).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}. Nothing is charged until you pay.`
+                    : "We’re waiting to hear from the payment provider."}
+                </div>
+                <div className="commerce-actions">
+                  {order.payUrl && (
+                    <a className="commerce-button" href={order.payUrl}>
+                      Go to payment
+                    </a>
+                  )}
+                  <button
+                    className="commerce-button secondary"
+                    disabled={busy}
+                    onClick={() => void checkPayment()}
+                  >
+                    I’ve paid, check again
+                  </button>
+                </div>
+              </div>
+            )}
+            {order.status === "cancelled" && order.expired && (
+              <div className="commerce-form">
+                <div className="commerce-notice" role="status">
+                  Payment didn’t finish in time, so nothing was charged and the
+                  items went back to the store. Your cart is still here.
+                </div>
+                <button
+                  className="commerce-button"
+                  onClick={() => navigate("cart")}
+                >
+                  Check out again
+                </button>
+              </div>
+            )}
+            {order.stockShort && (
+              <div className="commerce-notice" role="status">
+                Some items sold out while you were paying. The store will
+                contact you about a refund for them.
+              </div>
+            )}
+            {order.status === "pending" && order.payment === "local-sandbox" && (
               <div className="commerce-form">
                 <div className="commerce-notice">
                   This is a test payment, so no money is taken. Don’t enter card

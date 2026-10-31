@@ -611,3 +611,20 @@ button.data-row:hover,
   align-self: center;
   font-size: 11px;
 }
+/* Webhook setup for store orders (pasted Razorpay keys). */
+.payments-webhook {
+  display: grid;
+  gap: 8px;
+}
+.payments-webhook-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ui-text);
+  font-size: 12px;
+}
+.payments-webhook-steps code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}

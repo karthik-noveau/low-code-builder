@@ -32,10 +32,13 @@ import {
   disconnect,
   finishSignIn,
   getConnection,
+  readWebhook,
   signInProviders,
   signInReturn,
   startSignIn,
+  webhookSetup,
 } from "./payments";
+import { onPaymentNotice } from "./store-checkout";
 import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
 import { appOwnerApi, appsPublic } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
@@ -117,6 +120,24 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         },
         body: Buffer.alloc(0),
       };
+    // Stripe or Razorpay says a checkout was paid: Forma's platform webhook
+    // (signed-in accounts) or a site's own (pasted keys).
+    const hook = /^\/payments\/webhooks\/(stripe|razorpay)(?:\/([^/]+))?$/.exec(
+      path,
+    );
+    if (hook && method === "POST") {
+      const [, name, siteId] = hook;
+      insist(!siteId || idPattern.test(siteId), 404, "Not found.");
+      insist(body.length <= 256 * 1024, 413, "Request too large.");
+      const notice = await readWebhook(
+        name as "stripe" | "razorpay",
+        siteId,
+        body,
+        headers,
+      );
+      if (notice) await onPaymentNotice(notice);
+      return jsonResponse({ received: true });
+    }
     const inbox = await inboxPublic(request);
     if (inbox) return inbox;
     const apps = await appsPublic(request);
@@ -170,7 +191,7 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
     const show = (site: Parameters<typeof publicSite>[0]) =>
       publicSite(site, config.siteOrigin);
     const paymentsMatch =
-      /^\/sites\/([^/]+)\/payments(\/disconnect|\/sign-in|\/sign-in\/finish)?$/.exec(
+      /^\/sites\/([^/]+)\/payments(\/disconnect|\/sign-in|\/sign-in\/finish|\/webhook)?$/.exec(
         path,
       );
     if (paymentsMatch) {
@@ -187,6 +208,8 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
       // A sign-in belongs to the account that started it.
       if (operation === "/sign-in")
         return jsonResponse(await startSignIn(siteId, request.owner!, data()));
+      if (operation === "/webhook")
+        return jsonResponse({ webhook: await webhookSetup(siteId) });
       if (operation === "/sign-in/finish")
         return jsonResponse({
           connection: await finishSignIn(siteId, request.owner!, data()),

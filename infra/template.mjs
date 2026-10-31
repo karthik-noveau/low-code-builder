@@ -634,6 +634,9 @@ export function template() {
     STRIPE_PLATFORM_SECRET: ref("StripePlatformSecret"),
     RAZORPAY_PARTNER_CLIENT_ID: ref("RazorpayPartnerClientId"),
     RAZORPAY_PARTNER_CLIENT_SECRET: ref("RazorpayPartnerClientSecret"),
+    // Signing secrets of those apps' webhooks (signed-in accounts' payments).
+    STRIPE_WEBHOOK_SECRET: ref("StripeWebhookSecret"),
+    RAZORPAY_WEBHOOK_SECRET: ref("RazorpayWebhookSecret"),
     ASSET_DIR: "/var/task/images",
   };
   const fn = (worker) =>
@@ -809,6 +812,18 @@ export function template() {
         Default: "",
         NoEcho: true,
         AllowedPattern: "^$|^[A-Za-z0-9]+$",
+      },
+      StripeWebhookSecret: {
+        Type: "String",
+        Default: "",
+        NoEcho: true,
+        AllowedPattern: "^$|^whsec_[A-Za-z0-9]+$",
+      },
+      RazorpayWebhookSecret: {
+        Type: "String",
+        Default: "",
+        NoEcho: true,
+        AllowedPattern: "^$|^[ -~]{8,100}$",
       },
     },
     Conditions: {

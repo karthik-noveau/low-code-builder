@@ -76,6 +76,8 @@ jobs:
           STRIPE_PLATFORM_SECRET: ${{ secrets.STRIPE_PLATFORM_SECRET }}
           RAZORPAY_PARTNER_CLIENT_ID: ${{ vars.RAZORPAY_PARTNER_CLIENT_ID }}
           RAZORPAY_PARTNER_CLIENT_SECRET: ${{ secrets.RAZORPAY_PARTNER_CLIENT_SECRET }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
 
       - uses: actions/upload-artifact@v4
         if: always()
