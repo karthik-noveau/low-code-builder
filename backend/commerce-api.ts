@@ -30,6 +30,7 @@ import {
 } from "./commerce";
 import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
+import { deliverMail } from "./mail";
 import { storeOnWebsite, websiteProducts } from "./commerce-publishing";
 import type {
   Address,
@@ -143,7 +144,17 @@ export async function overview(
     },
   };
 }
+/** Store routes; whatever a change wrote to the outbox is sent afterwards. */
 export async function commerceApi(
+  request: ApiRequest,
+): Promise<{ value: unknown; status?: number } | undefined> {
+  const result = await storeRoutes(request);
+  const site = /^\/(?:store|sites)\/([^/]+)/.exec(request.path)?.[1];
+  if (result && site && request.method !== "GET" && idPattern.test(site))
+    await deliverMail(site);
+  return result;
+}
+async function storeRoutes(
   request: ApiRequest,
 ): Promise<{ value: unknown; status?: number } | undefined> {
   const { method, path, owner: actor } = request;

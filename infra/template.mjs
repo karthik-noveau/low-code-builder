@@ -549,6 +549,11 @@ export function template() {
               sub("${DraftsBucket.Arn}/*"),
             ),
             allow("sqs:SendMessage", get("PublishQueue", "Arn")),
+            // Shopper emails from MAIL_FROM's verified identity.
+            allow(
+              "ses:SendEmail",
+              sub("arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*"),
+            ),
             allow(
               ["logs:CreateLogStream", "logs:PutLogEvents"],
               get("ApiLogs", "Arn"),
@@ -637,6 +642,8 @@ export function template() {
     // Signing secrets of those apps' webhooks (signed-in accounts' payments).
     STRIPE_WEBHOOK_SECRET: ref("StripeWebhookSecret"),
     RAZORPAY_WEBHOOK_SECRET: ref("RazorpayWebhookSecret"),
+    // A verified SES address; empty keeps shopper emails as previews.
+    MAIL_FROM: ref("MailFrom"),
     ASSET_DIR: "/var/task/images",
   };
   const fn = (worker) =>
@@ -818,6 +825,11 @@ export function template() {
         Default: "",
         NoEcho: true,
         AllowedPattern: "^$|^whsec_[A-Za-z0-9]+$",
+      },
+      MailFrom: {
+        Type: "String",
+        Default: "",
+        AllowedPattern: "^$|^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
       },
       RazorpayWebhookSecret: {
         Type: "String",

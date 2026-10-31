@@ -1742,17 +1742,37 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             </section>
           )}
           <section className="commerce-panel">
-            <h2>Email previews</h2>
-            <p className="commerce-muted">
-              Order and team emails are kept here as previews. They have not
-              been sent.
-            </p>
+            {data.outbox.some((m) => m.status !== "local-preview") ? (
+              <>
+                <h2>Emails to shoppers</h2>
+                <p className="commerce-muted">
+                  Order confirmations, refunds and replies to returns, sent
+                  from your store’s name. Replies go to your contact email.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2>Email previews</h2>
+                <p className="commerce-muted">
+                  Order and team emails are kept here as previews. They have
+                  not been sent.
+                </p>
+              </>
+            )}
             {data.outbox.map((mail) => (
               <details key={mail.id} className="commerce-step">
                 <summary>
                   {mail.subject}{" "}
                   <span className="commerce-muted">
                     · {mail.to} · {date(mail.createdAt)}
+                    {mail.status !== "local-preview" &&
+                      ` · ${
+                        mail.status === "sent"
+                          ? "sent"
+                          : mail.status === "undeliverable"
+                            ? "couldn’t be delivered"
+                            : "sending"
+                      }`}
                   </span>
                 </summary>
                 <p className="commerce-article">{mail.body}</p>

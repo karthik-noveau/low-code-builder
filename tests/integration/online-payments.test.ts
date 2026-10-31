@@ -22,6 +22,8 @@ import { emptyPayments, parseAmount } from "../../src/studio/payments";
  *   RAZORPAY_PARTNER_CLIENT_SECRET=FormaFakePartnerSecret
  *   RAZORPAY_PARTNER_MODE=test
  * and set TEST_FAKE_PROVIDERS=1 to include it (TEST_FAKE_PORT if 8799 is taken).
+ * With MAIL_FROM=store@forma.test and SES_ENDPOINT=http://127.0.0.1:8799/ses
+ * too, TEST_MAIL=1 also checks that order emails are sent.
  */
 const enabled = process.env.TEST_FAKE_PROVIDERS === "1";
 const base = process.env.TEST_API_URL || "http://127.0.0.1:8787";
@@ -73,6 +75,13 @@ interface Refund {
   key: string;
 }
 const sessions = new Map<string, Session>();
+/** What the fake SES was asked to send (when the stack has MAIL_FROM). */
+const emails: {
+  FromEmailAddress: string;
+  Destination: { ToAddresses: string[] };
+  ReplyToAddresses?: string[];
+  Content: { Simple: { Subject: { Data: string }; Body: { Text: { Data: string } } } };
+}[] = [];
 /** Webhook endpoints made through pasted Stripe keys. */
 const stripeHooks = new Map<string, { url: string; secret: string; events: string[] }>();
 const links = new Map<string, Link>();
@@ -222,6 +231,10 @@ function startFake() {
           return send(200, { message: "Token Revoked" });
         }
         return send(404, {});
+      }
+      if (url.pathname === "/ses/v2/email/outbound-emails" && req.method === "POST") {
+        emails.push(JSON.parse(body));
+        return send(200, { MessageId: `ses-${emails.length}` });
       }
       if (url.pathname.startsWith("/stripe/")) {
         const asAccount = String(req.headers["stripe-account"] ?? "");
@@ -1228,6 +1241,13 @@ describe.skipIf(!enabled)(
         expect(paid.data.order.payUrl).toBeUndefined();
         expect(await stock()).toBe(1);
         expect((await shop("cart/read", { token })).data.cart.lines).toEqual([]);
+        // With an SES sender, the confirmation is sent from the store's name.
+        if (process.env.TEST_MAIL === "1")
+          expect(emails.at(-1)).toMatchObject({
+            FromEmailAddress: expect.stringMatching(/<store@forma\.test>$/),
+            Destination: { ToAddresses: [shopper.email] },
+            Content: { Simple: { Subject: { Data: expect.stringMatching(/confirmed/) } } },
+          });
         // Delivered twice: still one order, one payment.
         expect((await stripeHook(store, event, secret)).status).toBe(200);
         const overview = (await call(`/sites/${store}/commerce`)).data;

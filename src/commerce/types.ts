@@ -162,7 +162,9 @@ export interface OutboxMessage {
   subject: string;
   body: string;
   createdAt: string;
-  status: "local-preview";
+  /** "local-preview" without an email sender; otherwise how sending went. */
+  status: "local-preview" | "pending" | "sending" | "sent" | "failed" | "undeliverable";
+  sentAt?: string;
 }
 export interface Member {
   id: string;

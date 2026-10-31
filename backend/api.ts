@@ -40,6 +40,7 @@ import {
   webhookSetup,
 } from "./payments";
 import { onPaymentNotice } from "./store-checkout";
+import { deliverMail } from "./mail";
 import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
 import { appOwnerApi, appsPublic, confirmRecordCheckout } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
@@ -146,6 +147,7 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
           notice.id,
           notice.checkoutId,
         );
+      if (notice) await deliverMail(notice.siteId);
       return jsonResponse({ received: true });
     }
     const inbox = await inboxPublic(request);

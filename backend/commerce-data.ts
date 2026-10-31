@@ -109,7 +109,8 @@ export function message(
     to,
     subject,
     body,
-    status: "local-preview",
+    // Sent by mail.ts when Forma has an SES sender; a preview otherwise.
+    status: process.env.MAIL_FROM ? "pending" : "local-preview",
     createdAt: now(),
   };
   return put(siteId, "MAIL", item.id, item);
