@@ -8,6 +8,7 @@ import {
 import { appIssues, appSectionProblem, type AppTarget } from "../apps/issues";
 import { appFormsIn, shownNodes } from "../blocks/project";
 import { formattedLinks } from "../blocks/richtext";
+import { onWhite, readableAccent } from "./accent";
 
 export interface ReviewItem {
   id: string;
@@ -17,7 +18,7 @@ export interface ReviewItem {
   section?: string;
   kind: "content" | "links" | "forms" | "images";
   /** Fixed outside the page: a collection's Data settings, Settings → Get paid, or the App. */
-  target?: { collection: string } | { app: AppTarget } | "payments";
+  target?: { collection: string } | { app: AppTarget } | "payments" | "theme";
 }
 export function reviewProject(project: Project): ReviewItem[] {
   const issues: ReviewItem[] = [];
@@ -189,6 +190,15 @@ export function reviewProject(project: Project): ReviewItem[] {
           target: { app: { tab: "forms", id: form.id } },
         });
   }
+  if (readableAccent(project.theme.accent))
+    issues.push({
+      id: "accent-contrast",
+      title: "Make button text easier to read",
+      detail: `White text on your accent colour is ${onWhite(project.theme.accent).toFixed(1)}:1; it needs 4.5:1. Site styles offers a slightly deeper shade.`,
+      page: project.pages[0].id,
+      kind: "content",
+      target: "theme",
+    });
   const appPaying = (project.app?.forms ?? []).filter((f) => f.payment);
   if (appPaying.length && !usablePayments(project.payments))
     issues.push({

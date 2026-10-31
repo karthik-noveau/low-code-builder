@@ -2793,3 +2793,34 @@
     scroll-behavior: auto !important;
   }
 }
+/* Offer of a deeper accent when white button text would be hard to read. */
+.accent-advice {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface-alt);
+}
+.accent-advice p {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.accent-advice .subtle-button {
+  justify-self: start;
+  gap: 8px;
+}
+.accent-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.accent-swatches > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+}

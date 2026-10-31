@@ -1396,6 +1396,11 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                     openLibrary("start");
                     return;
                   }
+                  if (item.target === "theme") {
+                    setDialog(null);
+                    openUtility("theme");
+                    return;
+                  }
                   if (item.target === "payments") {
                     setDialog(null);
                     openUtility("settings");

@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from "react";
 import { useStudio } from "./store";
+import { onWhite, readableAccent } from "./accent";
 import { Icon } from "./Icon";
 import { IconButton, Field, ColorField, Range, type Notify } from "./ui";
 import { sectionMeta, safeImage, type Section } from "./model";
@@ -347,6 +348,40 @@ export function Sidebar({
                 }))
               }
             />
+            {(() => {
+              const better = readableAccent(project.theme.accent);
+              if (!better) return null;
+              return (
+                <div className="accent-advice" role="status">
+                  <p>
+                    White text on your buttons is hard to read with this accent
+                    ({onWhite(project.theme.accent).toFixed(1)}:1). A slightly
+                    deeper shade reads easily.
+                  </p>
+                  <button
+                    type="button"
+                    className="subtle-button"
+                    onClick={() => {
+                      store.commit((p) => ({
+                        ...p,
+                        theme: { ...p.theme, accent: better },
+                      }));
+                      notify("Accent updated.", {
+                        label: "Undo",
+                        run: () => useStudio.getState().undo(),
+                      });
+                    }}
+                  >
+                    <span className="accent-swatches" aria-hidden="true">
+                      <span style={{ background: project.theme.accent }} />
+                      <Icon name="arrow" size={12} />
+                      <span style={{ background: better }} />
+                    </span>
+                    Use {better}
+                  </button>
+                </div>
+              );
+            })()}
             <ColorField
               label="Background"
               value={project.theme.background}
