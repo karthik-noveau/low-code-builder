@@ -1240,7 +1240,7 @@ describe.skipIf(!enabled)(
         });
         expect(refunded.data.order.status).toBe("refunded");
         expect(refundsOf(session.payment_intent)).toEqual([
-          expect.objectContaining({ amount: 5000, key: `forma_rf_${order.id.replace(/-/g, "")}` }),
+          expect.objectContaining({ amount: 5000, key: `forma_rf_${order.id.replace(/-/g, "").slice(0, 24)}_1` }),
         ]);
       });
 

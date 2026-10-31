@@ -92,9 +92,22 @@ export interface Order extends Quote {
   expired?: boolean;
   /** Paid after its hold ran out, when the stock had gone: refund it. */
   stockShort?: boolean;
+  /** Money given back, oldest first; the order is "refunded" once they add up to its total. */
+  refunds?: OrderRefund[];
   tracking: string;
   createdAt: string;
   updatedAt: string;
+}
+export interface OrderRefund {
+  amount: number;
+  /** Items refunded (by variant), with how many. */
+  lines: { variantId: string; quantity: number }[];
+  shipping: boolean;
+  /** Their stock went back on the shelf. */
+  restocked: boolean;
+  createdAt: string;
+  /** The provider's refund id, for online payments. */
+  providerId?: string;
 }
 export interface Discount {
   id: string;

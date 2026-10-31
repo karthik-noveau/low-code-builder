@@ -980,6 +980,12 @@ export function Storefront({ siteId }: { siteId: string }) {
               ))}
             </div>
             <Totals quote={order} />
+            {order.refunds?.map((r, i) => (
+              <p key={i} className="commerce-muted">
+                Refunded {money(r.amount, order.currency)} on{" "}
+                {new Date(r.createdAt).toLocaleDateString()}
+              </p>
+            ))}
             {order.tracking && <p>Tracking: {order.tracking}</p>}
             {order.returnRequest ? (
               <p className="commerce-notice">

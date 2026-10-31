@@ -890,3 +890,42 @@ fieldset.commerce-field > legend {
   margin: -4px 0 14px;
   text-align: right;
 }
+/* Refunding part or all of an order. */
+.commerce-refund {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border);
+}
+.commerce-refund h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.commerce-refund-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.commerce-refund-line small {
+  color: var(--ui-muted);
+}
+.commerce-refund-line input {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+.commerce-refunds {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.commerce-refunds li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ui-muted);
+}

@@ -3,6 +3,7 @@ import { randomUUID, createHmac } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { createProject } from "../../src/studio/templates";
 import type { CommerceOverview, Product } from "../../src/commerce/types";
+import { refundAmount } from "../../src/commerce/refunds";
 
 const base = process.env.TEST_API_URL || "http://127.0.0.1:8787";
 let token = "",
@@ -341,6 +342,63 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
     const after = (await admin()).data as CommerceOverview;
     expect(after.products[0].variants[0].stock).toBe(5);
     expect(after.customers[0].spent.USD).toBe(0);
+  });
+  it("refunds part of an order, then the rest, never more than was paid", async () => {
+    const before = ((await admin()).data as CommerceOverview).products.find(
+      (p) => p.id === product.id,
+    )!.variants[0].stock;
+    const cart = await basket(product, 2);
+    const started = await shop("checkout", { token: cart.token, ...customer() });
+    const { orderId, receipt } = started.data;
+    const paid = (await shop(`orders/${orderId}/pay-local`, { receipt, outcome: "approved" })).data.order;
+    const one = [{ variantId: product.variants[0].id, quantity: 1 }];
+    expect(
+      (await admin(`orders/${orderId}`, "POST", {
+        revision: paid.revision,
+        action: "refund",
+        lines: [{ variantId: product.variants[0].id, quantity: 3 }],
+      })).status,
+    ).toBe(422);
+    expect(
+      (await admin(`orders/${orderId}`, "POST", {
+        revision: paid.revision,
+        action: "refund",
+        lines: one,
+        amount: paid.total + 1,
+      })).status,
+    ).toBe(422);
+    const part = await admin(`orders/${orderId}`, "POST", {
+      revision: paid.revision,
+      action: "refund",
+      lines: one,
+      shipping: false,
+      restock: true,
+    });
+    expect(part.data.order.status).toBe("paid");
+    expect(part.data.order.refunds).toEqual([
+      expect.objectContaining({
+        amount: refundAmount(paid, one, false),
+        lines: one,
+        shipping: false,
+        restocked: true,
+      }),
+    ]);
+    const mid = ((await admin()).data as CommerceOverview).products.find(
+      (p) => p.id === product.id,
+    )!.variants[0].stock;
+    expect(mid).toBe(before - 1);
+    // The rest: the other item and shipping, to exactly the total.
+    const rest = await admin(`orders/${orderId}`, "POST", {
+      revision: part.data.order.revision,
+      action: "refund",
+    });
+    expect(rest.data.order.status).toBe("refunded");
+    expect(
+      rest.data.order.refunds.reduce((t: number, r: { amount: number }) => t + r.amount, 0),
+    ).toBe(paid.total);
+    expect(rest.data.order.refunds[1]).toMatchObject({ shipping: true, restocked: false });
+    const receiptView = await shop(`orders/${orderId}/receipt`, { receipt });
+    expect(receiptView.data.order.refunds).toHaveLength(2);
   });
   it("does not oversell the last item under concurrent purchases", async () => {
     const p = (

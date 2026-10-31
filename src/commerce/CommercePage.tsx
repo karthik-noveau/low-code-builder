@@ -25,6 +25,7 @@ import { ProductEditor } from "./ProductEditor";
 import { MarketsEditor } from "./MarketsEditor";
 import { parseCsv, toCsv } from "./csv";
 import { activityLabel, orderNumber, returnLabel, statusLabel } from "./labels";
+import { refundAmount } from "./refunds";
 import "./commerce.css";
 
 /** Paid and shipped orders read as good news; the rest (waiting, refunded, cancelled) stay neutral. */
@@ -223,6 +224,138 @@ function Table({
     </div>
   );
 }
+/**
+ * Refunds part or all of a paid order: how many of each item, shipping, and
+ * the amount (suggested from those, changeable, never more than is left).
+ */
+function RefundForm({
+  order,
+  busy,
+  onRefund,
+}: {
+  order: Order;
+  busy: boolean;
+  onRefund: (body: {
+    lines: { variantId: string; quantity: number }[];
+    shipping: boolean;
+    amount: number;
+    restock: boolean;
+  }) => void;
+}) {
+  const done = new Map<string, number>();
+  for (const r of order.refunds ?? [])
+    for (const l of r.lines)
+      done.set(l.variantId, (done.get(l.variantId) ?? 0) + l.quantity);
+  const lines = order.lines
+    .map((l) => ({ ...l, left: l.quantity - (done.get(l.variantId) ?? 0) }))
+    .filter((l) => l.left > 0);
+  const shippingDone = (order.refunds ?? []).some((r) => r.shipping);
+  const remaining =
+    order.total - (order.refunds ?? []).reduce((t, r) => t + r.amount, 0);
+  const [counts, setCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(lines.map((l) => [l.variantId, l.left])),
+  );
+  const [shipping, setShipping] = useState(!shippingDone && order.shipping > 0);
+  const [restock, setRestock] = useState(true);
+  const chosen = lines
+    .map((l) => ({
+      variantId: l.variantId,
+      quantity: counts[l.variantId] ?? 0,
+    }))
+    .filter((l) => l.quantity > 0);
+  const suggested = Math.min(remaining, refundAmount(order, chosen, shipping));
+  const [typed, setTyped] = useState<string>();
+  const amount =
+    typed === undefined
+      ? suggested
+      : Math.round(Number(typed.replace(/[^\d.]/g, "")) * 100);
+  const valid =
+    Number.isSafeInteger(amount) && amount > 0 && amount <= remaining;
+  const through =
+    order.payment === "local-sandbox"
+      ? " (test)"
+      : ` through ${order.payment === "stripe" ? "Stripe" : "Razorpay"}`;
+  return (
+    <div className="commerce-refund">
+      <h3>Refund</h3>
+      {lines.map((l) => (
+        <label key={l.variantId} className="commerce-refund-line">
+          <span>
+            {l.title} · {l.variant}
+            <small> {money(l.unitPrice, order.currency)} each</small>
+          </span>
+          <input
+            type="number"
+            min={0}
+            max={l.left}
+            value={counts[l.variantId] ?? 0}
+            aria-label={`How many ${l.title} to refund, up to ${l.left}`}
+            onChange={(e) => {
+              setTyped(undefined);
+              setCounts({
+                ...counts,
+                [l.variantId]: Math.max(
+                  0,
+                  Math.min(l.left, Math.round(Number(e.target.value) || 0)),
+                ),
+              });
+            }}
+          />
+          <small>of {l.left}</small>
+        </label>
+      ))}
+      {order.shipping > 0 && !shippingDone && (
+        <label className="commerce-check">
+          <input
+            type="checkbox"
+            checked={shipping}
+            onChange={(e) => {
+              setTyped(undefined);
+              setShipping(e.target.checked);
+            }}
+          />{" "}
+          Refund shipping ({money(order.shipping, order.currency)})
+        </label>
+      )}
+      {!!chosen.length && (
+        <label className="commerce-check">
+          <input
+            type="checkbox"
+            checked={restock}
+            onChange={(e) => setRestock(e.target.checked)}
+          />{" "}
+          Put these items back in stock
+        </label>
+      )}
+      <label className="commerce-field">
+        Amount
+        <input
+          inputMode="decimal"
+          value={typed ?? (suggested / 100).toFixed(2)}
+          onChange={(e) => setTyped(e.target.value)}
+          aria-describedby="refund-left"
+        />
+        <small id="refund-left" className="commerce-muted">
+          Up to {money(remaining, order.currency)} is left to refund.
+        </small>
+      </label>
+      <ConfirmButton
+        label={valid ? `Refund ${money(amount, order.currency)}` : "Refund"}
+        question={`Refund ${valid ? money(amount, order.currency) : ""} to ${order.email}${through}? The money goes back to how they paid. This can’t be undone.`}
+        confirm="Refund"
+        disabled={busy || !valid}
+        onConfirm={() =>
+          onRefund({
+            lines: chosen,
+            shipping,
+            amount,
+            restock: restock && !!chosen.length,
+          })
+        }
+      />
+    </div>
+  );
+}
 function Totals({
   order,
 }: {
@@ -241,15 +374,17 @@ function Totals({
           ["Tax", order.tax],
           ["Total", order.total],
         ] as [string, number][]
-      ).map(([label, amount]) => (
-        <div
-          key={label}
-          className={`commerce-total-row ${label === "Total" ? "total" : ""}`}
-        >
-          <span>{label}</span>
-          <span>{money(amount, order.currency)}</span>
-        </div>
-      ))}
+      )
+        .filter(([label, amount]) => label !== "Discount" || amount !== 0)
+        .map(([label, amount]) => (
+          <div
+            key={label}
+            className={`commerce-total-row ${label === "Total" ? "total" : ""}`}
+          >
+            <span>{label}</span>
+            <span>{money(amount, order.currency)}</span>
+          </div>
+        ))}
     </div>
   );
 }
@@ -354,8 +489,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
     [editingProduct, setEditingProduct] = useState<Product | "new">(),
     [editingContent, setEditingContent] = useState<ContentEntry | "new">();
   const [selectedOrder, setSelectedOrder] = useState<string>(),
-    [tracking, setTracking] = useState(""),
-    [restock, setRestock] = useState(true);
+    [tracking, setTracking] = useState("");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("All");
   const [campaignPreview, setCampaignPreview] = useState<{
     subject: string;
@@ -1038,6 +1172,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   className={`commerce-badge ${orderTone(selected.status)}`}
                 >
                   {statusLabel(selected.status)}
+                  {selected.status !== "refunded" &&
+                    !!selected.refunds?.length &&
+                    " · partly refunded"}
                 </span>
               </div>
               <p className="commerce-muted">
@@ -1054,7 +1191,8 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               {selected.stockShort && (
                 <div className="commerce-notice" role="alert">
                   Paid after its hold ran out, when some items had already sold.
-                  Refund it, or contact {selected.email} about waiting for stock.
+                  Refund it, or contact {selected.email} about waiting for
+                  stock.
                 </div>
               )}
               <div className="commerce-order-lines">
@@ -1070,6 +1208,23 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 ))}
               </div>
               <Totals order={selected} />
+              {!!selected.refunds?.length && (
+                <ul className="commerce-refunds">
+                  {selected.refunds.map((r, i) => (
+                    <li key={i}>
+                      <span>
+                        Refunded {date(r.createdAt)}
+                        {r.lines.length
+                          ? ` · ${r.lines.reduce((t, l) => t + l.quantity, 0)} item${r.lines.reduce((t, l) => t + l.quantity, 0) === 1 ? "" : "s"}`
+                          : ""}
+                        {r.shipping ? " · shipping" : ""}
+                        {r.restocked ? " · back in stock" : ""}
+                      </span>
+                      <span>−{money(r.amount, selected.currency)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="commerce-panel">
               <h2>Customer & delivery</h2>
@@ -1195,43 +1350,24 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                     />
                   )}
                   {["paid", "fulfilled"].includes(selected.status) && (
-                    <>
-                      <label className="commerce-check">
-                        <input
-                          type="checkbox"
-                          checked={restock}
-                          onChange={(e) => setRestock(e.target.checked)}
-                        />{" "}
-                        Return items to inventory
-                      </label>
-                      <ConfirmButton
-                        label={
+                    <RefundForm
+                      key={`${selected.id}-${selected.revision}`}
+                      order={selected}
+                      busy={busy}
+                      onRefund={(body) =>
+                        void perform(
+                          `orders/${selected.id}`,
+                          {
+                            revision: selected.revision,
+                            action: "refund",
+                            ...body,
+                          },
                           selected.payment === "local-sandbox"
-                            ? "Refund full order (test)"
-                            : "Refund full order"
-                        }
-                        question={
-                          selected.payment === "local-sandbox"
-                            ? `Refund ${money(selected.total, selected.currency)} to ${selected.email}? This can’t be undone.`
-                            : `Refund ${money(selected.total, selected.currency)} to ${selected.email} through ${selected.payment === "stripe" ? "Stripe" : "Razorpay"}? The money goes back to how they paid. This can’t be undone.`
-                        }
-                        confirm="Refund"
-                        disabled={busy}
-                        onConfirm={() =>
-                          void perform(
-                            `orders/${selected.id}`,
-                            {
-                              revision: selected.revision,
-                              action: "refund",
-                              restock,
-                            },
-                            selected.payment === "local-sandbox"
-                              ? "Refund recorded. This was a test, so no money moved."
-                              : "Refunded. It can take a few days to reach the shopper.",
-                          )
-                        }
-                      />
-                    </>
+                            ? "Refund recorded. This was a test, so no money moved."
+                            : "Refunded. It can take a few days to reach the shopper.",
+                        )
+                      }
+                    />
                   )}
                 </div>
               )}

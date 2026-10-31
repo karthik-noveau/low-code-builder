@@ -24,6 +24,7 @@ import type {
   Discount,
   Market,
   Order,
+  OrderRefund,
   Product,
   Quote,
   StoreSettings,
@@ -31,6 +32,7 @@ import type {
   Variant,
 } from "../src/commerce/types";
 import { getConnection, refundCheckout, type Checkout } from "./payments";
+import { refundAmount } from "../src/commerce/refunds";
 import {
   confirmOrder,
   release,
@@ -947,8 +949,7 @@ export async function orderAction(
     return publicOrder(next);
   }
   // Ask Stripe or Razorpay about a pending order now.
-  if (action === "check")
-    return publicOrder(await confirmOrder(siteId, order));
+  if (action === "check") return publicOrder(await confirmOrder(siteId, order));
   // A held order gives its stock back (and its checkout stops taking payment).
   if (action === "cancel" && order.status === "pending" && order.held) {
     const next = await release(siteId, id, { force: true, actor });
@@ -973,46 +974,13 @@ export async function orderAction(
       409,
       "Paid orders must be refunded, not cancelled.",
     );
-  let providerRefund: { id: string; amount: number } | undefined;
-  if (action === "refund") {
-    insist(
-      order.status === "paid" || order.status === "fulfilled",
-      409,
-      "Only paid orders can be refunded.",
-    );
-    insist(
-      order.checkout || local,
-      503,
-      "This order wasn’t paid online, so Forma can’t refund it.",
-    );
-    // The money goes back through the provider it was paid with. The key
-    // makes a retried refund find the first one instead of paying twice.
-    if (order.checkout) {
-      allow(access, "owner");
-      providerRefund = await refundCheckout(
-        siteId,
-        order.checkout,
-        order.total,
-        `forma_rf_${id.replace(/-/g, "")}`,
-        id.slice(0, 8).toUpperCase(),
-      );
-    }
-  }
+  if (action === "refund")
+    return publicOrder(await refundOrder(actor, access, siteId, order, input));
   const next = {
     ...order,
-    ...(action === "refund" && order.returnRequest
-      ? {
-          returnRequest: {
-            ...order.returnRequest,
-            status: "refunded" as const,
-          },
-        }
-      : {}),
     status: (action === "fulfill"
       ? "fulfilled"
-      : action === "cancel"
-        ? "cancelled"
-        : "refunded") as Order["status"],
+      : "cancelled") as Order["status"],
     tracking:
       action === "fulfill"
         ? text(input.tracking || "", "tracking reference", 200, true)
@@ -1031,85 +999,221 @@ export async function orderAction(
       `Your ${order.checkout ? "" : "sandbox "}order is ${next.status}.${next.tracking ? ` Tracking: ${next.tracking}` : ""}`,
     ),
   ];
-  if (action === "refund") {
-    writes.push(
-      put(siteId, "REFUND", id, {
-        orderId: id,
-        amount: order.total,
-        currency: order.currency,
-        ...(providerRefund
-          ? { provider: order.payment, providerId: providerRefund.id }
-          : {}),
-        createdAt: now(),
-      }),
-    );
-    if (input.restock === true) {
-      for (const productId of new Set(order.lines.map((l) => l.productId))) {
-        const product = await read<Product>(siteId, "PRODUCT", productId);
-        insist(
-          product,
-          409,
-          "A product is missing; refund without restocking.",
-        );
-        const orderLines = order.lines.filter((l) => l.productId === productId);
-        insist(
-          orderLines.every((line) =>
-            product.variants.some((v) => v.id === line.variantId),
-          ),
-          409,
-          "A variant was removed; refund without restocking.",
-        );
-        writes.push(
-          put(
-            siteId,
-            "PRODUCT",
-            productId,
-            {
-              ...product,
-              revision: product.revision + 1,
-              updatedAt: now(),
-              variants: product.variants.map((v) => ({
-                ...v,
-                stock:
-                  v.stock +
-                  (orderLines.find((l) => l.variantId === v.id)?.quantity || 0),
-              })),
-            },
-            product.revision,
-          ),
-        );
-      }
-    }
-    const customerId = digest(order.email),
-      customer = await read<Customer & { revision: number }>(
+  await transact(writes);
+  return publicOrder(next);
+}
+/** What an order line can still be refunded: bought less already refunded. */
+function refundable(order: PrivateOrder) {
+  const done = new Map<string, number>();
+  for (const r of order.refunds ?? [])
+    for (const l of r.lines)
+      done.set(l.variantId, (done.get(l.variantId) ?? 0) + l.quantity);
+  return order.lines.map((l) => ({
+    ...l,
+    left: l.quantity - (done.get(l.variantId) ?? 0),
+  }));
+}
+/**
+ * Gives back part or all of a paid order: chosen items (their stock back if
+ * `restock`), shipping if asked, and an amount no more than what's left.
+ * Online payments go back through the provider; the key, made from the
+ * order and this refund's number, makes a retry find the same refund.
+ */
+async function refundOrder(
+  actor: string,
+  access: Awaited<ReturnType<typeof siteAccess>>,
+  siteId: string,
+  order: PrivateOrder,
+  input: Record<string, unknown>,
+) {
+  insist(
+    order.status === "paid" || order.status === "fulfilled",
+    409,
+    "Only paid orders can be refunded.",
+  );
+  insist(
+    order.checkout || local,
+    503,
+    "This order wasn’t paid online, so Forma can’t refund it.",
+  );
+  const left = refundable(order);
+  const refunded = (order.refunds ?? []).reduce((t, r) => t + r.amount, 0);
+  const remaining = order.total - refunded;
+  // No lines given: everything that's left, shipping included.
+  const lines =
+    input.lines === undefined
+      ? left
+          .filter((l) => l.left > 0)
+          .map((l) => ({
+            productId: l.productId,
+            variantId: l.variantId,
+            quantity: l.left,
+          }))
+      : (() => {
+          insist(
+            Array.isArray(input.lines) && input.lines.length <= 100,
+            422,
+            "Choose what to refund.",
+          );
+          return (input.lines as unknown[]).map((raw) => {
+            const value = object(raw);
+            const line = left.find((l) => l.variantId === value.variantId);
+            insist(line, 422, "That item isn’t in this order.");
+            const quantity = integer(value.quantity, "quantity", 1, line.left);
+            return {
+              productId: line.productId,
+              variantId: line.variantId,
+              quantity,
+            };
+          });
+        })();
+  const shipping =
+    input.shipping === undefined
+      ? !(order.refunds ?? []).some((r) => r.shipping)
+      : input.shipping === true;
+  insist(
+    !shipping || !(order.refunds ?? []).some((r) => r.shipping),
+    422,
+    "Shipping was already refunded.",
+  );
+  const suggested = Math.min(remaining, refundAmount(order, lines, shipping));
+  const amount =
+    input.amount === undefined
+      ? input.lines === undefined
+        ? remaining
+        : suggested
+      : integer(input.amount, "refund amount", 1, remaining);
+  insist(amount > 0, 422, "There’s nothing left to refund.");
+  insist(
+    lines.length || shipping || input.amount !== undefined,
+    422,
+    "Choose what to refund.",
+  );
+  const n = (order.refunds ?? []).length + 1;
+  let providerId: string | undefined;
+  if (order.checkout) {
+    allow(access, "owner");
+    providerId = (
+      await refundCheckout(
         siteId,
-        "CUSTOMER",
-        customerId,
-      );
-    if (customer)
+        order.checkout,
+        amount,
+        // Razorpay receipts take 40 characters.
+        `forma_rf_${order.id.replace(/-/g, "").slice(0, 24)}_${n}`,
+        order.id.slice(0, 8).toUpperCase(),
+      )
+    ).id;
+  }
+  const restock = input.restock === true && lines.length > 0;
+  const entry: OrderRefund = {
+    amount,
+    lines: lines.map(({ variantId, quantity }) => ({ variantId, quantity })),
+    shipping,
+    restocked: restock,
+    createdAt: now(),
+    ...(providerId ? { providerId } : {}),
+  };
+  const all = [...(order.refunds ?? []), entry];
+  const full = refunded + amount >= order.total;
+  const next: PrivateOrder = {
+    ...order,
+    refunds: all,
+    status: full ? "refunded" : order.status,
+    ...(order.returnRequest &&
+    (full || order.returnRequest.status === "approved")
+      ? {
+          returnRequest: {
+            ...order.returnRequest,
+            status: "refunded" as const,
+          },
+        }
+      : {}),
+    revision: order.revision + 1,
+    updatedAt: now(),
+  };
+  const money = `${(amount / 100).toFixed(2)} ${order.currency}`;
+  const writes: Write[] = [
+    put(siteId, "ORDER", order.id, next, order.revision),
+    put(siteId, "REFUND", `${order.id}-${n}`, {
+      orderId: order.id,
+      amount,
+      currency: order.currency,
+      ...(providerId ? { provider: order.payment, providerId } : {}),
+      createdAt: now(),
+    }),
+    audit(
+      siteId,
+      actor,
+      full ? "order.refunded" : "order.partly_refunded",
+      order.id,
+    ),
+    event(siteId, full ? "order.refunded" : "order.partly_refunded"),
+    message(
+      siteId,
+      order.email,
+      `Refund for order ${order.id.slice(0, 8).toUpperCase()}`,
+      `We’ve refunded ${money}${order.checkout ? " to how you paid. It can take a few days to show" : " (a test refund; no money moved)"}.`,
+    ),
+  ];
+  if (restock) {
+    const back = new Map<string, Map<string, number>>();
+    for (const l of lines) {
+      const p = back.get(l.productId) ?? new Map<string, number>();
+      p.set(l.variantId, (p.get(l.variantId) ?? 0) + l.quantity);
+      back.set(l.productId, p);
+    }
+    for (const [productId, variants] of back) {
+      const product = await read<Product>(siteId, "PRODUCT", productId);
+      // A product or variant removed since: nothing to put the stock back on.
+      if (!product) continue;
       writes.push(
         put(
           siteId,
-          "CUSTOMER",
-          customerId,
+          "PRODUCT",
+          productId,
           {
-            ...customer,
-            spent: {
-              ...customer.spent,
-              [order.currency]: Math.max(
-                0,
-                (customer.spent[order.currency] || 0) - order.total,
-              ),
-            },
-            revision: customer.revision + 1,
+            ...product,
+            revision: product.revision + 1,
             updatedAt: now(),
+            variants: product.variants.map((v) => ({
+              ...v,
+              stock: v.stock + (variants.get(v.id) ?? 0),
+            })),
           },
-          customer.revision,
+          product.revision,
         ),
       );
+    }
   }
+  const customerId = digest(order.email),
+    customer = await read<Customer & { revision: number }>(
+      siteId,
+      "CUSTOMER",
+      customerId,
+    );
+  if (customer)
+    writes.push(
+      put(
+        siteId,
+        "CUSTOMER",
+        customerId,
+        {
+          ...customer,
+          spent: {
+            ...customer.spent,
+            [order.currency]: Math.max(
+              0,
+              (customer.spent[order.currency] || 0) - amount,
+            ),
+          },
+          revision: customer.revision + 1,
+          updatedAt: now(),
+        },
+        customer.revision,
+      ),
+    );
   await transact(writes);
-  return publicOrder(next);
+  return next;
 }
 export async function requestReturn(
   siteId: string,
