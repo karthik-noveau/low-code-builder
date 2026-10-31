@@ -24,7 +24,8 @@
   font-family: var(--fx-font-display);
   letter-spacing: -0.02em;
 }
-.storefront :focus-visible {
+.storefront :focus-visible,
+.commerce-app.storefront :is(a, button):focus-visible {
   outline: 2px solid var(--s-text);
   outline-offset: 2px;
 }
@@ -54,7 +55,8 @@
   margin: 0 calc(-1 * clamp(16px, 4vw, 48px));
   padding: 18px clamp(16px, 4vw, 48px);
   border-bottom: 1px solid var(--s-border);
-  background: rgba(255, 255, 255, 0.86);
+  /* Nearly solid, so the links stay readable over photos scrolling under. */
+  background: color-mix(in srgb, var(--s-bg) 95%, transparent);
   backdrop-filter: saturate(1.6) blur(14px);
 }
 .storefront .store-logo {
@@ -74,7 +76,7 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  color: var(--s-muted);
+  color: color-mix(in srgb, var(--s-muted) 75%, var(--s-text));
   font: inherit;
   font-size: var(--fx-text-sm);
   font-weight: 500;
@@ -161,6 +163,11 @@
 }
 .storefront .commerce-link:hover {
   text-decoration-color: currentColor;
+}
+/* Inline text links still get a 24px-tall target. */
+.storefront p > .commerce-link {
+  min-height: 24px;
+  padding-block: 2px;
 }
 .storefront .commerce-link:focus-visible {
   outline: 2px solid currentColor;
@@ -364,6 +371,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--fx-4);
+  /* The photo link clips its own zoom; the card lets focus rings show. */
+  overflow: visible;
   padding: 0;
   border: 0;
   border-radius: 0;

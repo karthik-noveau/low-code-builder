@@ -237,7 +237,9 @@
   gap: 24px;
 }
 .lk-header .blk-menu .blk-menu-links a {
-  padding: 0;
+  /* A 24px-tall target that takes no more room than the words. */
+  padding: 4px 0;
+  margin-block: -4px;
   border-radius: 0;
   color: inherit;
   font-size: 11px;
@@ -1329,7 +1331,8 @@
   margin-inline: 0;
 }
 .lk-footer .blk-menu .blk-menu-links a {
-  padding: 0;
+  padding: 4px 0;
+  margin-block: -4px;
   border-radius: 0;
   color: inherit;
   font-size: 11px;
@@ -1367,7 +1370,8 @@
   justify-content: center;
 }
 .lk-footer-centered .blk-menu .blk-menu-links a {
-  padding: 0;
+  padding: 4px 0;
+  margin-block: -4px;
   border-radius: 0;
   color: var(--rw-muted);
   font-size: inherit;

@@ -143,7 +143,7 @@ export const templateOptions: TemplateOption[] = [
     category: "Start fresh",
     description: "Your idea. Your direction. Build something entirely yours.",
     image: "",
-    color: "#526954",
+    color: "#3a4d3c",
   },
 ];
 const builders: Record<

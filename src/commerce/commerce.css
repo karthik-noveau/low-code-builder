@@ -66,7 +66,7 @@
 .commerce-app input:focus-visible,
 .commerce-app textarea:focus-visible,
 .commerce-app select:focus-visible {
-  outline: 3px solid var(--ui-accent-border);
+  outline: 2px solid var(--ui-accent);
   outline-offset: 3px;
 }
 .commerce-button {
@@ -101,7 +101,8 @@
   align-items: center;
 }
 .commerce-link {
-  color: var(--ui-accent) !important;
+  color: var(--fx-accent-text, var(--ui-accent)) !important;
+  min-width: 24px;
   background: none;
   border: 0;
   padding: 8px 0;
@@ -401,6 +402,9 @@ details.commerce-panel[open] > summary {
   color: var(--ui-muted);
   margin-top: 5px;
   font-size: 11px;
+}
+.commerce-table .commerce-product-cell small {
+  color: color-mix(in srgb, var(--ui-muted) 75%, var(--ui-ink));
 }
 .commerce-product-cell {
   display: flex;

@@ -1724,9 +1724,12 @@ html body .studio.canvas-first .node-inspector .sp-device .device-note {
   border-radius: 50%;
   background: #2563eb;
 }
-:root[data-theme="dark"] .sp-dot,
-:root[data-theme="dark"] .sp-group-badge {
+:root[data-theme="dark"] .sp-dot {
   background: #4f7cff;
+}
+/* White numbers need the deeper fill (4.5:1). */
+:root[data-theme="dark"] .sp-group-badge {
+  background: var(--fx-accent-fill, #3d68ea);
 }
 .sp-reset {
   position: relative;

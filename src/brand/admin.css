@@ -112,6 +112,7 @@ html body .admin-ui .dashboard-crumbs {
 html body .admin-ui .dashboard-crumbs .crumb {
   color: var(--a-top-muted);
   text-decoration: none;
+  padding-block: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
