@@ -151,8 +151,8 @@ function finishSignIn(siteId: string) {
   return finishing;
 }
 /**
- * Store orders are confirmed when the provider tells Forma a checkout was
- * paid, even if the shopper never comes back. Signed-in accounts and Stripe
+ * Payments (store orders, requests, app records) are confirmed when the
+ * provider tells Forma a checkout was paid, even if the visitor never comes back. Signed-in accounts and Stripe
  * keys with the permission get that automatically; a Razorpay key needs the
  * owner to add a webhook, and a Stripe key without the permission can retry.
  */
@@ -186,13 +186,13 @@ function OrderNotifications({
   };
   const copy = (value: string) => void navigator.clipboard?.writeText(value);
   if (setup?.ready)
-    return <small>Store payments are confirmed automatically.</small>;
+    return <small>Payments are confirmed automatically.</small>;
   return (
     <div className="payments-webhook">
       <small>
         {provider === "stripe"
-          ? "Store orders are confirmed when shoppers come back from Stripe. So orders are confirmed even when they don’t, give your key Webhook Endpoints: Write, then try again."
-          : "Store orders are confirmed when shoppers come back from Razorpay. So orders are confirmed even when they don’t, add a webhook in Razorpay."}
+          ? "Payments are confirmed when visitors come back from Stripe. So they’re confirmed even when visitors don’t, give your key Webhook Endpoints: Write, then try again."
+          : "Payments are confirmed when visitors come back from Razorpay. So they’re confirmed even when visitors don’t, add a webhook in Razorpay."}
       </small>
       {setup?.provider === "razorpay" && setup.secret ? (
         <ol className="payments-webhook-steps">
@@ -516,7 +516,7 @@ function OnlinePayments() {
                 maxLength={220}
                 hint={
                   provider === "stripe"
-                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write, Refunds: Write (to refund from Forma) and Webhook Endpoints: Write (so store orders confirm even when shoppers don’t come back)."
+                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write, Refunds: Write (to refund from Forma) and Webhook Endpoints: Write (so payments confirm even when visitors don’t come back)."
                     : "In Razorpay → Account & Settings → API keys."
                 }
                 onChange={setSecret}

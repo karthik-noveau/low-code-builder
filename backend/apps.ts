@@ -2115,6 +2115,20 @@ async function confirmWithProvider(siteId: string, record: AppRecord) {
     return again ? toRecord(again) : record;
   }
 }
+/** A payment notification about a record's checkout: ask the provider. */
+export async function confirmRecordCheckout(
+  siteId: string,
+  tableId: string,
+  recordId: string,
+  checkoutId: string,
+) {
+  if (!/^[\w-]{1,64}$/.test(tableId) || !/^[\w-]{1,80}$/.test(recordId)) return;
+  const stored = await getRecord(siteId, tableId, recordId);
+  if (!stored) return;
+  const record = toRecord(stored);
+  if (record.payment?.checkout?.id === checkoutId)
+    await confirmWithProvider(siteId, record);
+}
 async function payStatus(siteId: string, recordId: string, attempt: string) {
   const found = await payable(siteId, recordId, attempt);
   const record = await confirmWithProvider(siteId, found.record).catch(
@@ -2166,6 +2180,8 @@ async function startCheckout(
     name: recordTitle(table, record).slice(0, 100),
     email: email ? String(record.values[email.id]) : "",
     returnUrl: back,
+    kind: "record",
+    table: table.id,
   });
   insist(
     checkout,

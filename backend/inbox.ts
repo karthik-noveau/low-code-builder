@@ -360,6 +360,17 @@ async function confirmWithProvider(
     throw error;
   }
 }
+/** A payment notification about a request's checkout: ask the provider. */
+export async function confirmRequestCheckout(
+  siteId: string,
+  requestId: string,
+  checkoutId: string,
+) {
+  if (!idPattern.test(siteId) || !requestIdPattern.test(requestId)) return;
+  const request = await read<StoredRequest>(siteId, "REQUEST", requestId);
+  if (request?.payment?.checkout?.id === checkoutId)
+    await confirmWithProvider(siteId, request);
+}
 /** Sends the visitor to a checkout for the exact total, reusing an open one. */
 async function startCheckout(siteId: string, requestId: string) {
   insist(
@@ -395,6 +406,7 @@ async function startCheckout(siteId: string, requestId: string) {
     name: request.name,
     email: request.email,
     returnUrl: back,
+    kind: "request",
   });
   insist(
     checkout,

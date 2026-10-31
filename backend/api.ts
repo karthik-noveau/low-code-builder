@@ -24,6 +24,7 @@ import {
   deleteRequest,
   inboxPublic,
   listRequests,
+  confirmRequestCheckout,
   refundRequest,
   updateRequest,
 } from "./inbox";
@@ -40,7 +41,7 @@ import {
 } from "./payments";
 import { onPaymentNotice } from "./store-checkout";
 import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
-import { appOwnerApi, appsPublic } from "./apps";
+import { appOwnerApi, appsPublic, confirmRecordCheckout } from "./apps";
 import { deleteLocalSite } from "./lifecycle";
 import { getItem, putItem } from "./database";
 import { matchRoute } from "../infra/api-routes.mjs";
@@ -135,7 +136,16 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         body,
         headers,
       );
-      if (notice) await onPaymentNotice(notice);
+      if (notice?.kind === "order") await onPaymentNotice(notice);
+      else if (notice?.kind === "request")
+        await confirmRequestCheckout(notice.siteId, notice.id, notice.checkoutId);
+      else if (notice?.kind === "record")
+        await confirmRecordCheckout(
+          notice.siteId,
+          notice.table,
+          notice.id,
+          notice.checkoutId,
+        );
       return jsonResponse({ received: true });
     }
     const inbox = await inboxPublic(request);

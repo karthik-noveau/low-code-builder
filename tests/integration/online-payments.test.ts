@@ -612,6 +612,32 @@ describe.skipIf(!enabled)(
       expect((await go(`${page}/checkout`)).headers.get("location")).toBe(page);
     });
 
+    it("confirms a request from Stripe's webhook when the visitor doesn't come back", async () => {
+      const page = await order("1");
+      const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
+      const session = sessions.get(checkout.split("/").pop()!)!;
+      expect(session.metadata).toMatchObject({ forma_site: id, forma_kind: "request" });
+      session.payment_status = "paid";
+      session.status = "complete";
+      const body = JSON.stringify({
+        type: "checkout.session.completed",
+        data: { object: { ...session } },
+      });
+      const t = Math.floor(Date.now() / 1000);
+      const secret = [...stripeHooks.values()].find((h) => h.url.endsWith(`/${id}`))!.secret;
+      const v1 = createHmac("sha256", secret).update(`${t}.${body}`).digest("hex");
+      const hook = await fetch(`${base}/payments/webhooks/stripe/${id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "stripe-signature": `t=${t},v1=${v1}` },
+        body,
+      });
+      expect(hook.status).toBe(200);
+      const { data } = await call(`/sites/${id}/inbox`);
+      expect(
+        data.requests.find((r: { id: string }) => page.endsWith(r.id)).payment,
+      ).toMatchObject({ status: "paid", confirmedBy: "provider" });
+    });
+
     it("works with Razorpay, and the owner can check a payment from the inbox", async () => {
       expect(
         (await call(`/sites/${id}/payments/disconnect`, "POST", {})).data,
@@ -780,8 +806,11 @@ describe.skipIf(!enabled)(
         provider: "stripe",
         secret: STRIPE_KEY,
       });
+      // The two-item request, so refunding one item's worth is partial.
       const request = (await requests()).find(
-        (r) => r.payment?.checkout?.provider === "stripe",
+        (r) =>
+          r.payment?.checkout?.provider === "stripe" &&
+          r.payment.amount === unit * 2,
       )!;
       dropNextRefund = true;
       expect(

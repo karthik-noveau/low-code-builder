@@ -15,7 +15,8 @@ import { db, deleteItem, getItem, putItem } from "./database";
  * Online payments through the owner's own Stripe or Razorpay account. Forma
  * creates a checkout for the exact total and asks the provider whether it was
  * paid, so the money never passes through us. Webhooks only say which
- * checkout to ask about (store orders whose shopper never comes back).
+ * checkout to ask about (for visitors who never come back from paying):
+ * store orders, Inbox requests and app records alike.
  * Owners either paste API keys or sign in with the provider (Stripe Connect
  * OAuth, Razorpay partner OAuth). Secret keys and tokens are encrypted at rest
  * and never sent back to the browser.
@@ -764,8 +765,11 @@ export interface CheckoutInput {
   /** Store orders: when the checkout stops taking payment (epoch seconds). */
   expiresAt?: number;
   /** What the checkout pays for, so a webhook can find it. */
-  kind?: "order";
+  kind?: PaymentKind;
+  /** An app record's table. */
+  table?: string;
 }
+export type PaymentKind = "order" | "request" | "record";
 export async function createCheckout(
   siteId: string,
   input: CheckoutInput,
@@ -788,6 +792,7 @@ export async function createCheckout(
       "metadata[forma_site]": siteId,
     });
     if (input.kind) form.set("metadata[forma_kind]", input.kind);
+    if (input.table) form.set("metadata[forma_table]", input.table);
     if (input.expiresAt) form.set("expires_at", String(input.expiresAt));
     // App forms may have no email field; Stripe refuses an empty one.
     if (input.email) form.set("customer_email", input.email);
@@ -825,6 +830,7 @@ export async function createCheckout(
         forma_site: siteId,
         forma_id: input.requestId,
         ...(input.kind ? { forma_kind: input.kind } : {}),
+        ...(input.table ? { forma_table: input.table } : {}),
       },
       ...(input.expiresAt ? { expire_by: input.expiresAt } : {}),
     },
@@ -886,8 +892,10 @@ export interface PaymentNotice {
   provider: ProviderId;
   siteId: string;
   kind: string;
-  /** The order (or request) id the checkout was made for. */
+  /** The order, request or record id the checkout was made for. */
   id: string;
+  /** An app record's table. */
+  table: string;
   checkoutId: string;
 }
 const safeEqual = (a: string, b: string) => {
@@ -962,6 +970,7 @@ export async function readWebhook(
       provider: name,
       siteId: str(pick(session, "metadata", "forma_site")),
       kind: str(pick(session, "metadata", "forma_kind")),
+      table: str(pick(session, "metadata", "forma_table")),
       id: str(pick(session, "client_reference_id")),
       checkoutId: str(pick(session, "id")),
     };
@@ -972,6 +981,7 @@ export async function readWebhook(
       provider: name,
       siteId: str(pick(link, "notes", "forma_site")),
       kind: str(pick(link, "notes", "forma_kind")),
+      table: str(pick(link, "notes", "forma_table")),
       id: str(pick(link, "notes", "forma_id")),
       checkoutId: str(pick(link, "id")),
     };
