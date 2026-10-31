@@ -73,6 +73,8 @@ const box = (el: Element | null | undefined): Rect | undefined => {
 };
 /** Height of the name tag and toolbar. */
 const BAR = 28;
+/** Room the text tools need above the words being typed. */
+const TYPING_ROOM = 40;
 
 export function CanvasOverlay({
   scroll,
@@ -226,6 +228,22 @@ export function CanvasOverlay({
     tick();
     return () => cancelAnimationFrame(frame);
   }, [scroll, hover, node, typing, preview]);
+
+  // Typing starts near the canvas's top edge: scroll up a little, once, so the
+  // text tools fit above the words instead of covering what follows them.
+  const nudged = useRef(false);
+  useEffect(() => {
+    if (!typing) {
+      nudged.current = false;
+      return;
+    }
+    const sc = scroll.current;
+    if (nudged.current || !geo?.typing || !sc) return;
+    nudged.current = true;
+    const short = geo.frame.top + TYPING_ROOM + 8 - geo.typing.top;
+    if (short > 0 && sc.scrollTop > 0)
+      sc.scrollBy({ top: -Math.min(short, sc.scrollTop) });
+  }, [typing, geo, scroll]);
 
   // Hover, right-click and drag-and-drop on the canvas.
   useEffect(() => {
@@ -422,7 +440,8 @@ export function CanvasOverlay({
     typing && geo?.typing && node && section
       ? (() => {
           const t = at(geo.typing);
-          const top = t.top >= 40 ? t.top - 36 : t.top + t.height + 6;
+          const top =
+            t.top >= TYPING_ROOM ? t.top - 36 : t.top + t.height + 6;
           return (
             <TextToolbar
               section={section.id}
