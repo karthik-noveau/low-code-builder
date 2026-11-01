@@ -317,7 +317,8 @@ function RefundForm({
           Refund shipping ({money(order.shipping, order.currency)})
         </label>
       )}
-      {!!chosen.length && (
+      {/* A short order's items never left the shelf. */}
+      {!!chosen.length && !order.stockShort && (
         <label className="commerce-check">
           <input
             type="checkbox"
@@ -349,7 +350,7 @@ function RefundForm({
             lines: chosen,
             shipping,
             amount,
-            restock: restock && !!chosen.length,
+            restock: restock && !!chosen.length && !order.stockShort,
           })
         }
       />
@@ -1349,26 +1350,48 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                       }
                     />
                   )}
-                  {["paid", "fulfilled"].includes(selected.status) && (
-                    <RefundForm
-                      key={`${selected.id}-${selected.revision}`}
-                      order={selected}
-                      busy={busy}
-                      onRefund={(body) =>
-                        void perform(
-                          `orders/${selected.id}`,
-                          {
-                            revision: selected.revision,
-                            action: "refund",
-                            ...body,
-                          },
-                          selected.payment === "local-sandbox"
-                            ? "Refund recorded. This was a test, so no money moved."
-                            : "Refunded. It can take a few days to reach the shopper.",
-                        )
-                      }
-                    />
-                  )}
+                  {["paid", "fulfilled"].includes(selected.status) &&
+                    !!selected.refundPending && (
+                      <div className="commerce-notice" role="status">
+                        A refund of{" "}
+                        {money(selected.refundPending, selected.currency)} was
+                        started but not confirmed.{" "}
+                        <button
+                          className="commerce-button secondary"
+                          disabled={busy}
+                          onClick={() =>
+                            void perform(
+                              `orders/${selected.id}`,
+                              { revision: selected.revision, action: "refund" },
+                              "Refund finished.",
+                            )
+                          }
+                        >
+                          Finish refund
+                        </button>
+                      </div>
+                    )}
+                  {["paid", "fulfilled"].includes(selected.status) &&
+                    !selected.refundPending && (
+                      <RefundForm
+                        key={`${selected.id}-${selected.revision}`}
+                        order={selected}
+                        busy={busy}
+                        onRefund={(body) =>
+                          void perform(
+                            `orders/${selected.id}`,
+                            {
+                              revision: selected.revision,
+                              action: "refund",
+                              ...body,
+                            },
+                            selected.payment === "local-sandbox"
+                              ? "Refund recorded. This was a test, so no money moved."
+                              : "Refunded. It can take a few days to reach the shopper.",
+                          )
+                        }
+                      />
+                    )}
                 </div>
               )}
             </div>
@@ -1746,16 +1769,16 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               <>
                 <h2>Emails to shoppers</h2>
                 <p className="commerce-muted">
-                  Order confirmations, refunds and replies to returns, sent
-                  from your store’s name. Replies go to your contact email.
+                  Order confirmations, refunds and replies to returns, sent from
+                  your store’s name. Replies go to your contact email.
                 </p>
               </>
             ) : (
               <>
                 <h2>Email previews</h2>
                 <p className="commerce-muted">
-                  Order and team emails are kept here as previews. They have
-                  not been sent.
+                  Order and team emails are kept here as previews. They have not
+                  been sent.
                 </p>
               </>
             )}

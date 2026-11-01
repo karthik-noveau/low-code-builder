@@ -26,6 +26,27 @@ export async function read<T>(siteId: string, kind: string, id = "") {
   void _sk;
   return data as T;
 }
+/** The newest `count` rows of a kind (ids that start with a timestamp), never more. */
+export async function recent<T>(siteId: string, kind: string, count: number) {
+  const result = await db.send(
+    new QueryCommand({
+      TableName: config.table,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": partition(siteId),
+        ":prefix": `${kind}#`,
+      },
+      ScanIndexForward: false,
+      Limit: count,
+    }),
+  );
+  return (result.Items || []).map((item) => {
+    const { pk: _pk, sk: _sk, ...data } = item;
+    void _pk;
+    void _sk;
+    return data as T;
+  });
+}
 export async function list<T>(
   siteId: string,
   kind: string,
@@ -127,28 +148,25 @@ export function event(siteId: string, name: string): Write {
   };
 }
 export async function transact(writes: Write[]) {
-  // Mail to send flags its store, so senders needn't read the outbox to look.
-  const mailSites = new Set(
-    writes
-      .filter(
-        (w) =>
-          w.Put?.Item?.status === "pending" &&
-          String(w.Put.Item.sk ?? "").startsWith("MAIL#"),
-      )
-      .map((w) => String(w.Put!.Item!.pk).slice("COMMERCE#".length)),
-  );
+  // Each message to send also goes on its store's short to-send list
+  // (mail.ts), so senders never read the whole outbox.
   writes = [
     ...writes,
-    ...[...mailSites].map(
-      (site): Write => ({
-        Update: {
-          TableName: config.table,
-          Key: key(site, "MAILQ"),
-          UpdateExpression: "SET waiting = :yes, #at = :at",
-          ExpressionAttributeNames: { "#at": "at" },
-          ExpressionAttributeValues: { ":yes": true, ":at": now() },
-        },
-      }),
+    ...writes.flatMap((w): Write[] =>
+      w.Put?.Item?.status === "pending" &&
+      String(w.Put.Item.sk ?? "").startsWith("MAIL#")
+        ? [
+            {
+              Put: {
+                TableName: config.table,
+                Item: {
+                  pk: w.Put.Item.pk,
+                  sk: `MAILOUT#${String(w.Put.Item.sk).slice("MAIL#".length)}`,
+                },
+              },
+            },
+          ]
+        : [],
     ),
   ];
   const partitions = new Set(

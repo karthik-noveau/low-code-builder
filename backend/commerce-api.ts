@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, createHmac } from "node:crypto";
 import { HttpError, idPattern, insist, local } from "./config";
 import { allow, siteAccess } from "./access";
-import { audit, event, list, now, put, read, transact } from "./commerce-data";
+import { audit, event, list, now, put, read, recent, transact } from "./commerce-data";
 import {
   addMember,
   checkout,
@@ -79,8 +79,9 @@ export async function overview(
     list<Discount>(siteId, "DISCOUNT"),
     list<ContentEntry>(siteId, "CONTENT"),
     list<Submission>(siteId, "SUBMISSION"),
-    list<AuditEvent>(siteId, "AUDIT", 5000),
-    list<OutboxMessage>(siteId, "MAIL", 5000),
+    // Newest first and bounded: these grow without end.
+    recent<AuditEvent>(siteId, "AUDIT", 200),
+    recent<OutboxMessage>(siteId, "MAIL", 200),
     list<Member>(siteId, "MEMBER"),
     list<Integration & { secret: string }>(siteId, "INTEGRATION"),
     list<{ name: string; count: number }>(siteId, "METRIC"),
@@ -422,7 +423,8 @@ async function storeRoutes(
       eventMatch[1],
     );
     insist(integration?.enabled, 404, "Integration not enabled.");
-    const records = (await list<AuditEvent>(siteId, "AUDIT", 5000))
+    const records = (await recent<AuditEvent>(siteId, "AUDIT", 2000))
+      .reverse()
       .filter((item) => integration.events.includes(item.action))
       .slice(-100);
     return {

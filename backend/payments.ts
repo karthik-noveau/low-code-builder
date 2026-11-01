@@ -6,8 +6,19 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import { DeleteCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { config, epoch, HttpError, insist, isConditional, local } from "./config";
+import {
+  DeleteCommand,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
+import {
+  config,
+  epoch,
+  HttpError,
+  insist,
+  isConditional,
+  local,
+} from "./config";
 import { key, now, read } from "./commerce-data";
 import { db, deleteItem, getItem, putItem } from "./database";
 
@@ -174,7 +185,9 @@ const publicConnection = (c: StoredConnection): Connection => ({
   connectedAt: c.connectedAt,
   ...(c.via ? { via: c.via, account: c.account } : {}),
   webhook:
-    c.via || c.webhook?.id || (c.provider === "razorpay" && c.webhook?.confirmed)
+    c.via ||
+    c.webhook?.id ||
+    (c.provider === "razorpay" && c.webhook?.confirmed)
       ? "ready"
       : "setup",
 });
@@ -246,7 +259,11 @@ export async function connect(siteId: string, input: Record<string, unknown>) {
     webhook:
       name === "stripe"
         ? await makeStripeWebhook(siteId, secret)
-        : { secret: seal(randomBytes(24).toString("hex")) },
+        : // The same site's Razorpay webhook keeps its secret, so what the
+          // owner pasted into Razorpay goes on working.
+          previous?.provider === "razorpay" && !previous.via && previous.webhook
+          ? previous.webhook
+          : { secret: seal(randomBytes(24).toString("hex")) },
   });
 }
 /** Where a site's own webhook points (pasted keys). */
@@ -295,15 +312,25 @@ export async function webhookSetup(siteId: string) {
     // Try again, for a key given the permission since it was pasted.
     if (!stored.webhook?.id) {
       const webhook = await makeStripeWebhook(siteId, unseal(stored.secret));
-      if (webhook) await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
-      return { provider: "stripe", ready: !!webhook, url: webhookUrl(siteId, "stripe") };
+      if (webhook)
+        await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
+      return {
+        provider: "stripe",
+        ready: !!webhook,
+        url: webhookUrl(siteId, "stripe"),
+      };
     }
-    return { provider: "stripe", ready: true, url: webhookUrl(siteId, "stripe") };
+    return {
+      provider: "stripe",
+      ready: true,
+      url: webhookUrl(siteId, "stripe"),
+    };
   }
   const webhook = stored.webhook ?? {
     secret: seal(randomBytes(24).toString("hex")),
   };
-  if (!stored.webhook) await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
+  if (!stored.webhook)
+    await putItem({ ...key(siteId, "PAYCONN"), ...stored, webhook });
   return {
     provider: "razorpay",
     ready: !!webhook.confirmed,
@@ -385,7 +412,10 @@ export async function startSignIn(
   const state = randomBytes(32).toString("base64url");
   // The editor keeps its session per origin, so come back to the same one.
   const editors = local
-    ? [config.editorOrigin, config.editorOrigin.replace("127.0.0.1", "localhost")]
+    ? [
+        config.editorOrigin,
+        config.editorOrigin.replace("127.0.0.1", "localhost"),
+      ]
     : [config.editorOrigin];
   const pending: PendingSignIn = {
     siteId,
@@ -728,7 +758,12 @@ async function caller(
   if ((current.tokenExpires ?? 0) - epoch() < 86400)
     current = await refreshRazorpay(siteId, current);
   return async <T>(path: string, body?: object) => {
-    const answer = await razorpay<T>("", unsealTokens(current).access, path, body);
+    const answer = await razorpay<T>(
+      "",
+      unsealTokens(current).access,
+      path,
+      body,
+    );
     if (answer.status !== 401) return answer;
     current = await refreshRazorpay(siteId, current);
     return razorpay<T>("", unsealTokens(current).access, path, body);
@@ -884,7 +919,19 @@ export async function cancelCheckout(siteId: string, checkout: Checkout) {
     checkout.provider === "stripe"
       ? await call(`/v1/checkout/sessions/${id}/expire`, new URLSearchParams())
       : await call(`/v1/payment_links/${id}/cancel`, {});
-  return ok;
+  if (ok) return true;
+  // Already closed at the provider (it ran out by itself) is closed too.
+  const { ok: seen, data } = await call<{ status?: string }>(
+    checkout.provider === "stripe"
+      ? `/v1/checkout/sessions/${id}`
+      : `/v1/payment_links/${id}`,
+  );
+  return (
+    seen &&
+    (checkout.provider === "stripe"
+      ? data.status === "expired"
+      : data.status === "cancelled" || data.status === "expired")
+  );
 }
 
 /** A payment notification Forma acts on: which site's checkout to check. */
@@ -899,7 +946,8 @@ export interface PaymentNotice {
   checkoutId: string;
 }
 const safeEqual = (a: string, b: string) => {
-  const x = Buffer.from(a), y = Buffer.from(b);
+  const x = Buffer.from(a),
+    y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 };
 const hmac = (secret: string, value: string | Buffer) =>
@@ -908,7 +956,8 @@ const hmac = (secret: string, value: string | Buffer) =>
 function stripeSigned(header: string, body: Buffer, secret: string) {
   const parts = header.split(",").map((p) => p.split("="));
   const t = parts.find(([k]) => k === "t")?.[1] ?? "";
-  if (!/^\d{1,12}$/.test(t) || Math.abs(epoch() - Number(t)) > 300) return false;
+  if (!/^\d{1,12}$/.test(t) || Math.abs(epoch() - Number(t)) > 300)
+    return false;
   const expected = hmac(secret, Buffer.concat([Buffer.from(`${t}.`), body]));
   return parts.some(([k, v]) => k === "v1" && !!v && safeEqual(v, expected));
 }
@@ -950,15 +999,33 @@ export async function readWebhook(
     throw new HttpError(400, "Invalid JSON.");
   }
   // A signed notification proves the owner's Razorpay webhook works.
-  if (siteId && stored?.webhook && !stored.webhook.confirmed && name === "razorpay")
-    await putItem({
-      ...key(siteId, "PAYCONN"),
-      ...stored,
-      webhook: { ...stored.webhook, confirmed: true },
-    });
+  if (
+    siteId &&
+    stored?.webhook &&
+    !stored.webhook.confirmed &&
+    name === "razorpay"
+  )
+    // Just the flag, and only on the connection that verified it.
+    await db
+      .send(
+        new UpdateCommand({
+          TableName: config.table,
+          Key: key(siteId, "PAYCONN"),
+          UpdateExpression: "SET webhook.confirmed = :yes",
+          ConditionExpression: "webhook.secret = :secret",
+          ExpressionAttributeValues: {
+            ":yes": true,
+            ":secret": stored.webhook.secret,
+          },
+        }),
+      )
+      .catch(() => undefined);
   const pick = (o: unknown, ...path: string[]) =>
     path.reduce<unknown>(
-      (v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined),
+      (v, k) =>
+        v && typeof v === "object"
+          ? (v as Record<string, unknown>)[k]
+          : undefined,
       o,
     );
   const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -1015,11 +1082,14 @@ function refundError(
       signedIn
         ? `${name} didn’t allow the refund. Connect ${name} again, or refund it in your ${name} dashboard.`
         : name === "Stripe"
-        ? "Stripe didn’t allow the refund. Give the connected key Refunds write access, or refund it in your Stripe dashboard."
-        : "Razorpay didn’t accept the connected key. Connect it again, or refund it in your Razorpay dashboard.",
+          ? "Stripe didn’t allow the refund. Give the connected key Refunds write access, or refund it in your Stripe dashboard."
+          : "Razorpay didn’t accept the connected key. Connect it again, or refund it in your Razorpay dashboard.",
     );
   if (status >= 500 || status === 429)
-    return new HttpError(502, `${name} is busy. Try the refund again in a moment.`);
+    return new HttpError(
+      502,
+      `${name} is busy. Try the refund again in a moment.`,
+    );
   const reason = (data.error?.message || data.error?.description || "")
     .replace(/\s+/g, " ")
     .trim()
@@ -1059,7 +1129,8 @@ export async function refundCheckout(
     const session = await call<
       ProviderError & { payment_intent?: string | { id?: string } }
     >(`/v1/checkout/sessions/${encodeURIComponent(checkout.id)}`);
-    if (!session.ok) throw refundError(name, session.status, session.data, !!stored.via);
+    if (!session.ok)
+      throw refundError(name, session.status, session.data, !!stored.via);
     const intent =
       typeof session.data.payment_intent === "string"
         ? session.data.payment_intent
@@ -1095,21 +1166,36 @@ export async function refundCheckout(
   const paymentId = link.data.payments?.find(
     (p) => (p.status === "captured" || p.status === "refunded") && p.payment_id,
   )?.payment_id;
-  insist(paymentId, 409, "Razorpay has no captured payment for this link to refund.");
+  insist(
+    paymentId,
+    409,
+    "Razorpay has no captured payment for this link to refund.",
+  );
   const path = `/v1/payments/${encodeURIComponent(paymentId)}`;
-  type Refund = { id?: string; amount?: number; receipt?: string; status?: string };
+  type Refund = {
+    id?: string;
+    amount?: number;
+    receipt?: string;
+    status?: string;
+  };
   // Razorpay has no idempotency header: look for this refund before making it.
   const earlier = await call<ProviderError & { items?: Refund[] }>(
     `${path}/refunds?count=100`,
   );
-  if (!earlier.ok) throw refundError(name, earlier.status, earlier.data, !!stored.via);
+  if (!earlier.ok)
+    throw refundError(name, earlier.status, earlier.data, !!stored.via);
   const found = earlier.data.items?.find(
     (r) => r.receipt === key && r.id && r.status !== "failed",
   );
   if (found) return { id: found.id!, amount: found.amount ?? amount };
   const { ok, status, data } = await call<ProviderError & Refund>(
     `${path}/refund`,
-    { amount, speed: "normal", receipt: key, notes: { forma_reference: reference } },
+    {
+      amount,
+      speed: "normal",
+      receipt: key,
+      notes: { forma_reference: reference },
+    },
   );
   if (!ok) throw refundError(name, status, data, !!stored.via);
   insist(

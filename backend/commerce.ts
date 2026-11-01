@@ -1,8 +1,16 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { requireNotDeleting } from "./lifecycle";
-import { config, HttpError, insist, local, idPattern } from "./config";
-import { getItem } from "./database";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  config,
+  HttpError,
+  insist,
+  isConditional,
+  local,
+  idPattern,
+} from "./config";
+import { db, getItem } from "./database";
 import { allow, siteAccess } from "./access";
 import {
   audit,
@@ -424,8 +432,9 @@ export async function storefront(siteId: string) {
   const stored = await settings(siteId);
   insist(stored?.enabled, 404, "This store is not open.");
   await requireNotDeleting(stored.owner, siteId);
-  // Stock held by checkouts that ran out goes back on the shelf first.
-  await sweepHolds(siteId);
+  // Stock held by checkouts that ran out goes back on the shelf (one per
+  // page load; carts and checkouts sweep more).
+  await sweepHolds(siteId, 1);
   const connection = await getConnection(siteId);
   const { owner: _owner, ...publicSettings } = stored;
   void _owner;
@@ -480,6 +489,8 @@ export async function saveCart(
   input: Record<string, unknown>,
   token?: string,
 ) {
+  // Stock from checkouts that ran out is back before this cart is priced.
+  await sweepHolds(siteId, 2);
   const store = await storefrontEnabled(siteId);
   const previous = token ? await getCart(siteId, token) : undefined;
   if (previous)
@@ -655,6 +666,11 @@ export interface PrivateOrder extends Order {
   held?: boolean;
   /** Cancelled, but the provider wouldn't close its checkout: a payment can still land. */
   checkoutOpen?: boolean;
+  /**
+   * A refund asked for but not yet confirmed by the provider: retries finish
+   * this one (same amount, same key) instead of starting another.
+   */
+  pendingRefund?: OrderRefund & { key: string; attemptAt?: string };
 }
 export async function checkout(siteId: string, input: Record<string, unknown>) {
   const connection = await getConnection(siteId);
@@ -735,6 +751,7 @@ export function publicOrder(order: PrivateOrder): Order {
     checkout,
     held: _held,
     checkoutOpen: _open,
+    pendingRefund,
     ...result
   } = order;
   void _open;
@@ -744,6 +761,7 @@ export function publicOrder(order: PrivateOrder): Order {
   void _held;
   return {
     ...result,
+    ...(pendingRefund ? { refundPending: pendingRefund.amount } : {}),
     // While it's open, the shopper can go back to pay.
     ...(checkout && order.status === "pending" && order.held
       ? { payUrl: checkout.url }
@@ -1040,87 +1058,178 @@ async function refundOrder(
     503,
     "This order wasn’t paid online, so Forma can’t refund it.",
   );
-  const left = refundable(order);
   const refunded = (order.refunds ?? []).reduce((t, r) => t + r.amount, 0);
   const remaining = order.total - refunded;
-  // No lines given: everything that's left, shipping included.
-  const lines =
-    input.lines === undefined
-      ? left
-          .filter((l) => l.left > 0)
-          .map((l) => ({
-            productId: l.productId,
-            variantId: l.variantId,
-            quantity: l.left,
-          }))
-      : (() => {
-          insist(
-            Array.isArray(input.lines) && input.lines.length <= 100,
-            422,
-            "Choose what to refund.",
-          );
-          return (input.lines as unknown[]).map((raw) => {
-            const value = object(raw);
-            const line = left.find((l) => l.variantId === value.variantId);
-            insist(line, 422, "That item isn’t in this order.");
-            const quantity = integer(value.quantity, "quantity", 1, line.left);
-            return {
-              productId: line.productId,
-              variantId: line.variantId,
-              quantity,
-            };
-          });
-        })();
-  const shipping =
-    input.shipping === undefined
-      ? !(order.refunds ?? []).some((r) => r.shipping)
-      : input.shipping === true;
-  insist(
-    !shipping || !(order.refunds ?? []).some((r) => r.shipping),
-    422,
-    "Shipping was already refunded.",
-  );
-  const suggested = Math.min(remaining, refundAmount(order, lines, shipping));
-  const amount =
-    input.amount === undefined
-      ? input.lines === undefined
-        ? remaining
-        : suggested
-      : integer(input.amount, "refund amount", 1, remaining);
-  insist(amount > 0, 422, "There’s nothing left to refund.");
-  insist(
-    lines.length || shipping || input.amount !== undefined,
-    422,
-    "Choose what to refund.",
-  );
-  const n = (order.refunds ?? []).length + 1;
+  // Online payments: the money goes back through the provider, the owner's call.
+  if (order.checkout) allow(access, "owner");
+  // A refund started earlier and not finished is finished as it was asked,
+  // whatever this request says: the provider may already have made it.
+  let pending = order.pendingRefund;
+  let current = order;
+  if (!pending) {
+    const left = refundable(order);
+    // No lines given: everything that's left, shipping included.
+    let lines: { variantId: string; quantity: number }[];
+    if (input.lines === undefined)
+      lines = left
+        .filter((l) => l.left > 0)
+        .map((l) => ({ variantId: l.variantId, quantity: l.left }));
+    else {
+      insist(
+        Array.isArray(input.lines) && input.lines.length <= 100,
+        422,
+        "Choose what to refund.",
+      );
+      // The same item twice counts once, added up.
+      const wanted = new Map<string, number>();
+      for (const raw of input.lines as unknown[]) {
+        const value = object(raw);
+        const line = left.find((l) => l.variantId === value.variantId);
+        insist(line, 422, "That item isn’t in this order.");
+        const quantity = integer(value.quantity, "quantity", 1, line.left);
+        wanted.set(
+          line.variantId,
+          (wanted.get(line.variantId) ?? 0) + quantity,
+        );
+        insist(
+          wanted.get(line.variantId)! <= line.left,
+          422,
+          `Only ${line.left} of ${line.title} can still be refunded.`,
+        );
+      }
+      lines = [...wanted].map(([variantId, quantity]) => ({
+        variantId,
+        quantity,
+      }));
+    }
+    const shippingDone = (order.refunds ?? []).some((r) => r.shipping);
+    const shipping =
+      input.shipping === undefined ? !shippingDone : input.shipping === true;
+    insist(!shipping || !shippingDone, 422, "Shipping was already refunded.");
+    const amount =
+      input.amount === undefined
+        ? input.lines === undefined
+          ? remaining
+          : Math.min(remaining, refundAmount(order, lines, shipping))
+        : integer(input.amount, "refund amount", 1, remaining);
+    insist(amount > 0, 422, "There’s nothing left to refund.");
+    insist(
+      lines.length || shipping || input.amount !== undefined,
+      422,
+      "Choose what to refund.",
+    );
+    const n = (order.refunds ?? []).length + 1;
+    pending = {
+      amount,
+      lines,
+      shipping,
+      // A short order's items never left the shelf, so none go back.
+      restocked:
+        input.restock === true && lines.length > 0 && !order.stockShort,
+      createdAt: now(),
+      // Razorpay receipts take 40 characters.
+      key: `forma_rf_${order.id.replace(/-/g, "").slice(0, 24)}_${n}`,
+    };
+    current = {
+      ...order,
+      pendingRefund: pending,
+      revision: order.revision + 1,
+      updatedAt: now(),
+    };
+    // Only one of two refunds started at once gets past this.
+    await transact([put(siteId, "ORDER", order.id, current, order.revision)]);
+  }
   let providerId: string | undefined;
+  let amount = pending.amount;
   if (order.checkout) {
-    allow(access, "owner");
-    providerId = (
-      await refundCheckout(
+    // One request asks the provider at a time (Razorpay has no idempotency key).
+    try {
+      await db.send(
+        new UpdateCommand({
+          TableName: config.table,
+          Key: key(siteId, "ORDER", order.id),
+          UpdateExpression: "SET pendingRefund.attemptAt = :now",
+          ConditionExpression:
+            "revision = :r AND (attribute_not_exists(pendingRefund.attemptAt) OR pendingRefund.attemptAt < :stale)",
+          ExpressionAttributeValues: {
+            ":r": current.revision,
+            ":now": now(),
+            ":stale": new Date(Date.now() - 60_000).toISOString(),
+          },
+        }),
+      );
+    } catch (error) {
+      if (isConditional(error))
+        throw new HttpError(
+          409,
+          "This refund is being made. Check again in a minute.",
+        );
+      throw error;
+    }
+    try {
+      const made = await refundCheckout(
         siteId,
         order.checkout,
-        amount,
-        // Razorpay receipts take 40 characters.
-        `forma_rf_${order.id.replace(/-/g, "").slice(0, 24)}_${n}`,
+        pending.amount,
+        pending.key,
         order.id.slice(0, 8).toUpperCase(),
-      )
-    ).id;
+      );
+      providerId = made.id;
+      amount = made.amount;
+    } catch (error) {
+      // No answer (502): it stays to be finished, and the next try needn't
+      // wait out this one's lease.
+      if (error instanceof HttpError && error.status === 502)
+        await db
+          .send(
+            new UpdateCommand({
+              TableName: config.table,
+              Key: key(siteId, "ORDER", order.id),
+              UpdateExpression: "REMOVE pendingRefund.attemptAt",
+              ConditionExpression: "revision = :r",
+              ExpressionAttributeValues: { ":r": current.revision },
+            }),
+          )
+          .catch(() => undefined);
+      // A clear no from the provider: nothing was refunded, so the order
+      // isn't left waiting on it.
+      if (error instanceof HttpError && error.status !== 502) {
+        const { pendingRefund: _p, ...rest } = current;
+        void _p;
+        await transact([
+          put(
+            siteId,
+            "ORDER",
+            order.id,
+            { ...rest, revision: current.revision + 1, updatedAt: now() },
+            current.revision,
+          ),
+        ]).catch(() => undefined);
+      }
+      throw error;
+    }
   }
-  const restock = input.restock === true && lines.length > 0;
+  const restock = pending.restocked;
+  const lines = pending.lines.map((l) => ({
+    ...l,
+    productId:
+      order.lines.find((o) => o.variantId === l.variantId)?.productId ?? "",
+  }));
   const entry: OrderRefund = {
     amount,
-    lines: lines.map(({ variantId, quantity }) => ({ variantId, quantity })),
-    shipping,
+    lines: pending.lines,
+    shipping: pending.shipping,
     restocked: restock,
     createdAt: now(),
     ...(providerId ? { providerId } : {}),
   };
+  const n = (order.refunds ?? []).length + 1;
   const all = [...(order.refunds ?? []), entry];
   const full = refunded + amount >= order.total;
+  const { pendingRefund: _done, ...settled } = current;
+  void _done;
   const next: PrivateOrder = {
-    ...order,
+    ...settled,
     refunds: all,
     status: full ? "refunded" : order.status,
     ...(order.returnRequest &&
@@ -1132,12 +1241,12 @@ async function refundOrder(
           },
         }
       : {}),
-    revision: order.revision + 1,
+    revision: current.revision + 1,
     updatedAt: now(),
   };
   const money = `${(amount / 100).toFixed(2)} ${order.currency}`;
   const writes: Write[] = [
-    put(siteId, "ORDER", order.id, next, order.revision),
+    put(siteId, "ORDER", order.id, next, current.revision),
     put(siteId, "REFUND", `${order.id}-${n}`, {
       orderId: order.id,
       amount,

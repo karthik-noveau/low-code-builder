@@ -10,7 +10,9 @@
  * still lands after that takes the stock again if it's there; otherwise the
  * order is paid but flagged short, for the owner to refund.
  */
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { config, HttpError, insist } from "./config";
+import { db } from "./database";
 import {
   audit,
   event,
@@ -87,7 +89,12 @@ async function stockWrites(
         siteId,
         "PRODUCT",
         productId,
-        { ...product, variants: next, revision: product.revision + 1, updatedAt: now() },
+        {
+          ...product,
+          variants: next,
+          revision: product.revision + 1,
+          updatedAt: now(),
+        },
         product.revision,
       ),
     );
@@ -157,16 +164,22 @@ export async function startPaidCheckout(
       // Stripe keeps a checkout open 30 minutes at least, Razorpay 15; the
       // hold's end cancels it either way.
       expiresAt: Math.floor(
-        minutesFromNow(provider === "stripe" ? 31 : HOLD_MINUTES + 1).getTime() / 1000,
+        minutesFromNow(
+          provider === "stripe" ? 31 : HOLD_MINUTES + 1,
+        ).getTime() / 1000,
       ),
       kind: "order",
     });
   } catch (error) {
-    await release(siteId, held.id, { force: true, unpaid: true }).catch(() => undefined);
+    await release(siteId, held.id, { force: true, unpaid: true }).catch(
+      () => undefined,
+    );
     throw error;
   }
   if (!made) {
-    await release(siteId, held.id, { force: true, unpaid: true }).catch(() => undefined);
+    await release(siteId, held.id, { force: true, unpaid: true }).catch(
+      () => undefined,
+    );
     throw new HttpError(503, "This store can’t take payments right now.");
   }
   const withCheckout: PrivateOrder = {
@@ -175,7 +188,18 @@ export async function startPaidCheckout(
     revision: held.revision + 1,
     updatedAt: now(),
   };
-  await transact([put(siteId, "ORDER", held.id, withCheckout, held.revision)]);
+  try {
+    await transact([
+      put(siteId, "ORDER", held.id, withCheckout, held.revision),
+    ]);
+  } catch (error) {
+    // Unrecorded, the checkout would be out of reach: close it and let go.
+    await cancelCheckout(siteId, made).catch(() => false);
+    await release(siteId, held.id, { force: true, unpaid: true }).catch(
+      () => undefined,
+    );
+    throw error;
+  }
   return { orderId: held.id, receipt, url: made.url };
 }
 
@@ -231,16 +255,38 @@ export async function release(
   return next;
 }
 
-/** Returns the stock of holds that have run out (a few at a time). */
-export async function sweepHolds(siteId: string) {
-  const holds = await list<Hold>(siteId, "HOLD").catch(() => [] as Hold[]);
+/**
+ * Returns the stock of holds that have run out, `max` at a time (page loads
+ * do one, so they don't wait on providers). A hold that can't be released
+ * now (the provider is down, the account was disconnected) is tried again in
+ * ten minutes, so it can't hold up the rest.
+ */
+export async function sweepHolds(siteId: string, max = 5) {
+  const holds = await list<Hold>(siteId, "HOLD", 5000).catch(
+    () => [] as Hold[],
+  );
   const due = holds
     .filter((h) => Date.parse(h.until) <= Date.now())
-    .slice(0, 5);
+    .sort((a, b) => a.until.localeCompare(b.until))
+    .slice(0, max);
   for (const h of due)
-    await release(siteId, h.orderId).catch((error) =>
-      console.error("hold_release_failed", siteId, h.orderId, String(error)),
-    );
+    await release(siteId, h.orderId).catch(async (error) => {
+      console.error("hold_release_failed", siteId, h.orderId, String(error));
+      await db
+        .send(
+          new UpdateCommand({
+            TableName: config.table,
+            Key: key(siteId, "HOLD", h.orderId),
+            UpdateExpression: "SET #u = :later",
+            ConditionExpression: "attribute_exists(pk)",
+            ExpressionAttributeNames: { "#u": "until" },
+            ExpressionAttributeValues: {
+              ":later": minutesFromNow(10).toISOString(),
+            },
+          }),
+        )
+        .catch(() => undefined);
+    });
 }
 
 /** Asks the provider about a pending order and records it paid if it is. */
@@ -249,7 +295,10 @@ export async function confirmOrder(siteId: string, order: PrivateOrder) {
   // refused to cancel it: such a payment is recorded, never lost.
   if (
     !order.checkout ||
-    !(order.status === "pending" || (order.status === "cancelled" && order.checkoutOpen))
+    !(
+      order.status === "pending" ||
+      (order.status === "cancelled" && order.checkoutOpen)
+    )
   )
     return order;
   if (await checkoutPaid(siteId, order.checkout, order.total))
@@ -271,7 +320,11 @@ async function markPaid(
   let short = false;
   if (!order.held) {
     const again = await stockWrites(siteId, order, -1);
-    if (again) stock = [...again, ...(await discountWrite(siteId, order.discountCode, 1))];
+    if (again)
+      stock = [
+        ...again,
+        ...(await discountWrite(siteId, order.discountCode, 1)),
+      ];
     else short = true;
   }
   const paid: PrivateOrder = {
@@ -297,7 +350,12 @@ async function markPaid(
       createdAt: now(),
     }),
     event(siteId, "order.paid"),
-    audit(siteId, "shopper", short ? "order.paid_short" : "order.paid", order.id),
+    audit(
+      siteId,
+      "shopper",
+      short ? "order.paid_short" : "order.paid",
+      order.id,
+    ),
     message(
       siteId,
       order.email,
@@ -335,7 +393,8 @@ async function markPaid(
         orders: (previous?.orders || 0) + 1,
         spent: {
           ...previous?.spent,
-          [order.currency]: (previous?.spent[order.currency] || 0) + order.total,
+          [order.currency]:
+            (previous?.spent[order.currency] || 0) + order.total,
         },
         updatedAt: now(),
         revision: (previous?.revision || 0) + 1,
@@ -349,9 +408,17 @@ async function markPaid(
   } catch (error) {
     // Someone else moved it first (a webhook and the shopper at once, or a
     // stock change): look again.
-    if (attempt > 1 || !(error instanceof HttpError) || error.status !== 409) throw error;
+    if (attempt > 1 || !(error instanceof HttpError) || error.status !== 409)
+      throw error;
     const fresh = await read<PrivateOrder>(siteId, "ORDER", order.id);
-    if (!fresh || fresh.status !== "pending") return fresh ?? paid;
+    if (
+      !fresh ||
+      !(
+        fresh.status === "pending" ||
+        (fresh.status === "cancelled" && fresh.checkoutOpen)
+      )
+    )
+      return fresh ?? paid;
     return markPaid(siteId, fresh, attempt + 1);
   }
 }

@@ -1,17 +1,23 @@
 /**
  * Email to shoppers through Amazon SES. Messages are written to the store's
  * outbox in the same transaction as what they're about (commerce-data.ts
- * `message`); with MAIL_FROM set they start "pending" and are sent here,
- * after the request that wrote them. Each is claimed with a conditional
- * write first, so two requests never send the same one; a claim older than
- * five minutes, or a failure, is tried again, up to five times. Without
- * MAIL_FROM they stay "local-preview" (shown in the store's outbox only).
+ * `message`); with MAIL_FROM set they start "pending" and also go on a short
+ * to-send list (MAILOUT), which is all a sender reads, after the request
+ * that wrote them. Each message is claimed with a conditional write that
+ * counts the attempt, so two requests never send it at once; a claim older
+ * than five minutes, or a failure, is tried again, five attempts in all,
+ * then it's "undeliverable". Without MAIL_FROM messages stay
+ * "local-preview" (shown in the store's outbox only).
  */
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DeleteCommand,
+  QueryCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { config, isConditional, local } from "./config";
 import { db } from "./database";
-import { key, list, now, read } from "./commerce-data";
+import { key, now, partition, read } from "./commerce-data";
 import type { OutboxMessage, StoreSettings } from "../src/commerce/types";
 
 /** The verified SES address Forma sends from; empty keeps mail as previews. */
@@ -24,27 +30,64 @@ const ses = () =>
     ...(local && process.env.SES_ENDPOINT
       ? {
           endpoint: process.env.SES_ENDPOINT,
-          credentials: { accessKeyId: "formaLocal", secretAccessKey: "localOnly" },
+          credentials: {
+            accessKeyId: "formaLocal",
+            secretAccessKey: "localOnly",
+          },
         }
       : {}),
   }));
 const ATTEMPTS = 5;
 const LEASE_MS = 5 * 60_000;
+const BATCH = 10;
 type Stored = OutboxMessage & { attempts?: number; claimedAt?: string };
 
 /** "Store name" <address>, with the name safe inside the quotes. */
 const sender = (name: string) =>
   `"${name.replace(/["\\\r\n]/g, "").slice(0, 80) || "Store"}" <${mailFrom()}>`;
 
-async function claim(siteId: string, m: Stored) {
+const dropOut = (siteId: string, id: string) =>
+  db
+    .send(
+      new DeleteCommand({
+        TableName: config.table,
+        Key: key(siteId, "MAILOUT", id),
+      }),
+    )
+    .catch(() => undefined);
+const mark = (
+  siteId: string,
+  id: string,
+  status: string,
+  extra: Record<string, unknown> = {},
+) =>
+  db.send(
+    new UpdateCommand({
+      TableName: config.table,
+      Key: key(siteId, "MAIL", id),
+      UpdateExpression: `SET #s = :s${Object.keys(extra)
+        .map((k) => `, ${k} = :${k}`)
+        .join("")} REMOVE claimedAt`,
+      ExpressionAttributeNames: { "#s": "status" },
+      ExpressionAttributeValues: {
+        ":s": status,
+        ...Object.fromEntries(
+          Object.entries(extra).map(([k, v]) => [`:${k}`, v]),
+        ),
+      },
+    }),
+  );
+/** Takes a message for sending, counting the attempt; false if it isn't ours to send now. */
+async function claim(siteId: string, id: string) {
   try {
     await db.send(
       new UpdateCommand({
         TableName: config.table,
-        Key: key(siteId, "MAIL", m.id),
-        UpdateExpression: "SET #s = :sending, claimedAt = :now",
+        Key: key(siteId, "MAIL", id),
+        UpdateExpression:
+          "SET #s = :sending, claimedAt = :now ADD attempts :one",
         ConditionExpression:
-          "#s = :pending OR #s = :failed OR (#s = :sending AND claimedAt < :stale)",
+          "(#s = :pending OR #s = :failed OR (#s = :sending AND claimedAt < :stale)) AND (attribute_not_exists(attempts) OR attempts < :max)",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: {
           ":sending": "sending",
@@ -52,6 +95,8 @@ async function claim(siteId: string, m: Stored) {
           ":failed": "failed",
           ":now": now(),
           ":stale": new Date(Date.now() - LEASE_MS).toISOString(),
+          ":one": 1,
+          ":max": ATTEMPTS,
         },
       }),
     );
@@ -61,68 +106,46 @@ async function claim(siteId: string, m: Stored) {
     throw error;
   }
 }
-async function settle(siteId: string, m: Stored, sent: boolean, detail = "") {
-  await db.send(
-    new UpdateCommand({
-      TableName: config.table,
-      Key: key(siteId, "MAIL", m.id),
-      UpdateExpression: sent
-        ? "SET #s = :s, sentAt = :now REMOVE claimedAt"
-        : "SET #s = :s, attempts = :a, lastError = :e REMOVE claimedAt",
-      ExpressionAttributeNames: { "#s": "status" },
-      ExpressionAttributeValues: sent
-        ? { ":s": "sent", ":now": now() }
-        : {
-            ":s": (m.attempts ?? 0) + 1 >= ATTEMPTS ? "undeliverable" : "failed",
-            ":a": (m.attempts ?? 0) + 1,
-            ":e": detail.slice(0, 200),
-          },
-    }),
-  );
-}
-/** Clears the "mail waiting" flag unless more mail was written since. */
-async function clearFlag(siteId: string, at?: string) {
-  await db
-    .send(
-      new UpdateCommand({
-        TableName: config.table,
-        Key: key(siteId, "MAILQ"),
-        UpdateExpression: "SET waiting = :no",
-        ConditionExpression: "#at = :at",
-        ExpressionAttributeNames: { "#at": "at" },
-        ExpressionAttributeValues: { ":no": false, ":at": at ?? "" },
-      }),
-    )
-    .catch(() => undefined);
-}
 /**
  * Sends a store's waiting messages (a few per call). Never throws: mail
  * that can't go now is tried again after a later request.
  */
-export async function deliverMail(siteId: string, store?: Pick<StoreSettings, "name" | "contactEmail">) {
+export async function deliverMail(siteId: string) {
   if (!mailFrom()) return;
   try {
-    // One read when there's nothing to send (most requests).
-    const flag = await read<{ waiting?: boolean; at?: string }>(siteId, "MAILQ");
-    if (!flag?.waiting) return;
-    const all = await list<Stored>(siteId, "MAIL", 5000);
-    const waiting = all.filter(
-      (m) =>
-        (m.status === "pending" ||
-          m.status === "failed" ||
-          (m.status === "sending" &&
-            Date.parse(m.claimedAt ?? "") < Date.now() - LEASE_MS)) &&
-        (m.attempts ?? 0) < ATTEMPTS,
+    const out = await db.send(
+      new QueryCommand({
+        TableName: config.table,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+        ExpressionAttributeValues: {
+          ":pk": partition(siteId),
+          ":prefix": "MAILOUT#",
+        },
+        Limit: BATCH,
+      }),
     );
-    if (!waiting.length) return clearFlag(siteId, flag.at);
-    const settings =
-      store ??
-      (await read<StoreSettings>(siteId, "SETTINGS").catch(() => undefined));
-    let left = false;
-    for (const m of waiting.slice(0, 10)) {
-      // Another request has it; leave the flag for whatever it decides.
-      if (!(await claim(siteId, m))) {
-        left = true;
+    const ids = (out.Items ?? []).map((i) =>
+      String(i.sk).slice("MAILOUT#".length),
+    );
+    if (!ids.length) return;
+    const settings = await read<StoreSettings>(siteId, "SETTINGS").catch(
+      () => undefined,
+    );
+    for (const id of ids) {
+      const m = await read<Stored>(siteId, "MAIL", id);
+      if (!m || m.status === "sent" || m.status === "undeliverable") {
+        await dropOut(siteId, id);
+        continue;
+      }
+      if (!(await claim(siteId, id))) {
+        // Out of attempts (a send that never reported back): give up on it.
+        if (
+          (m.attempts ?? 0) >= ATTEMPTS &&
+          Date.parse(m.claimedAt ?? "") < Date.now() - LEASE_MS
+        ) {
+          await mark(siteId, id, "undeliverable").catch(() => undefined);
+          await dropOut(siteId, id);
+        }
         continue;
       }
       try {
@@ -141,15 +164,23 @@ export async function deliverMail(siteId: string, store?: Pick<StoreSettings, "n
             },
           }),
         );
-        await settle(siteId, m, true);
       } catch (error) {
-        console.error("mail_failed", siteId, m.id, String(error).slice(0, 200));
-        await settle(siteId, m, false, String(error)).catch(() => undefined);
-        left = true;
+        console.error("mail_failed", siteId, id, String(error).slice(0, 200));
+        const last = (m.attempts ?? 0) + 1 >= ATTEMPTS;
+        await mark(siteId, id, last ? "undeliverable" : "failed", {
+          lastError: String(error).slice(0, 200),
+        }).catch(() => undefined);
+        if (last) await dropOut(siteId, id);
+        continue;
       }
+      // Sent: record it (twice if need be, so a lost write doesn't resend it).
+      await mark(siteId, id, "sent", { sentAt: now() })
+        .catch(() => mark(siteId, id, "sent", { sentAt: now() }))
+        .catch((error) =>
+          console.error("mail_settle_failed", siteId, id, String(error)),
+        );
+      await dropOut(siteId, id);
     }
-    // All sent (none failed, none beyond this batch): stop looking.
-    if (!left && waiting.length <= 10) await clearFlag(siteId, flag.at);
   } catch (error) {
     console.error("mail_delivery_failed", siteId, String(error).slice(0, 200));
   }

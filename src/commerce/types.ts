@@ -94,6 +94,8 @@ export interface Order extends Quote {
   stockShort?: boolean;
   /** Money given back, oldest first; the order is "refunded" once they add up to its total. */
   refunds?: OrderRefund[];
+  /** A refund of this much was started and not yet confirmed (owner: Finish refund). */
+  refundPending?: number;
   tracking: string;
   createdAt: string;
   updatedAt: string;

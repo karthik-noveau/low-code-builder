@@ -1353,6 +1353,58 @@ describe.skipIf(!enabled)(
         expect(await stock()).toBe(left);
       });
 
+      it("finishes a refund whose answer was lost, refunding once", async () => {
+        await restock(3);
+        const token = await cart(2);
+        const started = (await shop("checkout", { token, ...shopper })).data;
+        const session = [...sessions.values()].at(-1)!;
+        session.payment_status = "paid";
+        session.status = "complete";
+        await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        const order = async () =>
+          (await call(`/sites/${store}/commerce`)).data.orders.find(
+            (o: { id: string }) => o.id === started.orderId,
+          );
+        const paid = await order();
+        const variantId = product.variants[0].id;
+        // The same item twice can't add up to more than was bought.
+        expect(
+          (
+            await call(`/sites/${store}/commerce/orders/${paid.id}`, "POST", {
+              revision: paid.revision,
+              action: "refund",
+              lines: [
+                { variantId, quantity: 2 },
+                { variantId, quantity: 2 },
+              ],
+            })
+          ).response.status,
+        ).toBe(422);
+        dropNextRefund = true;
+        const lost = await call(`/sites/${store}/commerce/orders/${paid.id}`, "POST", {
+          revision: paid.revision,
+          action: "refund",
+          lines: [{ variantId, quantity: 1 }],
+          restock: true,
+        });
+        expect(lost.response.status).toBe(502);
+        const waiting = await order();
+        expect(waiting.refundPending).toBe(2500);
+        expect(JSON.stringify(waiting)).not.toContain("forma_rf_");
+        // Finishing it asks with the same key: one refund at Stripe.
+        const done = await call(`/sites/${store}/commerce/orders/${paid.id}`, "POST", {
+          revision: waiting.revision,
+          action: "refund",
+          amount: 99,
+        });
+        expect(done.response.status).toBe(200);
+        expect(done.data.order.refunds).toEqual([
+          expect.objectContaining({ amount: 2500, restocked: true, lines: [{ variantId, quantity: 1 }] }),
+        ]);
+        expect(done.data.order.refundPending).toBeUndefined();
+        expect(refundsOf(session.payment_intent)).toHaveLength(1);
+      });
+
       it("confirms Razorpay orders from the webhook the owner adds", async () => {
         await restock(2);
         const connected = await call(`/sites/${store}/payments`, "POST", {
