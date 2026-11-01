@@ -195,6 +195,7 @@ export async function release(
     return order;
   }
   if (!o.force && Date.parse(order.holdUntil ?? "") > Date.now()) return order;
+  let open = false;
   if (!o.unpaid && order.checkout) {
     if (await checkoutPaid(siteId, order.checkout, order.total))
       return markPaid(siteId, order);
@@ -202,6 +203,8 @@ export async function release(
     if (!(await cancelCheckout(siteId, order.checkout))) {
       if (await checkoutPaid(siteId, order.checkout, order.total))
         return markPaid(siteId, order);
+      // Still able to take a payment: confirmOrder keeps watching it.
+      open = true;
     }
   }
   const next: PrivateOrder = {
@@ -209,6 +212,7 @@ export async function release(
     status: "cancelled",
     held: false,
     expired: !o.actor,
+    ...(open ? { checkoutOpen: true } : {}),
     revision: order.revision + 1,
     updatedAt: now(),
   };
@@ -241,9 +245,16 @@ export async function sweepHolds(siteId: string) {
 
 /** Asks the provider about a pending order and records it paid if it is. */
 export async function confirmOrder(siteId: string, order: PrivateOrder) {
-  if (order.status !== "pending" || !order.checkout) return order;
+  // A cancelled order's checkout can still take a payment if the provider
+  // refused to cancel it: such a payment is recorded, never lost.
+  if (
+    !order.checkout ||
+    !(order.status === "pending" || (order.status === "cancelled" && order.checkoutOpen))
+  )
+    return order;
   if (await checkoutPaid(siteId, order.checkout, order.total))
     return markPaid(siteId, order);
+  if (order.status === "cancelled") return order;
   // Unpaid and out of time: let the stock go now rather than on a sweep.
   if (order.held && Date.parse(order.holdUntil ?? "") <= Date.now())
     return (await release(siteId, order.id)) ?? order;
@@ -267,6 +278,8 @@ async function markPaid(
     ...order,
     status: "paid",
     held: false,
+    checkoutOpen: undefined,
+    expired: undefined,
     ...(short ? { stockShort: true } : {}),
     revision: order.revision + 1,
     updatedAt: now(),

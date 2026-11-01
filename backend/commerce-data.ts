@@ -127,6 +127,30 @@ export function event(siteId: string, name: string): Write {
   };
 }
 export async function transact(writes: Write[]) {
+  // Mail to send flags its store, so senders needn't read the outbox to look.
+  const mailSites = new Set(
+    writes
+      .filter(
+        (w) =>
+          w.Put?.Item?.status === "pending" &&
+          String(w.Put.Item.sk ?? "").startsWith("MAIL#"),
+      )
+      .map((w) => String(w.Put!.Item!.pk).slice("COMMERCE#".length)),
+  );
+  writes = [
+    ...writes,
+    ...[...mailSites].map(
+      (site): Write => ({
+        Update: {
+          TableName: config.table,
+          Key: key(site, "MAILQ"),
+          UpdateExpression: "SET waiting = :yes, #at = :at",
+          ExpressionAttributeNames: { "#at": "at" },
+          ExpressionAttributeValues: { ":yes": true, ":at": now() },
+        },
+      }),
+    ),
+  ];
   const partitions = new Set(
     writes
       .map(

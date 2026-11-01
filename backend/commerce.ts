@@ -653,6 +653,8 @@ export interface PrivateOrder extends Order {
   checkout?: Checkout;
   /** Its stock is taken and held until `holdUntil` (store-checkout.ts). */
   held?: boolean;
+  /** Cancelled, but the provider wouldn't close its checkout: a payment can still land. */
+  checkoutOpen?: boolean;
 }
 export async function checkout(siteId: string, input: Record<string, unknown>) {
   const connection = await getConnection(siteId);
@@ -732,8 +734,10 @@ export function publicOrder(order: PrivateOrder): Order {
     receiptHash: _receipt,
     checkout,
     held: _held,
+    checkoutOpen: _open,
     ...result
   } = order;
+  void _open;
   void _cart;
   void _revision;
   void _receipt;

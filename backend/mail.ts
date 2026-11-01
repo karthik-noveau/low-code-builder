@@ -80,6 +80,21 @@ async function settle(siteId: string, m: Stored, sent: boolean, detail = "") {
     }),
   );
 }
+/** Clears the "mail waiting" flag unless more mail was written since. */
+async function clearFlag(siteId: string, at?: string) {
+  await db
+    .send(
+      new UpdateCommand({
+        TableName: config.table,
+        Key: key(siteId, "MAILQ"),
+        UpdateExpression: "SET waiting = :no",
+        ConditionExpression: "#at = :at",
+        ExpressionAttributeNames: { "#at": "at" },
+        ExpressionAttributeValues: { ":no": false, ":at": at ?? "" },
+      }),
+    )
+    .catch(() => undefined);
+}
 /**
  * Sends a store's waiting messages (a few per call). Never throws: mail
  * that can't go now is tried again after a later request.
@@ -87,7 +102,11 @@ async function settle(siteId: string, m: Stored, sent: boolean, detail = "") {
 export async function deliverMail(siteId: string, store?: Pick<StoreSettings, "name" | "contactEmail">) {
   if (!mailFrom()) return;
   try {
-    const waiting = (await list<Stored>(siteId, "MAIL", 5000)).filter(
+    // One read when there's nothing to send (most requests).
+    const flag = await read<{ waiting?: boolean; at?: string }>(siteId, "MAILQ");
+    if (!flag?.waiting) return;
+    const all = await list<Stored>(siteId, "MAIL", 5000);
+    const waiting = all.filter(
       (m) =>
         (m.status === "pending" ||
           m.status === "failed" ||
@@ -95,12 +114,17 @@ export async function deliverMail(siteId: string, store?: Pick<StoreSettings, "n
             Date.parse(m.claimedAt ?? "") < Date.now() - LEASE_MS)) &&
         (m.attempts ?? 0) < ATTEMPTS,
     );
-    if (!waiting.length) return;
+    if (!waiting.length) return clearFlag(siteId, flag.at);
     const settings =
       store ??
       (await read<StoreSettings>(siteId, "SETTINGS").catch(() => undefined));
+    let left = false;
     for (const m of waiting.slice(0, 10)) {
-      if (!(await claim(siteId, m))) continue;
+      // Another request has it; leave the flag for whatever it decides.
+      if (!(await claim(siteId, m))) {
+        left = true;
+        continue;
+      }
       try {
         await ses().send(
           new SendEmailCommand({
@@ -121,8 +145,11 @@ export async function deliverMail(siteId: string, store?: Pick<StoreSettings, "n
       } catch (error) {
         console.error("mail_failed", siteId, m.id, String(error).slice(0, 200));
         await settle(siteId, m, false, String(error)).catch(() => undefined);
+        left = true;
       }
     }
+    // All sent (none failed, none beyond this batch): stop looking.
+    if (!left && waiting.length <= 10) await clearFlag(siteId, flag.at);
   } catch (error) {
     console.error("mail_delivery_failed", siteId, String(error).slice(0, 200));
   }

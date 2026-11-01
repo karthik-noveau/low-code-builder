@@ -86,6 +86,8 @@ const emails: {
 const stripeHooks = new Map<string, { url: string; secret: string; events: string[] }>();
 const links = new Map<string, Link>();
 const refunds: Refund[] = [];
+/** Makes the next checkout expiry fail, as if Stripe refused it. */
+let refuseNextExpire = false;
 /** Makes the next refund go through but loses the answer, like a timeout. */
 let dropNextRefund = false;
 const refundsOf = (of: string) => refunds.filter((r) => r.of === of);
@@ -284,6 +286,10 @@ function startFake() {
         if (expire && req.method === "POST") {
           const session = sessions.get(expire[1]);
           if (!session || session.account !== account) return send(404, {});
+          if (refuseNextExpire) {
+            refuseNextExpire = false;
+            return send(500, { error: { message: "Try again later." } });
+          }
           if (session.status !== "open")
             return send(400, {
               error: { message: "Only open sessions can be expired." },
@@ -1148,6 +1154,12 @@ describe.skipIf(!enabled)(
           body,
         });
       };
+      const restock = async (n: number) =>
+        call(`/sites/${store}/commerce/products`, "POST", {
+          ...product,
+          revision: (await call(`/sites/${store}/commerce`)).data.products[0].revision,
+          variants: [{ ...product.variants[0], stock: n, price: 2500, prices: {}, title: "Medium", sku: "POT-M" }],
+        });
       /** Moves an order's hold into the past, as if 15 minutes went by. */
       const expire = async (orderId: string) => {
         const past = new Date(Date.now() - 60_000).toISOString();
@@ -1312,12 +1324,37 @@ describe.skipIf(!enabled)(
         expect(order.data.order.stockShort).toBeUndefined();
       });
 
+      it("records a payment that lands after Stripe wouldn't close the checkout", async () => {
+        await restock(2);
+        const token = await cart(1);
+        const started = (await shop("checkout", { token, ...shopper })).data;
+        const session = [...sessions.values()].at(-1)!;
+        const left = await stock();
+        refuseNextExpire = true;
+        await expire(started.orderId);
+        const gone = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        expect(gone.data.order).toMatchObject({ status: "cancelled", expired: true });
+        expect(await stock()).toBe(left + 1);
+        // The checkout stayed open, and the shopper paid.
+        expect(session.status).toBe("open");
+        session.payment_status = "paid";
+        session.status = "complete";
+        const secret = [...stripeHooks.values()].at(-1)!.secret;
+        const hook = await stripeHook(
+          store,
+          { type: "checkout.session.completed", data: { object: { ...session } } },
+          secret,
+        );
+        expect(hook.status).toBe(200);
+        const paid = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
+        expect(paid.data.order).toMatchObject({ status: "paid" });
+        expect(paid.data.order.expired).toBeUndefined();
+        // Its stock was still there, so it's taken again.
+        expect(await stock()).toBe(left);
+      });
+
       it("confirms Razorpay orders from the webhook the owner adds", async () => {
-        await call(`/sites/${store}/commerce/products`, "POST", {
-          ...product,
-          revision: (await call(`/sites/${store}/commerce`)).data.products[0].revision,
-          variants: [{ ...product.variants[0], stock: 2, price: 2500, prices: {}, title: "Medium", sku: "POT-M" }],
-        });
+        await restock(2);
         const connected = await call(`/sites/${store}/payments`, "POST", {
           provider: "razorpay",
           keyId: RZP_ID,
