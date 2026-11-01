@@ -1,0 +1,219 @@
+/* Insights page (InsightsPage.tsx); panels, stats and tables come from commerce.css. */
+.insights-body.is-loading {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.insights-range {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-canvas);
+}
+.insights-range button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.insights-range button[aria-pressed="true"] {
+  background: var(--fx-surface, #fff);
+  color: var(--ui-ink);
+  box-shadow: var(--ui-shadow-sm);
+}
+.insights-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.insights-chart {
+  position: relative;
+  margin-top: 12px;
+}
+.insights-chart svg {
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.insights-axis line {
+  stroke: var(--ui-border);
+  stroke-width: 1;
+}
+.insights-axis text {
+  fill: var(--ui-muted);
+  font-size: 11px;
+}
+.insights-line {
+  fill: none;
+  stroke: var(--ui-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.insights-area {
+  fill: var(--ui-accent);
+  opacity: 0.08;
+}
+.insights-crosshair {
+  stroke: var(--ui-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.insights-dot {
+  fill: var(--ui-accent);
+  stroke: var(--fx-surface, #fff);
+  stroke-width: 2;
+}
+.insights-bar {
+  fill: var(--ui-accent);
+  opacity: 0.85;
+}
+.insights-bar.is-active {
+  opacity: 1;
+}
+.insights-tooltip {
+  position: absolute;
+  top: -6px;
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--fx-surface, #fff);
+  box-shadow: var(--ui-shadow-sm);
+  color: var(--ui-ink);
+  font-size: 12.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.insights-tooltip small {
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+.insights-table {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.insights-table summary {
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+.insights-table .commerce-scroll {
+  max-height: 280px;
+  margin-top: 8px;
+  overflow: auto;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0 22px;
+}
+.insights-ranked ol {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.insights-ranked li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--ui-ink);
+  font-size: 13px;
+}
+.insights-ranked-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--ui-accent-soft);
+}
+.insights-ranked-name,
+.insights-ranked li strong {
+  position: relative;
+}
+.insights-ranked-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insights-ranked li strong {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.insights-ranked li strong small {
+  color: var(--ui-muted);
+  font-weight: 500;
+}
+.insights-empty {
+  margin: 14px 0 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+.insights-builder-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+.insights-builder-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-canvas);
+}
+.insights-builder-result code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ui-ink);
+  font-size: 12.5px;
+}
+.insights-builder-result .commerce-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 860px) {
+  .insights-builder-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .insights-builder-fields label:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 560px) {
+  .insights-builder-result {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .insights-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

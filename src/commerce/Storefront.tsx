@@ -39,6 +39,44 @@ interface StoreData {
   accounts?: boolean;
 }
 type Page = "shop" | "cart" | "checkout" | "receipt" | "journal" | "contact";
+/**
+ * Where this visit came from, kept for the tab so an order is credited to it
+ * (backend/insights.ts): a campaign link's utm_* (also passed on by the
+ * site's own links), an ad click, or the site that linked here.
+ */
+function visitSource(siteId: string) {
+  const key = `forma-store-source-${siteId}`;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved) return JSON.parse(saved) as Record<string, string>;
+  } catch {
+    /* Not kept: work it out again. */
+  }
+  const params = new URLSearchParams(location.search);
+  let referrer = "";
+  try {
+    const r = document.referrer ? new URL(document.referrer) : null;
+    if (r && r.host !== location.host) referrer = r.host.replace(/^www\./, "");
+  } catch {
+    /* No usable referrer. */
+  }
+  const source = {
+    source:
+      params.get("utm_source") ||
+      (params.get("gclid") ? "google" : params.get("fbclid") ? "facebook" : ""),
+    medium:
+      params.get("utm_medium") ||
+      (params.get("gclid") ? "cpc" : params.get("fbclid") ? "social" : ""),
+    campaign: params.get("utm_campaign") || "",
+    referrer,
+  };
+  try {
+    sessionStorage.setItem(key, JSON.stringify(source));
+  } catch {
+    /* Credited for this page only. */
+  }
+  return source;
+}
 /** "India" for "IN", in the shopper's language; the code if it isn't known. */
 function countryName(code: string) {
   try {
@@ -174,6 +212,7 @@ export function Storefront({ siteId }: { siteId: string }) {
         setMarketId(result.settings.markets[0].id);
         setCountry(result.settings.markets[0].countries[0]);
         try {
+          visitSource(siteId);
           const key = `forma-store-visit-${siteId}`;
           if (!sessionStorage.getItem(key)) {
             const id = crypto.randomUUID();
@@ -414,6 +453,7 @@ export function Storefront({ siteId }: { siteId: string }) {
           postalCode: values.get("postalCode"),
           country,
         },
+        attribution: visitSource(siteId),
       });
       const saved = { orderId: result.orderId, receipt: result.receipt };
       try {

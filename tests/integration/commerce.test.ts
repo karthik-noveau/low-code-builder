@@ -575,12 +575,15 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
         })
       ).status,
     ).toBe(422);
-    const preview = await admin("campaign-preview", "POST", {
+    const preview = await admin("campaigns", "POST", {
       subject: "Hello",
       body: "A newsletter",
     });
     expect(preview.data.recipients).toEqual(["subscriber@local.test"]);
-    expect(preview.data.delivery).toBe("preview-only");
+    // Real email once Forma has an SES sender (the TEST_MAIL run); previews otherwise.
+    expect(preview.data.delivery).toBe(
+      process.env.TEST_MAIL ? "email" : "preview-only",
+    );
     const mail = ((await admin()).data as CommerceOverview).outbox.find(
       (mail) => mail.subject === "Your newsletter subscription",
     )!;
@@ -593,7 +596,7 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
     ).toBe(200);
     expect(
       (
-        await admin("campaign-preview", "POST", {
+        await admin("campaigns", "POST", {
           subject: "Hello",
           body: "Test",
         })
@@ -610,7 +613,7 @@ describe("commerce against DynamoDB Local", { concurrent: false }, () => {
     ).toBe(201);
     expect(
       (
-        await admin("campaign-preview", "POST", {
+        await admin("campaigns", "POST", {
           subject: "Hello",
           body: "Test",
         })

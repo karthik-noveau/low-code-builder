@@ -7,6 +7,7 @@ import { sectionMeta, safeImage, type Section } from "./model";
 import { templateOptions } from "./templates";
 import { PaymentsPanel } from "./PaymentsPanel";
 import { RedirectsPanel } from "./RedirectsPanel";
+import { SeoPanel, TrackingPanel } from "./SeoPanel";
 
 type ThemeKey = "scale" | "spacing" | "buttons";
 /** Site-wide design tokens. The middle option is each token's default. */
@@ -700,6 +701,20 @@ export function Sidebar({
               GET PAID
             </h4>
             <PaymentsPanel />
+            <div className="panel-divider" />
+            <h4 className="eyebrow-label" id="search-sharing">
+              SEARCH & SHARING
+            </h4>
+            <SeoPanel />
+            <div className="panel-divider" />
+            <h4 className="eyebrow-label" id="tracking">
+              TRACKING
+            </h4>
+            <TrackingPanel
+              siteId={
+                new URLSearchParams(location.search).get("site") ?? undefined
+              }
+            />
             <div className="panel-divider" />
             <h4 className="eyebrow-label" id="moved-pages">
               MOVED PAGES

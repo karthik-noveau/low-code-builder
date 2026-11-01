@@ -1158,3 +1158,60 @@ html body .admin-ui .migrate .commerce-link {
     grid-template-columns: 1fr;
   }
 }
+
+/* Store → Marketing (MarketingPanel.tsx) */
+.marketing-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.marketing-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.commerce-field small {
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.marketing-email {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-canvas);
+}
+.marketing-email strong {
+  color: var(--ui-ink);
+  font-size: 15px;
+}
+.marketing-email small {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+.marketing-email p {
+  margin: 10px 0 0;
+  color: var(--ui-text);
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.marketing-offer {
+  max-width: 280px;
+  margin: 14px 0;
+}
+@media (max-width: 960px) {
+  .marketing-compose {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .marketing-pair {
+    grid-template-columns: 1fr;
+  }
+}

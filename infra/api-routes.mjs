@@ -194,6 +194,15 @@ export const apiRoutes = [
     route: "POST /sites/{id}/commerce/products",
     auth: "jwt",
   },
+  // Insights: page views from published sites, and the owner's reports.
+  {
+    id: "TrackRoute",
+    route: "POST /track/{id}",
+    auth: "none",
+    // Shared by every published site, so set for their combined traffic.
+    throttle: { burst: 500, rate: 200 },
+  },
+  { id: "InsightsRoute", route: "GET /sites/{id}/insights", auth: "jwt" },
   {
     id: "CommerceCustomersRoute",
     route: "POST /sites/{id}/commerce/customers",
@@ -241,7 +250,7 @@ export const apiRoutes = [
   },
   {
     id: "CommerceCampaignRoute",
-    route: "POST /sites/{id}/commerce/campaign-preview",
+    route: "POST /sites/{id}/commerce/campaigns",
     auth: "jwt",
   },
   // Forma Store: the storefront, called by shoppers without a token.

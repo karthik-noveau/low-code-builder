@@ -42,6 +42,7 @@ import type {
 } from "../src/commerce/types";
 import { accountsOpen } from "./shoppers";
 import { cognitoUser } from "./invites";
+import { remindCheckout } from "./marketing";
 import { getConnection, refundCheckout, type Checkout } from "./payments";
 import { refundAmount } from "../src/commerce/refunds";
 import {
@@ -736,6 +737,7 @@ export async function checkout(siteId: string, input: Record<string, unknown>) {
     cartHash: cartKey(token),
     cartRevision: cart.revision,
     receiptHash: digest(receipt),
+    ...attribution(input.attribution),
   };
   if (connection)
     return startPaidCheckout(
@@ -753,6 +755,25 @@ export async function checkout(siteId: string, input: Record<string, unknown>) {
     event(siteId, "checkout.started"),
   ]);
   return { orderId: id, receipt };
+}
+/**
+ * Where the shopper came from (Storefront.tsx remembers it for the visit):
+ * the campaign's utm_source, medium and name, or the site that sent them.
+ */
+function attribution(value: unknown): { attribution?: Order["attribution"] } {
+  if (!value || typeof value !== "object") return {};
+  const v = value as Record<string, unknown>;
+  const field = (x: unknown, max: number) =>
+    typeof x === "string" && /^[\w .+:/-]*$/.test(x)
+      ? x.trim().toLowerCase().slice(0, max)
+      : "";
+  const result = {
+    source: field(v.source, 40),
+    medium: field(v.medium, 40),
+    campaign: field(v.campaign, 60),
+    referrer: field(v.referrer, 80),
+  };
+  return Object.values(result).some(Boolean) ? { attribution: result } : {};
 }
 export function publicOrder(order: PrivateOrder): Order {
   const {
@@ -978,6 +999,22 @@ export async function orderAction(
         `Return ${next.returnRequest.status}`,
         `Your return request for ${id.slice(0, 8)} is ${next.returnRequest.status}. ${next.returnRequest.response}`,
       ),
+    ]);
+    return publicOrder(next);
+  }
+  // A checkout that ran out unpaid: remind the shopper once (marketing.ts).
+  if (action === "remind") {
+    const reminder = await remindCheckout(siteId, publicOrder(order), input);
+    const next = {
+      ...order,
+      remindedAt: now(),
+      revision: order.revision + 1,
+      updatedAt: now(),
+    };
+    await transact([
+      put(siteId, "ORDER", id, next, order.revision),
+      audit(siteId, actor, "checkout.reminded", id),
+      reminder,
     ]);
     return publicOrder(next);
   }

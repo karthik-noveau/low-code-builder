@@ -1,6 +1,7 @@
 import { validateCollections, type Collection } from "./collections";
 import { validatePayments, type PaymentSettings } from "./payments";
 import { validateRedirects, type Redirect } from "./redirects";
+import { validateSeo, type SiteSeo } from "./seo";
 import { validateApp, type App } from "../apps/model";
 import type { Node } from "../blocks/model";
 import {
@@ -179,6 +180,10 @@ export interface Page {
   sections: Section[];
   /** Values the page remembers while someone is on it (src/blocks/logic). */
   variables?: PageVariable[];
+  /** The picture shown when this page is shared (falls back to the site's). */
+  image?: string;
+  /** Keep this page out of search results and the sitemap. */
+  noindex?: boolean;
 }
 export interface Asset {
   id: string;
@@ -217,6 +222,8 @@ export interface Project {
   app?: App;
   /** Old addresses (from a previous site) that send visitors to new ones. */
   redirects?: Redirect[];
+  /** Search, sharing and tracking settings (src/studio/seo.ts). */
+  seo?: SiteSeo;
 }
 export const uid = () => crypto.randomUUID();
 export const pageHref = (slug: string) =>
@@ -644,6 +651,7 @@ export function validateProject(value: unknown): value is Project {
     (p.collections === undefined || validateCollections(p.collections)) &&
     (p.payments === undefined || validatePayments(p.payments)) &&
     (p.redirects === undefined || validateRedirects(p.redirects)) &&
+    (p.seo === undefined || validateSeo(p.seo)) &&
     (p.app === undefined ||
       validateApp(
         p.app,
@@ -669,7 +677,10 @@ export function validateProject(value: unknown): value is Project {
         /^(?:|[a-z0-9]+(?:-[a-z0-9]+)*)$/.test(pg.slug) &&
         Array.isArray(pg.sections) &&
         pg.sections.every(sectionValid) &&
-        variablesValid(pg.variables),
+        variablesValid(pg.variables) &&
+        (pg.image === undefined ||
+          (typeof pg.image === "string" && pg.image.length <= 3_000_000)) &&
+        (pg.noindex === undefined || typeof pg.noindex === "boolean"),
     )
   ))
     return false;

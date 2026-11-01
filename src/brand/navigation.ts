@@ -2,7 +2,7 @@ import { collections, guides, pageMeta } from "./content";
 
 export function safeDestination(value: string | null) {
   return value &&
-    /^\/(?:workspace|new|editor|domains|commerce|apps|owner|store|account|customer)(?:\?|$)/.test(
+    /^\/(?:workspace|new|editor|domains|insights|commerce|apps|owner|store|account|customer)(?:\?|$)/.test(
       value,
     ) &&
     !/[\\\r\n]/.test(value)
@@ -28,6 +28,7 @@ export const privatePaths = [
   "/workspace",
   "/workspace/templates",
   "/domains",
+  "/insights",
   "/new",
   "/editor",
   "/commerce",
@@ -44,6 +45,11 @@ export function metadataFor(path: string) {
     return {
       title: "Store management — Forma",
       description: "Manage your products, orders, customers and storefront.",
+    };
+  if (path === "/insights")
+    return {
+      title: "Insights — Forma",
+      description: "Visitors, sources, campaigns and sales for your website.",
     };
   if (path === "/apps")
     return {

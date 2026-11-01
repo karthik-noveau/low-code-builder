@@ -197,7 +197,7 @@ async function handler(event) {
   const explicit = /^releases\\/([a-f0-9-]{36})\\/(.*)$/.exec(match[2]);
   let file = (explicit ? explicit[2] : match[2]) || 'index.html';
   if (/^[a-z0-9-]+(?:\\/[a-z0-9-]+){0,3}$/.test(file)) file += '.html';
-  if (!/^(?:(?:[a-z0-9-]+\\/){0,3}[a-z0-9-]+\\.html|styles\\.css|app\\.js|logic\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
+  if (!/^(?:(?:[a-z0-9-]+\\/){0,3}[a-z0-9-]+\\.html|styles\\.css|app\\.js|logic\\.js|insights\\.js|robots\\.txt|sitemap\\.xml|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
   request.uri = '/sites/' + match[1] + '/releases/' + (explicit ? explicit[1] : live) + '/' + file;
   return request;
 }`;
@@ -283,10 +283,11 @@ export function template() {
             ? {
                 ContentSecurityPolicy: {
                   Override: true,
-                  // Same as the local site server: only Forma's app.js, logic.js and sw.js run,
+                  // Same as the local site server: only Forma's own scripts run (plus Google
+                  // Analytics and the Meta Pixel when an owner turns them on, insights.js),
                   // talking to the API and (for the offline cache) the site itself.
                   ContentSecurityPolicy: sub(
-                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${Api.ApiEndpoint}; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'",
+                    "default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' ${Api.ApiEndpoint} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.facebook.com; manifest-src 'self'; worker-src 'self'; form-action 'self' https:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'",
                   ),
                 },
               }

@@ -27,6 +27,7 @@ import { MarketsEditor } from "./MarketsEditor";
 import { parseCsv, toCsv } from "./csv";
 import { PRODUCT_COLUMNS, parseExport, SOURCE_NAMES } from "./migrate";
 import { MigrationPanel } from "./MigrationPanel";
+import { MarketingPanel } from "./MarketingPanel";
 import { importProductDrafts } from "./importer";
 import { activityLabel, orderNumber, returnLabel, statusLabel } from "./labels";
 import { refundAmount } from "./refunds";
@@ -43,6 +44,7 @@ const sections = [
   "Discounts",
   "Content",
   "Inbox",
+  "Marketing",
   "Import & migrate",
   "Markets",
   "Team",
@@ -58,6 +60,8 @@ const descriptions: Record<Section, string> = {
   Discounts: "Create offers with clear limits and expiry dates.",
   Content: "Write and publish stories for your storefront.",
   Inbox: "Read form submissions and preview store emails.",
+  Marketing:
+    "Email campaigns to subscribers, and reminders for checkouts left unpaid.",
   "Import & migrate":
     "Bring products, customers and old links over from Shopify, Wix or a spreadsheet.",
   Markets: "Choose where you sell, and how you price and deliver.",
@@ -495,11 +499,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   const [selectedOrder, setSelectedOrder] = useState<string>(),
     [tracking, setTracking] = useState("");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("All");
-  const [campaignPreview, setCampaignPreview] = useState<{
-    subject: string;
-    body: string;
-    count: number;
-  }>();
+
   const [integrationSecret, setIntegrationSecret] = useState(""),
     [integrationEvents, setIntegrationEvents] = useState<{
       name: string;
@@ -1709,34 +1709,13 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </p>
             )}
           </section>
-          <CampaignForm
-            disabled={busy || !canManage}
-            onPreview={async (input) => {
-              try {
-                const result = await commerceRequest(
-                  siteId,
-                  "campaign-preview",
-                  input,
-                );
-                setCampaignPreview(
-                  result as { subject: string; body: string; count: number },
-                );
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Preview failed.");
-              }
-            }}
-          />
-          {campaignPreview && (
-            <section className="commerce-panel" aria-label="Campaign preview">
-              <p className="commerce-muted">
-                Would go to {campaignPreview.count} subscriber
-                {campaignPreview.count === 1 ? "" : "s"} who opted in. Nothing
-                has been sent.
-              </p>
-              <h2>{campaignPreview.subject}</h2>
-              <p className="commerce-article">{campaignPreview.body}</p>
-            </section>
-          )}
+          <div className="commerce-notice">
+            Email campaigns and checkout reminders are in{" "}
+            <button className="commerce-link" onClick={() => go("Marketing")}>
+              Marketing
+            </button>
+            .
+          </div>
           <section className="commerce-panel">
             {data.outbox.some((m) => m.status !== "local-preview") ? (
               <>
@@ -1773,6 +1752,15 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
             )}
           </section>
         </>
+      );
+    if (section === "Marketing")
+      return (
+        <MarketingPanel
+          siteId={siteId}
+          data={data}
+          canManage={canManage}
+          onChanged={refresh}
+        />
       );
     if (section === "Import & migrate")
       return (
@@ -2542,45 +2530,6 @@ function ContentForm({
     </form>
   );
 }
-function CampaignForm({
-  disabled,
-  onPreview,
-}: {
-  disabled: boolean;
-  onPreview: (input: unknown) => Promise<void>;
-}) {
-  return (
-    <form
-      className="commerce-panel commerce-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fields = new FormData(e.currentTarget);
-        void onPreview({
-          subject: fields.get("subject"),
-          body: fields.get("body"),
-        });
-      }}
-    >
-      <h2>Campaign preview</h2>
-      <p className="commerce-muted">
-        Preview an email for newsletter subscribers who explicitly opted in. No
-        email is sent.
-      </p>
-      <label className="commerce-field">
-        Subject
-        <input required name="subject" maxLength={160} />
-      </label>
-      <label className="commerce-field">
-        Message
-        <textarea required name="body" maxLength={5000} />
-      </label>
-      <button className="commerce-button secondary" disabled={disabled}>
-        Preview recipients & message
-      </button>
-    </form>
-  );
-}
-
 /** Shopify-style setup guide: progress, done steps checked, the next one open. */
 function SetupGuide({
   steps,

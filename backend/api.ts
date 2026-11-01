@@ -1,3 +1,4 @@
+import { insights, track } from "./insights";
 import {
   addDomain,
   listDomains,
@@ -156,6 +157,18 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
       if (notice) await deliverMail(notice.siteId);
       return jsonResponse({ received: true });
     }
+    // A page view from a published site: always "fine", so pages never wait or retry.
+    const hit = /^\/track\/([^/]+)$/.exec(path);
+    if (hit && method === "POST") {
+      await track(request, hit[1]).catch((error) =>
+        console.error("track_failed", String(error).slice(0, 200)),
+      );
+      return {
+        status: 204,
+        headers: { "cache-control": "no-store" },
+        body: Buffer.alloc(0),
+      };
+    }
     const inbox = await inboxPublic(request);
     if (inbox) return inbox;
     const apps = await appsPublic(request);
@@ -241,6 +254,11 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         ...(revoked ? {} : { revoked: false }),
       });
     }
+    const insightsMatch = /^\/sites\/([^/]+)\/insights$/.exec(path);
+    if (insightsMatch && method === "GET")
+      return jsonResponse(
+        await insights(request.owner!, insightsMatch[1], request.query),
+      );
     const appMatch = /^\/sites\/[^/]+\/app(\/.*)?$/.exec(path);
     if (appMatch && access)
       return await appOwnerApi(request, access.site, appMatch[1] ?? "", data);

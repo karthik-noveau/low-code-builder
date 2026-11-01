@@ -1401,12 +1401,14 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                     openUtility("theme");
                     return;
                   }
-                  if (item.target === "payments") {
+                  if (item.target === "payments" || item.target === "seo") {
+                    const anchor =
+                      item.target === "seo" ? "search-sharing" : "get-paid";
                     setDialog(null);
                     openUtility("settings");
                     requestAnimationFrame(() =>
                       document
-                        .getElementById("get-paid")
+                        .getElementById(anchor)
                         ?.scrollIntoView({ block: "start" }),
                     );
                     return;

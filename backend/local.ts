@@ -59,6 +59,7 @@ async function drainQueue() {
         await publishJob(job);
         await deleteItem("LOCAL_QUEUE", `JOB#${job.id}`);
       } catch (error) {
+        console.error("publish_failed", job.siteId, String(error).slice(0, 300));
         const attempts = job.attempts + 1;
         if (
           error instanceof HttpError ||
@@ -238,6 +239,7 @@ const server = createServer(async (req, res) => {
             "if-match": req.headers["if-match"],
             "stripe-signature": req.headers["stripe-signature"] as string | undefined,
             "x-razorpay-signature": req.headers["x-razorpay-signature"] as string | undefined,
+            "user-agent": req.headers["user-agent"],
           },
         });
     }
@@ -269,6 +271,8 @@ const contentTypes: Record<string, string> = {
   js: "text/javascript; charset=utf-8",
   webmanifest: "application/manifest+json",
   svg: "image/svg+xml",
+  txt: "text/plain; charset=utf-8",
+  xml: "application/xml; charset=utf-8",
 };
 const sitesServer = createServer(async (req, res) => {
   try {
@@ -321,7 +325,7 @@ const sitesServer = createServer(async (req, res) => {
     if (/^[a-z0-9-]+(?:\/[a-z0-9-]+){0,3}$/.test(file)) file += ".html";
     if (
       !idPattern.test(release) ||
-      !/^(?:(?:[a-z0-9-]+\/){0,3}[a-z0-9-]+\.html|styles\.css|app\.js|logic\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
+      !/^(?:(?:[a-z0-9-]+\/){0,3}[a-z0-9-]+\.html|styles\.css|app\.js|logic\.js|insights\.js|robots\.txt|sitemap\.xml|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
         file,
       )
     )
@@ -338,9 +342,9 @@ const sitesServer = createServer(async (req, res) => {
         : "no-store",
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin",
-      // Scripts are only Forma's own app.js, logic.js and sw.js; they talk to the API and,
-      // for the offline cache, the site itself.
-      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self'; connect-src 'self' ${config.apiOrigin}; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'`,
+      // Scripts are Forma's own (app.js, logic.js, insights.js, sw.js), plus Google
+      // Analytics and the Meta Pixel when the owner turns them on.
+      "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' ${config.apiOrigin} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.facebook.com; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'`,
     });
     res.end(req.method === "HEAD" ? undefined : bytes);
   } catch {

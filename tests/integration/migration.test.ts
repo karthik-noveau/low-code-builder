@@ -240,12 +240,15 @@ describe("store migration", () => {
     expect((await page("blogs/news/spring")).html).toContain(
       "url=https://example.com/spring",
     );
+    // The Shopify address is the product's own page on the site now…
     const shirt = await page("products/linen-shirt");
     expect(shirt.status).toBe(200);
-    expect(shirt.html).toMatch(
-      new RegExp(`url=[^"]*/store\\?site=${site}&#38;product=`),
+    expect(shirt.html).toContain('"@type":"Product"');
+    expect(shirt.html).toContain(`/store?site=${site}&amp;product=`);
+    // …and the Wix one forwards to it.
+    expect((await page("product-page/linen-shirt")).html).toContain(
+      'url=../products/linen-shirt.html"',
     );
-    expect((await page("product-page/linen-shirt")).html).toContain("product=");
     expect((await page("collections/summer-shirts")).html).toContain(
       "collection=Summer+Shirts",
     );

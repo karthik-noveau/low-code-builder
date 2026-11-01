@@ -37,6 +37,7 @@ import {
 } from "../blocks/logic/project";
 import { LOGIC_SCRIPT } from "../blocks/logic/runtime";
 import type { AppForm } from "../apps/model";
+import { pagePath, seoHead, seoOf, type HeadInput } from "./seo";
 const escape = (value: string) =>
   value.replace(
     /[&<>"']/g,
@@ -45,13 +46,38 @@ const escape = (value: string) =>
         c
       ]!,
   );
-/** Title and description for link previews in chats and social apps. */
-const shareTags = (title: string, description: string) =>
-  `<meta property="og:type" content="website"><meta property="og:title" content="${escape(title)}">` +
-  (description
-    ? `<meta property="og:description" content="${escape(description)}">`
-    : "") +
-  '<meta name="twitter:card" content="summary">';
+/**
+ * Forma's insights script (and, when the owner set them, Google Analytics
+ * and the Meta Pixel), configured by data attributes: the page's CSP runs
+ * only the site's own scripts.
+ */
+function trackerTag(project: Project, tracker?: RenderOptions["tracker"]) {
+  const seo = seoOf(project);
+  if (!tracker || (!seo.analytics && !seo.ga4 && !seo.metaPixel)) return "";
+  const data = [
+    seo.analytics && `data-api="${escape(tracker.api)}"`,
+    seo.ga4 && `data-ga="${escape(seo.ga4)}"`,
+    seo.metaPixel && `data-pixel="${escape(seo.metaPixel)}"`,
+    (seo.ga4 || seo.metaPixel) && seo.consent && 'data-consent="1"',
+  ].filter(Boolean);
+  return `<script src="insights.js" ${data.join(" ")} defer></script>`;
+}
+/** The <head> lines every published page shares after its own title and description. */
+function head(
+  project: Project,
+  options: RenderOptions,
+  seo: Omit<HeadInput, "project" | "siteUrl">,
+) {
+  return `<title>${escape(seo.title)}</title><meta name="description" content="${escape(seo.description)}">${seoHead({ ...seo, project, siteUrl: options.siteUrl ?? "" })}<meta name="theme-color" content="${escape(project.theme.accent)}">`;
+}
+/** A page's first picture, for its social card when it has none of its own. */
+const firstImage = (sections: Section[]) =>
+  sections
+    .filter((s) => !s.hidden)
+    .flatMap(sectionImages)
+    .find((src) => /^(?:https:\/\/|\/)/.test(src));
+const htmlOpen = (project: Project) =>
+  `<!doctype html>\n<html lang="${escape(seoOf(project).language)}">`;
 /**
  * App forms visitors can reach: placed in a visible "app" section or app form
  * block. Only these accept visitors once published.
@@ -106,6 +132,10 @@ type RenderOptions = {
   owner?: string;
   /** Forma Store's products, when its catalogue is on the website. */
   store?: StoreProduct[];
+  /** The site's absolute address, for canonical links, social cards and the sitemap. */
+  siteUrl?: string;
+  /** Where the insights script sends page views. */
+  tracker?: { api: string };
 };
 export function renderPage(
   project: Project,
@@ -117,7 +147,26 @@ export function renderPage(
     ...page.sections,
     ...project.footer,
   ]);
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(page.title || page.name)}</title><meta name="description" content="${escape(page.description)}">${shareTags(page.title || page.name, page.description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`;
+  const home = project.pages[0];
+  return `${htmlOpen(project)}<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head(
+    project,
+    options,
+    {
+      title: page.title || page.name,
+      description: page.description,
+      path: pagePath(page.slug),
+      image: page.image,
+      fallbackImage: firstImage(page.sections),
+      noindex: page.noindex,
+      trail:
+        page.id === home.id
+          ? undefined
+          : [
+              [home.title || home.name, ""],
+              [page.name, pagePath(page.slug)],
+            ],
+    },
+  )}<link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}${trackerTag(project, options.tracker)}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`;
 }
 /** An item's own page. It lives one folder down, so <base> keeps every relative link working. */
 export function renderItemPage(
@@ -137,10 +186,120 @@ export function renderItemPage(
     { ...project.pages[0], variables: undefined },
     [...project.header, ...project.footer],
   );
-  return `<!doctype html>\n<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${shareTags(title, description)}<meta name="theme-color" content="${escape(project.theme.accent)}"><link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}</head><body>${renderToStaticMarkup(<Website project={project} page={{ ...project.pages[0], variables: undefined }} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`.replace(
+  const home = project.pages[0];
+  const image = collection.fields
+    .filter((f) => f.type === "image")
+    .map((f) => item.values[f.id])
+    .find((v) => !!v);
+  return `${htmlOpen(project)}<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../">${head(
+    project,
+    options,
+    {
+      title,
+      description,
+      path: `${collection.slug}/${item.slug}`,
+      fallbackImage: image,
+      type: "article",
+      trail: [
+        [home.title || home.name, ""],
+        [itemTitle(collection, item), `${collection.slug}/${item.slug}`],
+      ],
+    },
+  )}<link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${logic.head}${trackerTag(project, options.tracker)}</head><body>${renderToStaticMarkup(<Website project={project} page={{ ...project.pages[0], variables: undefined }} item={{ collection, item }} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}${logic.body}</body></html>`.replace(
     // <base href="../"> would send in-page "#" links to the home page.
     /href="#/g,
     `href="${itemHref(collection, item)}#`,
+  );
+}
+/** A store product as its page on the published site shows it. */
+export interface ProductPage {
+  id: string;
+  /** products/<slug> — the Shopify handle when the product came from Shopify. */
+  slug: string;
+  title: string;
+  description: string;
+  image: string;
+  collection: string;
+  /** Lowest variant price, in minor units, and its currency. */
+  amount: number;
+  currency: string;
+  /** The product in the store, where it's bought. */
+  url: string;
+}
+export const productHref = (p: { slug: string }) => `products/${p.slug}.html`;
+/**
+ * A store product's own page on the site: fast, readable without scripts,
+ * and described to search engines as a Product with its price. Buying
+ * happens in the store.
+ */
+export function renderProductPage(
+  project: Project,
+  product: ProductPage,
+  options: RenderOptions = {},
+) {
+  const price = new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: product.currency,
+  }).format(product.amount / 100);
+  const path = `products/${product.slug}`;
+  const description = product.description.replace(/\s+/g, " ").slice(0, 160);
+  const section = createSection("imageText", {
+    id: `product-${product.id}`,
+    name: product.title,
+    eyebrow: product.collection.toUpperCase(),
+    title: product.title,
+    body: `${price}\n\n${product.description}`,
+    image: product.image,
+    imageAlt: product.title,
+    buttonLabel: "Buy now",
+    buttonUrl: product.url,
+    background: "",
+    layout: "split",
+  });
+  const page = {
+    ...project.pages[0],
+    id: `product-page-${product.id}`,
+    name: product.title,
+    slug: path,
+    sections: [section],
+    variables: undefined,
+  };
+  const home = project.pages[0];
+  const url = options.siteUrl ? new URL(path, options.siteUrl).toString() : "";
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    ...(description && { description }),
+    ...(/^https:\/\//.test(product.image) && { image: product.image }),
+    ...(product.collection && { category: product.collection }),
+    sku: product.id,
+    offers: {
+      "@type": "Offer",
+      price: (product.amount / 100).toFixed(2),
+      priceCurrency: product.currency,
+      url: product.url,
+    },
+    ...(url && { url }),
+  };
+  return `${htmlOpen(project)}<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../">${head(
+    project,
+    options,
+    {
+      title: `${product.title} — ${project.name}`,
+      description: description || `${product.title}, ${price}.`,
+      path,
+      image: product.image,
+      type: "product",
+      data: [data],
+      trail: [
+        [home.title || home.name, ""],
+        [product.title, path],
+      ],
+    },
+  )}<link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${trackerTag(project, options.tracker)}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}</body></html>`.replace(
+    /href="#/g,
+    `href="${productHref(product)}#`,
   );
 }
 /** Where visitors land after sending a request from a published site. */

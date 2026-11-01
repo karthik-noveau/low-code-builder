@@ -12,6 +12,7 @@ import { readObject, writeObject, deleteObject } from "./objects";
 import { decodeProject } from "./project";
 import { compileSite } from "./compiler";
 import { publicationCommerce } from "./commerce-publishing";
+import { trackingKey } from "./insights";
 import { activateInbox, inboxConfig, writeInboxConfig } from "./inbox";
 import { activateApp, appConfig, writeAppConfig } from "./apps";
 import type { Job, Release } from "./types";
@@ -146,6 +147,13 @@ export async function publishJob(job: Job) {
       releaseId = job.id;
       const prefix = `sites/${job.siteId}/releases/${releaseId}`;
       const commerce = await publicationCommerce(job.siteId);
+      // The address search engines and social cards should use: the owner's
+      // choice, else the primary domain, else the site's Forma address.
+      const site = await getSite(job.owner, job.siteId);
+      const siteUrl =
+        (project.seo?.siteUrl && project.seo.siteUrl.replace(/\/?$/, "/")) ||
+        site.domainUrl ||
+        `${config.siteOrigin}/sites/${job.siteId}/`;
       await writeInboxConfig(job.siteId, releaseId, inboxConfig(project));
       await writeAppConfig(job.siteId, releaseId, appConfig(project));
       const files = await compileSite(
@@ -154,7 +162,19 @@ export async function publishJob(job: Job) {
         commerce,
         `${config.apiOrigin}/inbox/${job.siteId}`,
         `${config.apiOrigin}/apps/${job.siteId}`,
+        { siteUrl, track: `${config.apiOrigin}/track/${job.siteId}` },
       );
+      // Page views count only for sites whose owner left insights on.
+      if (project.seo?.analytics === false)
+        await deleteItem(
+          trackingKey(job.siteId).pk,
+          trackingKey(job.siteId).sk,
+        );
+      else
+        await putItem({
+          ...trackingKey(job.siteId),
+          since: new Date().toISOString(),
+        });
       // Bounded uploads; promote only after every artifact and its manifest are durable.
       for (let i = 0; i < files.length; i += 4)
         await Promise.all(

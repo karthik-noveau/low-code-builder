@@ -220,8 +220,14 @@ describe("API routes on AWS", () => {
       const key = r.Properties.RouteKey;
       if (r.Properties.AuthorizationType === "NONE" && key !== "GET /health") {
         expect(settings[key], key).toBeDefined();
-        expect(settings[key].ThrottlingBurstLimit).toBeLessThanOrEqual(20);
-        expect(settings[key].ThrottlingRateLimit).toBeLessThanOrEqual(10);
+        // Page views from every published site share one route; it only adds to counters.
+        const views = key === "POST /track/{id}";
+        expect(settings[key].ThrottlingBurstLimit).toBeLessThanOrEqual(
+          views ? 500 : 20,
+        );
+        expect(settings[key].ThrottlingRateLimit).toBeLessThanOrEqual(
+          views ? 200 : 10,
+        );
       }
     }
     for (const key of Object.keys(settings)) {
@@ -265,7 +271,7 @@ describe("API routes on AWS", () => {
       [`GET ${owner}/export`, "JWT"],
       [`POST ${owner}/integrations`, "JWT"],
       [`GET ${owner}/integrations/${order}/events`, "JWT"],
-      [`POST ${owner}/campaign-preview`, "JWT"],
+      [`POST ${owner}/campaigns`, "JWT"],
     ]) {
       const [method, path] = request.split(" ");
       const entry = matchRoute(method, path);

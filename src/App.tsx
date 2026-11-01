@@ -40,6 +40,11 @@ const AccountPage = lazy(() =>
   })),
 );
 
+const InsightsPage = lazy(() =>
+  import("./insights/InsightsPage").then((module) => ({
+    default: module.InsightsPage,
+  })),
+);
 const DomainsPage = lazy(() =>
   import("./brand/DomainsPage").then((module) => ({
     default: module.DomainsPage,
@@ -154,6 +159,8 @@ export default function App() {
   else if (path === "/customer")
     page = <CustomerAccount siteId={query.get("site") || ""} />;
   else if (path === "/account") page = <AccountPage />;
+  else if (path === "/insights")
+    page = <InsightsPage siteId={query.get("site") || ""} />;
   else if (path === "/domains")
     page = <DomainsPage siteId={query.get("site") || ""} />;
   else if (path === "/new") page = <NewWebsite />;

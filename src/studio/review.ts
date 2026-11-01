@@ -9,6 +9,7 @@ import { appIssues, appSectionProblem, type AppTarget } from "../apps/issues";
 import { appFormsIn, shownNodes } from "../blocks/project";
 import { formattedLinks } from "../blocks/richtext";
 import { onWhite, readableAccent } from "./accent";
+import { seoProblems } from "./seo";
 
 export interface ReviewItem {
   id: string;
@@ -18,7 +19,8 @@ export interface ReviewItem {
   section?: string;
   kind: "content" | "links" | "forms" | "images";
   /** Fixed outside the page: a collection's Data settings, Settings → Get paid, or the App. */
-  target?: { collection: string } | { app: AppTarget } | "payments" | "theme";
+  target?:
+    { collection: string } | { app: AppTarget } | "payments" | "theme" | "seo";
 }
 export function reviewProject(project: Project): ReviewItem[] {
   const issues: ReviewItem[] = [];
@@ -250,5 +252,15 @@ export function reviewProject(project: Project): ReviewItem[] {
         target: "payments",
       });
   }
+  // Search: titles and descriptions that read badly in results, and site-wide settings.
+  for (const problem of seoProblems(project))
+    issues.push({
+      id: problem.id,
+      title: problem.title,
+      detail: problem.detail,
+      page: problem.page?.id ?? project.pages[0].id,
+      kind: "content",
+      ...(problem.page ? {} : { target: "seo" as const }),
+    });
   return issues;
 }

@@ -1,3 +1,10 @@
+import {
+  SearchPreview,
+  ShareImageField,
+  SocialPreview,
+  Toggle,
+} from "./SeoPanel";
+import { previewHost, seoOf } from "./seo";
 import { useEffect, useRef, useState } from "react";
 import type { TextField } from "./InlineText";
 import { Icon } from "./Icon";
@@ -155,7 +162,7 @@ export function Inspector({
             <Field
               label="Page title"
               value={page.title}
-              hint="Shown in the browser tab and search results."
+              hint={`Shown in the browser tab and search results. ${(page.title || page.name).length} / 60 characters.`}
               onChange={(title) => store.updatePage(page.id, { title })}
             />
             <div className="field">
@@ -200,22 +207,40 @@ export function Inspector({
               onChange={(description) =>
                 store.updatePage(page.id, { description })
               }
-              hint={`${page.description.length} / 160 recommended characters`}
+              hint={`${page.description.length} / 160 characters${page.description.length && page.description.length < 50 ? " · a little more helps" : page.description.length > 160 ? " · search results cut it off" : ""}`}
+            />
+          </div>
+          <div className="inspector-group">
+            <ShareImageField
+              value={page.image ?? ""}
+              onChange={(image) =>
+                store.updatePage(page.id, { image: image || undefined })
+              }
+              hint="Shown when this page is shared. Without one, the site’s share image is used."
+            />
+            <Toggle
+              label="Hide from search engines"
+              hint="Kept out of search results and the sitemap."
+              checked={!!page.noindex}
+              onChange={(noindex) =>
+                store.updatePage(page.id, { noindex: noindex || undefined })
+              }
             />
           </div>
           <div className="inspector-group">
             <h4>SEARCH PREVIEW</h4>
-            <div className="seo-preview">
-              <span>
-                {store.project.name.toLowerCase().replace(/\s+/g, "")}.com/
-                {page.slug}
-              </span>
-              <strong>{page.title || page.name}</strong>
-              <p>
-                {page.description ||
-                  "Add a description to help people discover this page."}
-              </p>
-            </div>
+            <SearchPreview
+              url={`${previewHost(seoOf(store.project), store.project.name)}${page.slug ? ` › ${page.slug}` : ""}`}
+              title={page.title || page.name}
+              description={page.description}
+            />
+            <h4>SHARE PREVIEW</h4>
+            <SocialPreview
+              host={previewHost(seoOf(store.project), store.project.name)}
+              title={page.title || page.name}
+              description={page.description}
+              image={page.image || seoOf(store.project).image}
+            />
           </div>
           {page.id !== store.project.pages[0].id && (
             <div className="inspector-group">

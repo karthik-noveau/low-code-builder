@@ -490,7 +490,7 @@ describe(
       );
       expect(events.status).toBe(200);
       expect((await admin("export")).data.format).toBe("forma-commerce-v1");
-      const campaign = await admin("campaign-preview", "POST", {
+      const campaign = await admin("campaigns", "POST", {
         subject: "Spring",
         body: "New planters",
       });

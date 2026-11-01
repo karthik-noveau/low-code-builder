@@ -174,6 +174,37 @@ export async function transact(writes: Write[]) {
         : [],
     ),
   ];
+  // Store events also count toward today's insights (backend/insights.ts),
+  // one counter row per day, written with the event.
+  const events = new Map<string, string[]>();
+  for (const w of writes) {
+    const sk = String(w.Update?.Key?.sk ?? "");
+    if (sk.startsWith("METRIC#"))
+      events.set(String(w.Update!.Key!.pk), [
+        ...(events.get(String(w.Update!.Key!.pk)) ?? []),
+        sk.slice("METRIC#".length),
+      ]);
+  }
+  for (const [pk, names] of events) {
+    const counts = new Map<string, number>();
+    for (const n of names)
+      counts.set(`e:${n}`, (counts.get(`e:${n}`) ?? 0) + 1);
+    const entries = [...counts];
+    writes.push({
+      Update: {
+        TableName: config.table,
+        Key: { pk, sk: `STATS#${new Date().toISOString().slice(0, 10)}` },
+        UpdateExpression: `SET expires = :expires ADD ${entries.map((_, i) => `#e${i} :e${i}`).join(", ")}`,
+        ExpressionAttributeNames: Object.fromEntries(
+          entries.map(([name], i) => [`#e${i}`, name]),
+        ),
+        ExpressionAttributeValues: {
+          ":expires": Math.floor(Date.now() / 1000) + 400 * 86400,
+          ...Object.fromEntries(entries.map(([, n], i) => [`:e${i}`, n])),
+        },
+      },
+    });
+  }
   const partitions = new Set(
     writes
       .map(

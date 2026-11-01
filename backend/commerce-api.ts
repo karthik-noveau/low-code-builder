@@ -32,6 +32,7 @@ import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
 import { deliverMail, mailFrom } from "./mail";
 import { importCustomers } from "./migration";
+import { campaigns } from "./marketing";
 import { getConnection } from "./payments";
 import {
   sendSignInCode,
@@ -456,23 +457,7 @@ async function storeRoutes(
       },
     };
   }
-  if (action === "campaign-preview" && method === "POST") {
-    const access = await siteAccess(actor, siteId);
-    allow(access, "manage");
-    const subject = text(input.subject, "subject", 160),
-      content = text(input.body, "email body", 5000);
-    const subscribers = (await list<Submission>(siteId, "SUBMISSION")).filter(
-      (s) => s.kind === "newsletter" && s.consent,
-    );
-    return {
-      value: {
-        subject,
-        body: content,
-        recipients: subscribers.map((s) => s.email),
-        count: subscribers.length,
-        delivery: "preview-only",
-      },
-    };
-  }
+  if (action === "campaigns" && method === "POST")
+    return { value: await campaigns(actor, request.email, siteId, input) };
   throw new HttpError(404, "Commerce endpoint not found.");
 }

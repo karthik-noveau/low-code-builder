@@ -101,6 +101,34 @@ export interface Order extends Quote {
   tracking: string;
   createdAt: string;
   updatedAt: string;
+  /** When the shopper was reminded about this unpaid checkout. */
+  remindedAt?: string;
+  /** Where the shopper came from: a campaign (utm_*) or the site that sent them. */
+  attribution?: {
+    source: string;
+    medium: string;
+    campaign: string;
+    referrer: string;
+  };
+}
+/** Who a campaign goes to; always people who subscribed. */
+export type CampaignAudience =
+  "subscribers" | "customers" | "prospects" | "lapsed";
+export interface Campaign {
+  id: string;
+  /** Its utm_campaign name, e.g. "spring-sale". */
+  name: string;
+  subject: string;
+  body: string;
+  audience: CampaignAudience;
+  discountCode: string;
+  status: "sending" | "sent";
+  total: number;
+  /** Messages written to the outbox so far. */
+  queued: number;
+  createdAt: string;
+  updatedAt: string;
+  sentAt?: string;
 }
 export interface OrderRefund {
   amount: number;

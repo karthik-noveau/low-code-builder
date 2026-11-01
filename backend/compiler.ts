@@ -3,8 +3,10 @@ import path from "node:path";
 import { deflateSync } from "node:zlib";
 import {
   liveAppForms,
+  productHref,
   renderItemPage,
   renderPage,
+  renderProductPage,
   renderThanksPage,
 } from "../src/studio/export";
 import { APP_SCRIPT } from "../src/apps/widget";
@@ -14,6 +16,8 @@ import { needsDataScript } from "../src/blocks/data/project";
 import { LOGIC_SCRIPT } from "../src/blocks/logic/runtime";
 import { needsLogicScript } from "../src/blocks/logic/project";
 import { movedPaths, redirectPage } from "../src/studio/redirects";
+import { pagePath, robotsTxt, seoOf, sitemapXml } from "../src/studio/seo";
+import { INSIGHTS_SCRIPT } from "../src/studio/insightsScript";
 import {
   collectionImages,
   itemHref,
@@ -127,6 +131,11 @@ export async function compileSite(
   inbox?: string,
   /** The public app API for this site; without it app sections show no form. */
   appApi?: string,
+  /**
+   * The site's absolute address (canonical links, social cards, sitemap) and
+   * where the insights script reports page views.
+   */
+  reach: { siteUrl?: string; track?: string } = {},
 ): Promise<Artifact[]> {
   const project = structuredClone(input);
   // OWNER_LINK ("{owner}") opens the owner's branded app for this site. The
@@ -202,6 +211,13 @@ export async function compileSite(
       : []),
     ...collectionImages(project.collections),
     ...(logo ? [logo] : []),
+    // Share images: the site's and each page's own.
+    ...[project.seo?.image, ...project.pages.map((p) => p.image)]
+      .map((src) => (src ? safeImage(src) : ""))
+      .filter((src) => !!src),
+    ...(commerce?.pages ?? [])
+      .map((p) => p.image)
+      .filter((src) => src.startsWith("/images/")),
   ]);
   // Remote HTTPS images stay linked; only images we store count toward the limit.
   insist(
@@ -266,15 +282,30 @@ export async function compileSite(
   for (const p of store ?? []) p.image = replacements.get(p.image) || p.image;
   if (logo && replacements.has(logo))
     project.theme.logo = replacements.get(logo);
+  const shared = (src?: string) =>
+    src ? replacements.get(src) || (safeImage(src) ? src : "") : "";
+  if (project.seo) project.seo.image = shared(project.seo.image);
+  for (const page of project.pages)
+    if (page.image !== undefined) page.image = shared(page.image);
+  const productPages = (commerce?.pages ?? []).map((p) => ({
+    ...p,
+    image: shared(p.image),
+  }));
+  const tracker = reach.track ? { api: reach.track } : undefined;
+  const siteUrl = reach.siteUrl;
   for (const page of project.pages)
     add({
       name: pageHref(page.slug),
       type: "text/html; charset=utf-8",
       body: Buffer.from(
-        renderPage(project, page, { inbox, appApi, owner, store }).replace(
-          'href="styles.css"',
-          `href="${releaseBase}/styles.css"`,
-        ),
+        renderPage(project, page, {
+          inbox,
+          appApi,
+          owner,
+          store,
+          siteUrl,
+          tracker,
+        }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
       ),
     });
   for (const { collection, item } of publishedItems(project.collections))
@@ -287,9 +318,28 @@ export async function compileSite(
           appApi,
           owner,
           store,
+          siteUrl,
+          tracker,
         }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
       ),
     });
+  // Each store product's own page; a site page at the same address wins.
+  for (const product of productPages)
+    if (!artifacts.some((a) => a.name === productHref(product)))
+      add({
+        name: productHref(product),
+        type: "text/html; charset=utf-8",
+        body: Buffer.from(
+          renderProductPage(project, product, {
+            inbox,
+            appApi,
+            owner,
+            store,
+            siteUrl,
+            tracker,
+          }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
+        ),
+      });
   // A page of the site's own called "thanks" wins; visitors land there instead.
   if (
     inbox &&
@@ -353,6 +403,42 @@ export async function compileSite(
       body: Buffer.from(LOGIC_SCRIPT),
     });
   for (const file of files) add(file);
+  // Search engines: every listed page, item and product, and robots.txt.
+  const seo = seoOf(project);
+  const hidden = project.pages.filter((p) => p.noindex);
+  if (siteUrl) {
+    const entries = [
+      ...project.pages
+        .filter((p) => !p.noindex)
+        .map((p) => ({ path: pagePath(p.slug) })),
+      ...publishedItems(project.collections).map(({ collection, item }) => ({
+        path: `${collection.slug}/${item.slug}`,
+      })),
+      ...productPages.map((p) => ({ path: `products/${p.slug}` })),
+    ];
+    add({
+      name: "sitemap.xml",
+      type: "application/xml; charset=utf-8",
+      body: Buffer.from(sitemapXml(siteUrl, seo.indexing ? entries : [])),
+    });
+  }
+  add({
+    name: "robots.txt",
+    type: "text/plain; charset=utf-8",
+    body: Buffer.from(
+      robotsTxt(
+        siteUrl ?? "",
+        seo.indexing,
+        hidden.map((p) => p.slug),
+      ),
+    ),
+  });
+  if (tracker && (seo.analytics || seo.ga4 || seo.metaPixel))
+    add({
+      name: "insights.js",
+      type: "text/javascript; charset=utf-8",
+      body: Buffer.from(INSIGHTS_SCRIPT),
+    });
   // Old addresses from Shopify, Wix or an earlier site: the owner's list,
   // then the store's imported products. A real page at that path wins.
   for (const redirect of [

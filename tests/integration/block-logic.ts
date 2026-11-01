@@ -39,7 +39,10 @@ export async function checkBlockLogic(owner: string, api: Call) {
   );
   expect(html).toContain('<script src="logic.js" defer></script>');
   for (const tag of html.match(/<script\b[^>]*>/g) ?? [])
-    expect(tag).toMatch(/src="(app|logic)\.js"|type="application\/json"/);
+    // Forma's own scripts, or data that never runs (logic config, structured data).
+    expect(tag).toMatch(
+      /src="(app|logic|insights)\.js"|type="application\/(?:ld\+)?json"/,
+    );
   const config = JSON.parse(
     /<script type="application\/json" id="forma-logic">([\s\S]*?)<\/script>/.exec(
       html,

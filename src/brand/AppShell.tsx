@@ -17,7 +17,8 @@ import "./brand.css";
 import "./admin.css";
 import "./polish.css";
 
-export type ShellArea = "websites" | "templates" | "store" | "app" | "account";
+export type ShellArea =
+  "websites" | "templates" | "insights" | "store" | "app" | "account";
 /** The app page's sections for the sidebar, given by the app page itself. */
 export interface AppNav {
   siteId: string;
@@ -54,6 +55,7 @@ const STORE_NAV: { label: string; items: [string, string][] }[] = [
       ["Discounts", "percent"],
       ["Content", "type"],
       ["Inbox", "mail"],
+      ["Marketing", "megaphone"],
       ["Import & migrate", "upload"],
     ],
   },
@@ -293,6 +295,13 @@ export function AppShell({
           )}
           {link("templates", "/workspace/templates", "panel", "Templates")}
           {link(null, "/editor", "edit", "Browser draft")}
+          <p className="dashboard-nav-label">Growth</p>
+          {link(
+            "insights",
+            `/insights${current ? `?site=${encodeURIComponent(current)}` : ""}`,
+            "chart",
+            "Insights",
+          )}
           <p className="dashboard-nav-label">App</p>
           {appNav
             ? appNav.items.map((item) => (

@@ -62,6 +62,10 @@ Owners can always paste their own keys; these steps add **Connect with Stripe/Ra
 - [ ] Get paid: connect by signing in with Stripe and Razorpay, then disconnect
 - [ ] Start a checkout, disconnect, then pay it anyway (Inbox payment page): the request still turns paid from the webhook
 - [ ] Migration: Store → Import & migrate a real Shopify products export and customers export; publish; `https://<site>/products/<handle>` and `/collections/<type>` forward to the store, and a page's clean address (`/about`) loads (the site router changed, so this proves the CloudFront function update)
+- [ ] Search: on the published site, view source for the canonical link and JSON-LD; `/sitemap.xml` and `/robots.txt` load on the primary domain; Google's Rich Results Test reads a product page's Product data
+- [ ] Insights: visit a few pages from two devices and a `?utm_source=…&utm_campaign=…` link, buy through it; `/insights` shows the visitors, campaign and the sale under its channel
+- [ ] Tracking: with a GA4 ID and Pixel set, the consent banner shows; after Accept, GA's Realtime and Meta's Events Manager see the visit (proves the CSP update)
+- [ ] Marketing: send a campaign to two verified addresses; both arrive with working unsubscribe links; remind an expired checkout
 - [ ] Throttles: hammering a public route returns 429; CORS from the editor origin works; the published site's Shop link opens `/store`
 - [ ] Publish failures land in the DLQ and retry; restoring a release changes only the route
 - [ ] Record what you checked in `release-readiness.json` (`cloud`, `payments`, `notifications`) with evidence
