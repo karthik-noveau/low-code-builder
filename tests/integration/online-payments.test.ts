@@ -5,24 +5,27 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { db } from "../../backend/database";
 import { config } from "../../backend/config";
-import { createProject } from "../../src/studio/templates";
+import { createProject, createSection } from "../../src/studio/templates";
+import { createAppField, emptyApp, type AppField } from "../../src/apps/model";
 import { createCollection } from "../../src/studio/collections";
 import { emptyPayments, parseAmount } from "../../src/studio/payments";
 
 /**
  * Runs against fake Stripe and Razorpay APIs, including their sign-in (OAuth)
  * hosts. Start the stack with
- *   STRIPE_API_BASE=http://127.0.0.1:8799/stripe
- *   RAZORPAY_API_BASE=http://127.0.0.1:8799/razorpay
- *   STRIPE_CONNECT_BASE=http://127.0.0.1:8799/stripe-connect
- *   RAZORPAY_AUTH_BASE=http://127.0.0.1:8799/razorpay-auth
+ *   STRIPE_API_BASE=http://127.0.0.1:8798/stripe
+ *   RAZORPAY_API_BASE=http://127.0.0.1:8798/razorpay
+ *   STRIPE_CONNECT_BASE=http://127.0.0.1:8798/stripe-connect
+ *   RAZORPAY_AUTH_BASE=http://127.0.0.1:8798/razorpay-auth
  *   STRIPE_CONNECT_CLIENT_ID=ca_FormaFakePlatform
  *   STRIPE_PLATFORM_SECRET=sk_test_FormaFakePlatform123
  *   RAZORPAY_PARTNER_CLIENT_ID=FormaFakePartner
  *   RAZORPAY_PARTNER_CLIENT_SECRET=FormaFakePartnerSecret
  *   RAZORPAY_PARTNER_MODE=test
- * and set TEST_FAKE_PROVIDERS=1 to include it (TEST_FAKE_PORT if 8799 is taken).
- * With MAIL_FROM=store@forma.test and SES_ENDPOINT=http://127.0.0.1:8799/ses
+ *   STRIPE_WEBHOOK_SECRET=whsec_FormaFakePlatformHook
+ *   RAZORPAY_WEBHOOK_SECRET=FormaFakePartnerHook
+ * and set TEST_FAKE_PROVIDERS=1 to include it (TEST_FAKE_PORT if 8798 is taken).
+ * With MAIL_FROM=store@forma.test and SES_ENDPOINT=http://127.0.0.1:8798/ses
  * too, TEST_MAIL=1 also checks that order emails are sent.
  */
 const enabled = process.env.TEST_FAKE_PROVIDERS === "1";
@@ -37,6 +40,26 @@ const RZP_CLIENT = "FormaFakePartner";
 const RZP_CLIENT_SECRET = "FormaFakePartnerSecret";
 const STRIPE_ACCOUNT = "acct_FormaOwner1234";
 const RZP_ACCOUNT = "acc_FormaOwner5678";
+/** Forma's platform webhooks' signing secrets (the stack's env, above). */
+const STRIPE_HOOK = "whsec_FormaFakePlatformHook";
+const RZP_HOOK = "FormaFakePartnerHook";
+/** Posts to Forma's platform webhook, signed the way the provider would. */
+const platformHook = (name: "stripe" | "razorpay", event: object) => {
+  const body = JSON.stringify(event);
+  const t = Math.floor(Date.now() / 1000);
+  return fetch(`${base}/payments/webhooks/${name}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(name === "stripe"
+        ? {
+            "stripe-signature": `t=${t},v1=${createHmac("sha256", STRIPE_HOOK).update(`${t}.${body}`).digest("hex")}`,
+          }
+        : { "x-razorpay-signature": createHmac("sha256", RZP_HOOK).update(body).digest("hex") }),
+    },
+    body,
+  });
+};
 
 interface Session {
   id: string;
@@ -391,6 +414,10 @@ function startFake() {
         if (cancel && req.method === "POST") {
           const link = links.get(cancel[1]);
           if (!link || link.account !== account) return send(404, {});
+          if (refuseNextExpire) {
+            refuseNextExpire = false;
+            return send(500, { error: { description: "Try again" } });
+          }
           if (link.status !== "created")
             return send(400, {
               error: { description: "Payment link cannot be cancelled" },
@@ -443,7 +470,7 @@ function startFake() {
     });
   });
   return new Promise<void>((r) =>
-    fake.listen(Number(process.env.TEST_FAKE_PORT || 8799), "127.0.0.1", r),
+    fake.listen(Number(process.env.TEST_FAKE_PORT || 8798), "127.0.0.1", r),
   );
 }
 
@@ -453,6 +480,44 @@ products.request = { kind: "order", label: "", collect: true };
 project.collections = [products];
 // No manual options: card payments alone are enough to ask for payment.
 project.payments = { ...emptyPayments(), online: "stripe" };
+// A business app whose form asks for a fee (app record payments).
+const appField = (fieldId: string, name: string, type: AppField["type"]) =>
+  ({ ...createAppField(name, type, { required: true }), id: fieldId }) as AppField;
+project.app = {
+  ...emptyApp("Online pay"),
+  currency: "USD",
+  tables: [
+    {
+      id: "fees",
+      name: "Fees",
+      singular: "Fee",
+      fields: [appField("name", "Name", "text"), appField("amount", "Amount", "money")],
+      titleField: "name",
+      statuses: [],
+      initial: "",
+      actions: [],
+      totals: [],
+      prefix: "FEE",
+      notify: false,
+    },
+  ],
+  forms: [
+    {
+      id: "fee",
+      name: "Fee",
+      kind: "submit",
+      table: "fees",
+      fields: ["name", "amount"],
+      totals: [],
+      title: "Pay a fee",
+      intro: "",
+      button: "Pay",
+      success: "Thanks. Your reference is {ref}.",
+      payment: { field: "amount" },
+    },
+  ],
+};
+project.pages[0].sections.push(createSection("app", { appForm: "fee" }));
 const item = products.items[0];
 const unit = parseAmount(item.values[products.display.price])!;
 let token = "",
@@ -655,6 +720,48 @@ describe.skipIf(!enabled)(
       expect(
         data.requests.find((r: { id: string }) => page.endsWith(r.id)).payment,
       ).toMatchObject({ status: "paid", confirmedBy: "provider" });
+    });
+
+    it("confirms an app record's payment from Stripe's webhook alone", async () => {
+      const key = randomUUID();
+      const sent = await fetch(`${base}/apps/${id}/forms/fee`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: sites },
+        body: JSON.stringify({ key, values: { name: "Ada", amount: 12 }, website: "" }),
+      });
+      expect(sent.status).toBe(201);
+      const payment = (await sent.json()).payment;
+      expect(payment).toMatchObject({ status: "unpaid", checkout: expect.stringContaining("/checkout?key=") });
+      const location = (await go(payment.checkout)).headers.get("location")!;
+      const session = sessions.get(location.split("/").pop()!)!;
+      expect(session).toMatchObject({ amount_total: 1200, client_reference_id: payment.recordId });
+      expect(session.metadata).toMatchObject({ forma_site: id, forma_kind: "record", forma_table: "fees" });
+      const records = async () =>
+        (await call(`/sites/${id}/app/records?table=fees`)).data.records as {
+          id: string;
+          payment: { status: string; confirmedBy?: string };
+        }[];
+      const hook = (object: object) => {
+        const body = JSON.stringify({ type: "checkout.session.completed", data: { object } });
+        const t = Math.floor(Date.now() / 1000);
+        const secret = [...stripeHooks.values()].find((h) => h.url.endsWith(`/${id}`))!.secret;
+        const v1 = createHmac("sha256", secret).update(`${t}.${body}`).digest("hex");
+        return fetch(`${base}/payments/webhooks/stripe/${id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "stripe-signature": `t=${t},v1=${v1}` },
+          body,
+        });
+      };
+      // The event alone isn't trusted while Forma can ask Stripe: unpaid stays unpaid.
+      expect((await hook({ ...session, payment_status: "paid" })).status).toBe(200);
+      expect((await records()).find((r) => r.id === payment.recordId)!.payment.status).toBe("unpaid");
+      session.payment_status = "paid";
+      session.status = "complete";
+      expect((await hook({ ...session })).status).toBe(200);
+      expect((await records()).find((r) => r.id === payment.recordId)!.payment).toMatchObject({
+        status: "paid",
+        confirmedBy: "provider",
+      });
     });
 
     it("works with Razorpay, and the owner can check a payment from the inbox", async () => {
@@ -999,6 +1106,26 @@ describe.skipIf(!enabled)(
         expect(read).not.toContain(secret);
     });
 
+    it("confirms a signed-in Stripe account's payment from Forma's platform webhook", async () => {
+      const page = await order("1");
+      const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
+      const session = sessions.get(checkout.split("/").pop()!)!;
+      session.payment_status = "paid";
+      session.status = "complete";
+      const event = (account: string) => ({
+        type: "checkout.session.completed",
+        account,
+        data: { object: { ...session } },
+      });
+      const status = async () =>
+        (await requests()).find((r) => page.endsWith(r.id))!.payment?.status;
+      // Another connected account can't speak for this site.
+      expect((await platformHook("stripe", event("acct_SomeoneElse"))).status).toBe(200);
+      expect(await status()).toBe("unpaid");
+      expect((await platformHook("stripe", event(STRIPE_ACCOUNT))).status).toBe(200);
+      expect(await status()).toBe("paid");
+    });
+
     it("takes and refunds payments on the signed-in Stripe account", async () => {
       const page = await order("1");
       const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
@@ -1085,6 +1212,32 @@ describe.skipIf(!enabled)(
       for (const secret of secrets()) expect(everything).not.toContain(secret);
     });
 
+    let lateLink: { id: string; amount: number; status: string; amount_paid?: number } | undefined;
+    let latePage = "";
+    it("confirms a signed-in Razorpay account's payment from Forma's platform webhook", async () => {
+      const linkFor = async () => {
+        const page = await order("1");
+        const checkout = (await go(`${page}/checkout`)).headers.get("location")!;
+        return { page, link: links.get(checkout.split("/").pop()!)! };
+      };
+      const { page, link } = await linkFor();
+      link.status = "paid";
+      link.amount_paid = link.amount;
+      const event = (account: string) => ({
+        event: "payment_link.paid",
+        account_id: account,
+        payload: { payment_link: { entity: { ...link } } },
+      });
+      const status = async (p: string) =>
+        (await requests()).find((r) => p.endsWith(r.id))!.payment?.status;
+      expect((await platformHook("razorpay", event("acc_SomeoneElse"))).status).toBe(200);
+      expect(await status(page)).toBe("unpaid");
+      expect((await platformHook("razorpay", event(RZP_ACCOUNT))).status).toBe(200);
+      expect(await status(page)).toBe("paid");
+      // A checkout still open when the owner disconnects (paid below).
+      ({ page: latePage, link: lateLink } = await linkFor());
+    });
+
     it("revokes Razorpay's tokens on disconnect", async () => {
       const latest = oauth.issued.slice(-2);
       const off = await call(`/sites/${id}/payments/disconnect`, "POST", {});
@@ -1096,6 +1249,22 @@ describe.skipIf(!enabled)(
         ]),
       );
       expect(oauth.refresh.size + oauth.access.size).toBe(0);
+    });
+    it("still records a payment Razorpay reports after the owner disconnected", async () => {
+      lateLink!.status = "paid";
+      lateLink!.amount_paid = lateLink!.amount;
+      expect(
+        (
+          await platformHook("razorpay", {
+            event: "payment_link.paid",
+            account_id: RZP_ACCOUNT,
+            payload: { payment_link: { entity: { ...lateLink } } },
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await requests()).find((r) => latePage.endsWith(r.id))!.payment,
+      ).toMatchObject({ status: "paid", confirmedBy: "provider" });
     });
     describe("store checkout", { concurrent: false }, () => {
       let store = "";
@@ -1446,6 +1615,64 @@ describe.skipIf(!enabled)(
         const paid = await shop(`orders/${started.orderId}/receipt`, { receipt: started.receipt });
         expect(paid.data.order).toMatchObject({ status: "paid", payment: "razorpay" });
         expect((await call(`/sites/${store}/payments`)).data.connection.webhook).toBe("ready");
+      });
+
+      it("closes open checkouts on disconnect and still records a payment that lands after", async () => {
+        await restock(3);
+        const secret = (await call(`/sites/${store}/payments/webhook`, "POST", {})).data.webhook.secret;
+        // One checkout Razorpay won't cancel, and one it will.
+        const stuck = (await shop("checkout", { token: await cart(1), ...shopper })).data;
+        const stuckLink = [...links.values()].at(-1)!;
+        const closed = (await shop("checkout", { token: await cart(1), ...shopper })).data;
+        const closedLink = [...links.values()].at(-1)!;
+        expect(await stock()).toBe(1);
+        const cancels = () => [...links.values()].filter((l) => l.cancelled).length;
+        const before = cancels();
+        // Holds close in no promised order: the first cancel is refused.
+        refuseNextExpire = true;
+        expect((await call(`/sites/${store}/payments/disconnect`, "POST", {})).data.connection).toBeNull();
+        expect(cancels()).toBe(before + 1);
+        const [late, lateLink, done] = stuckLink.cancelled
+          ? [closed, closedLink, stuck]
+          : [stuck, stuckLink, closed];
+        const receipt = async (o: { orderId: string; receipt: string }) =>
+          (await shop(`orders/${o.orderId}/receipt`, { receipt: o.receipt })).data.order;
+        expect(await receipt(done)).toMatchObject({ status: "cancelled" });
+        expect(await receipt(late)).toMatchObject({ status: "cancelled", expired: true });
+        expect(await stock()).toBe(3);
+        // The shopper pays the link that stayed open. Forma can't ask Razorpay
+        // any more, but Razorpay's signed notification is proof enough…
+        const hook = (link: object) => {
+          const body = JSON.stringify({
+            event: "payment_link.paid",
+            payload: { payment_link: { entity: link } },
+          });
+          return fetch(`${base}/payments/webhooks/razorpay/${store}`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-razorpay-signature": createHmac("sha256", secret).update(body).digest("hex"),
+            },
+            body,
+          });
+        };
+        // …only for the full amount.
+        expect(
+          (await hook({ ...lateLink, status: "paid", amount_paid: lateLink.amount - 1 })).status,
+        ).toBe(200);
+        expect(await receipt(late)).toMatchObject({ status: "cancelled" });
+        lateLink.status = "paid";
+        lateLink.amount_paid = lateLink.amount;
+        expect((await hook({ ...lateLink })).status).toBe(200);
+        expect(await receipt(late)).toMatchObject({ status: "paid", payment: "razorpay" });
+        expect(await stock()).toBe(2);
+        // A forged signature still fails.
+        const forged = await fetch(`${base}/payments/webhooks/razorpay/${store}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-razorpay-signature": "0".repeat(64) },
+          body: "{}",
+        });
+        expect(forged.status).toBe(400);
       });
     });
   },

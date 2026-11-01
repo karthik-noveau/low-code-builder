@@ -39,7 +39,7 @@ import {
   startSignIn,
   webhookSetup,
 } from "./payments";
-import { onPaymentNotice } from "./store-checkout";
+import { closeHolds, onPaymentNotice } from "./store-checkout";
 import { deliverMail } from "./mail";
 import { allow, sharedSites, siteAccess, type SiteAccess } from "./access";
 import { appOwnerApi, appsPublic, confirmRecordCheckout } from "./apps";
@@ -139,13 +139,19 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
       );
       if (notice?.kind === "order") await onPaymentNotice(notice);
       else if (notice?.kind === "request")
-        await confirmRequestCheckout(notice.siteId, notice.id, notice.checkoutId);
+        await confirmRequestCheckout(
+          notice.siteId,
+          notice.id,
+          notice.checkoutId,
+          notice,
+        );
       else if (notice?.kind === "record")
         await confirmRecordCheckout(
           notice.siteId,
           notice.table,
           notice.id,
           notice.checkoutId,
+          notice,
         );
       if (notice) await deliverMail(notice.siteId);
       return jsonResponse({ received: true });
@@ -226,6 +232,8 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         return jsonResponse({
           connection: await finishSignIn(siteId, request.owner!, data()),
         });
+      // Checkouts already open are closed first (paid ones recorded).
+      await closeHolds(siteId);
       const revoked = await disconnect(siteId);
       // The account may still list Forma; the owner can remove it there.
       return jsonResponse({

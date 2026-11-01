@@ -44,6 +44,7 @@ import { decodeProject, digest } from "./project";
 import { publicKey, sendPush, validSubscription } from "./push";
 import {
   checkoutPaid,
+  type PaymentNotice,
   createCheckout,
   currencyCode,
   getConnection,
@@ -2087,12 +2088,21 @@ async function payable(siteId: string, recordId: string, attempt: string) {
   return { live, table: found.table, record };
 }
 /** Marks a payment paid when its provider checkout was paid in full. */
-async function confirmWithProvider(siteId: string, record: AppRecord) {
+async function confirmWithProvider(
+  siteId: string,
+  record: AppRecord,
+  evidence?: PaymentNotice,
+) {
   const payment = record.payment;
   if (
     !payment?.checkout ||
     payment.status === "paid" ||
-    !(await checkoutPaid(siteId, payment.checkout, toMinor(payment.amount)))
+    !(await checkoutPaid(
+      siteId,
+      payment.checkout,
+      toMinor(payment.amount),
+      evidence,
+    ))
   )
     return record;
   const next: AppRecord = {
@@ -2121,13 +2131,14 @@ export async function confirmRecordCheckout(
   tableId: string,
   recordId: string,
   checkoutId: string,
+  evidence?: PaymentNotice,
 ) {
   if (!/^[\w-]{1,64}$/.test(tableId) || !/^[\w-]{1,80}$/.test(recordId)) return;
   const stored = await getRecord(siteId, tableId, recordId);
   if (!stored) return;
   const record = toRecord(stored);
   if (record.payment?.checkout?.id === checkoutId)
-    await confirmWithProvider(siteId, record);
+    await confirmWithProvider(siteId, record, evidence);
 }
 async function payStatus(siteId: string, recordId: string, attempt: string) {
   const found = await payable(siteId, recordId, attempt);

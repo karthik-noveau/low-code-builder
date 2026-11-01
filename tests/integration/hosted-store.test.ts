@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { createServer, type Server } from "node:http";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { matchRoute } from "../../infra/api-routes.mjs";
 
@@ -8,8 +9,12 @@ import { matchRoute } from "../../infra/api-routes.mjs";
 // local one (a throwaway table); every other AWS endpoint is a dead loopback
 // port and no real credentials are read, so nothing can reach AWS.
 const table = `forma-hosted-store-${randomUUID()}`;
-vi.hoisted(() => {
+const cognitoPort = vi.hoisted(() => {
   const env = process.env;
+  // A stand-in Cognito user pool on loopback (collaborator invitations).
+  const port = 20000 + Math.floor(Math.random() * 20000);
+  env.AWS_ENDPOINT_URL_COGNITO_IDENTITY_PROVIDER = `http://127.0.0.1:${port}`;
+  env.USER_POOL_ID = "us-east-1_FormaTest";
   env.FORMA_MODE = "aws";
   delete env.DYNAMODB_ENDPOINT;
   delete env.AWS_PROFILE;
@@ -28,6 +33,7 @@ vi.hoisted(() => {
   env.EDITOR_ORIGIN = "https://editor.forma.test";
   env.API_ORIGIN = "https://api.forma.test";
   env.SITE_ORIGIN = "https://sites.forma.test";
+  return port;
 });
 process.env.TABLE_NAME = table;
 const { rawDb, db, putItem, siteKey } = await import("../../backend/database");
@@ -125,7 +131,53 @@ beforeAll(async () => {
     updatedAt: now,
   });
 });
+/** The fake pool's users (email → sub) and the invitations it "emailed". */
+const pool = new Map<string, string>(),
+  invited: string[] = [];
+let cognito: Server;
+beforeAll(async () => {
+  cognito = createServer((req, res) => {
+    let raw = "";
+    req.on("data", (chunk) => (raw += chunk));
+    req.on("end", () => {
+      const input = JSON.parse(raw || "{}");
+      const target = String(req.headers["x-amz-target"] || "").split(".")[1];
+      const user = (email: string) => ({
+        Username: pool.get(email),
+        Attributes: [
+          { Name: "sub", Value: pool.get(email) },
+          { Name: "email", Value: email },
+        ],
+      });
+      let body: unknown = { __type: "InvalidParameterException" };
+      let status = 400;
+      if (
+        target === "ListUsers" &&
+        input.UserPoolId === "us-east-1_FormaTest"
+      ) {
+        const email = /^email = "(.+)"$/.exec(input.Filter)?.[1] ?? "";
+        body = { Users: pool.has(email) ? [user(email)] : [] };
+        status = 200;
+      } else if (target === "AdminCreateUser") {
+        const email = input.Username;
+        if (pool.has(email)) body = { __type: "UsernameExistsException" };
+        else {
+          pool.set(email, randomUUID());
+          invited.push(email);
+          body = { User: user(email) };
+          status = 200;
+        }
+      }
+      res.writeHead(status, { "content-type": "application/x-amz-json-1.1" });
+      res.end(JSON.stringify(body));
+    });
+  });
+  await new Promise<void>((done) =>
+    cognito.listen(cognitoPort, "127.0.0.1", done),
+  );
+});
 afterAll(async () => {
+  await new Promise((done) => cognito.close(done));
   await rawDb.send(new DeleteTableCommand({ TableName: table }));
 });
 
@@ -276,7 +328,7 @@ describe(
         ).status,
       ).toBe(404);
     });
-    it("keeps what has no hosted provider yet closed: checkout, sandbox payment, accounts, invitations", async () => {
+    it("keeps what has no hosted provider yet closed: checkout, sandbox payment, shopper sign-in without a sender", async () => {
       const cart = await shop("cart", {
         lines: [
           {
@@ -316,18 +368,108 @@ describe(
         isBase64Encoded: false,
       } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer);
       expect(direct.statusCode).toBe(404);
-      expect((await call("GET", `/store/${site}/account`)).status).toBe(503);
+      // Shopper sign-in needs an email sender (MAIL_FROM) to send the code.
       expect(
-        (await call("GET", `/store/${site}/account`, undefined, "")).status,
-      ).toBe(401);
-      expect(
-        (
-          await admin("members", "POST", {
-            email: "teammate@forma.test",
-            role: "editor",
-          })
-        ).status,
+        (await shop("account/code", { email: "hosted-shopper@forma.test" }))
+          .status,
       ).toBe(503);
+    });
+    it("marks bounced and complained emails and stops mailing those addresses", async () => {
+      type Mail = { id: string; to: string; status: string };
+      const outbox = async () => (await admin()).data.outbox as Mail[];
+      const subscribed = (await outbox()).find(
+        (m) => m.to === "hosted-subscriber@forma.test",
+      )!;
+      expect(subscribed).toBeDefined();
+      const ses = (type: string, detail: object) =>
+        handler({
+          source: "aws.ses",
+          "detail-type": type,
+          detail,
+        } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer);
+      await ses("Email Bounced", {
+        eventType: "Bounce",
+        mail: { tags: { site: [site], mail: [subscribed.id] } },
+        bounce: {
+          bounceType: "Permanent",
+          bouncedRecipients: [{ emailAddress: "Hosted-Subscriber@forma.test" }],
+        },
+      });
+      // A tag naming another site's message, or nonsense, changes nothing.
+      await ses("Email Bounced", {
+        eventType: "Bounce",
+        mail: { tags: { site: ["x"], mail: ["../SETTINGS#"] } },
+        bounce: { bounceType: "Transient", bouncedRecipients: [] },
+      });
+      expect((await outbox()).find((m) => m.id === subscribed.id)?.status).toBe(
+        "bounced",
+      );
+      // With a sender, shoppers can sign in by code, but new mail to that
+      // address is never sent…
+      process.env.MAIL_FROM = "store@forma.test";
+      try {
+        expect((await shop()).data.accounts).toBe(true);
+        expect(
+          (
+            await shop("account/code", {
+              email: "hosted-subscriber@forma.test",
+            })
+          ).data,
+        ).toEqual({ sent: true });
+      } finally {
+        delete process.env.MAIL_FROM;
+      }
+      const statuses = (await outbox())
+        .filter((m) => m.to === "hosted-subscriber@forma.test")
+        .map((m) => m.status);
+      expect(statuses).toContain("suppressed");
+      // …and a complaint is reported on its message.
+      const other = (await outbox()).find((m) => m.status === "suppressed")!;
+      expect(other).toBeDefined();
+      await ses("Email Complaint Received", {
+        eventType: "Complaint",
+        mail: { tags: { site: [site], mail: [other.id] } },
+        complaint: { complainedRecipients: [{ emailAddress: other.to }] },
+      });
+      expect((await outbox()).find((m) => m.id === other.id)?.status).toBe(
+        "complained",
+      );
+    });
+    it("invites collaborators through the stack's user pool", async () => {
+      const teammate = `teammate-${randomUUID()}@forma.test`;
+      const added = await admin("members", "POST", {
+        email: teammate,
+        role: "editor",
+      });
+      expect(added.status).toBe(200);
+      expect(invited).toEqual([teammate]);
+      // Someone already in the pool isn't invited again.
+      const known = `known-${randomUUID()}@forma.test`;
+      pool.set(known, randomUUID());
+      expect(
+        (await admin("members", "POST", { email: known, role: "viewer" }))
+          .status,
+      ).toBe(200);
+      expect(invited).toEqual([teammate]);
+      const members = (await admin()).data.members as {
+        id: string;
+        email: string;
+        role: string;
+      }[];
+      const member = members.find((m) => m.email === teammate)!;
+      expect(member).toMatchObject({ id: pool.get(teammate), role: "editor" });
+      // The teammate's own token (their sub) opens the store workspace.
+      expect(
+        (await call("GET", `/sites/${site}/commerce`, undefined, member.id))
+          .status,
+      ).toBe(200);
+      expect(
+        (await admin(`members/${member.id}/remove`, "POST", {})).status,
+      ).toBe(200);
+      expect(
+        (await call("GET", `/sites/${site}/commerce`, undefined, member.id))
+          .status,
+      ).toBe(404);
     });
     it("runs the owner's workspace: inbox of messages, outbox, integrations, export and campaigns", async () => {
       const overview = (await admin()).data;

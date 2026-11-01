@@ -4,7 +4,7 @@ For a step-by-step list of everything the first deploy needs, see [the deploy ch
 
 The application is implemented and exercised locally. No AWS account is required, and no cloud resources are created by local setup, development, tests, builds, or CI. The AWS template and deployment workflow are prepared separately; they still need an account-specific IAM/bootstrap review and a real staging deployment before being treated as production-verified.
 
-The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Forma Store ([below](#forma-store-on-aws)), but checkout, customer accounts and team invitations stay closed on AWS, and none of it has been verified on a real deployment.
+The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Forma Store ([below](#forma-store-on-aws)), including checkout through the owner's provider, customer accounts (with an SES sender) and team invitations, but none of it has been verified on a real deployment.
 
 ## Development to a published preview
 
@@ -133,11 +133,12 @@ Never rename a deployed route's `id`: CloudFormation would create the new route 
 
 ### Forma Store on AWS
 
-- **Routes:** the store workspace (`/sites/{id}/commerce…`, JWT; roles are checked in the API), the storefront (`/store/{id}`, cart, cart read, events, forms, unsubscribe, checkout, receipts, returns: public, throttled), and the customer account (`/store/{id}/account…`, JWT, answering 503 until shoppers have their own identity provider).
+- **Routes:** the store workspace (`/sites/{id}/commerce…`, JWT; roles are checked in the API), the storefront (`/store/{id}`, cart, cart read, events, forms, unsubscribe, checkout, receipts, returns: public, throttled), and the customer account (`/store/{id}/account…`, public: shoppers sign in with an emailed code and send a store token; 503 without `MAIL_FROM`).
 - **IAM:** the API and publisher roles also have `dynamodb:ConditionCheckItem` on the table. Store, inbox and app-record writes are DynamoDB transactions that guard on the site's lifecycle row with a `ConditionCheck`; without it those transactions are denied (this also affected the Inbox and business apps already on AWS). There are still no scans, batch writes or wildcards.
 - **Pages:** nothing new. `/store`, `/customer` and `/commerce` are prerendered editor pages that the editor router already serves; the Lambda's `EDITOR_ORIGIN` makes the website's Shop link and product sections point at them.
 - **Checkout and refunds** work once an owner connects Stripe or Razorpay (15-minute stock holds, provider-confirmed payment, webhooks); **shopper emails** send through SES with `MAIL_FROM` (the API role may `ses:SendEmail` from the account's identities).
-- **Closed on AWS:** the sandbox payment, customer accounts and inviting collaborators. See [the commerce guide](commerce.md#on-aws).
+- **Closed on AWS:** the sandbox payment. See [the commerce guide](commerce.md#on-aws).
+- **Also in the stack:** collaborators are found in or invited to the user pool (`USER_POOL_ID`, `cognito-idp:ListUsers`/`AdminCreateUser`), and SES bounces and complaints come back through configuration set `{stack}-mail` and an EventBridge rule to the API function.
 - **Verify on a staging deployment:** the transactions with real IAM, the per-route throttles, CORS from the editor origin, and a published site's Shop link to the editor's `/store` page.
 
 ### Branded pages

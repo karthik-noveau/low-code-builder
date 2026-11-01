@@ -3,12 +3,19 @@ import type {
   SQSEvent,
 } from "aws-lambda";
 import { api } from "./api";
+import { onMailEvent } from "./mail";
 import { publishJob, recoverPublishedJob } from "./publisher";
 import { failJob } from "./sites";
 import { config, epoch, HttpError } from "./config";
 import type { Job } from "./types";
 
-export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+export async function handler(
+  event: APIGatewayProxyEventV2WithJWTAuthorizer | SesEvent,
+) {
+  // SES bounces and complaints, from the stack's EventBridge rule.
+  if ("source" in event && event.source === "aws.ses")
+    return onMailEvent(event.detail);
+  if (!("requestContext" in event)) return;
   const claims = event.requestContext.authorizer?.jwt?.claims;
   // JWT authorizer verifies issuer, audience and scope; accept Cognito access tokens only.
   const owner =
@@ -35,6 +42,11 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
     body: response.body.toString("base64"),
     isBase64Encoded: true,
   };
+}
+interface SesEvent {
+  source: string;
+  "detail-type": string;
+  detail: Parameters<typeof onMailEvent>[0];
 }
 export async function worker(event: SQSEvent) {
   const batchItemFailures: { itemIdentifier: string }[] = [];

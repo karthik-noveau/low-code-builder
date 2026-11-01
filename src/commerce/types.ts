@@ -165,7 +165,18 @@ export interface OutboxMessage {
   body: string;
   createdAt: string;
   /** "local-preview" without an email sender; otherwise how sending went. */
-  status: "local-preview" | "pending" | "sending" | "sent" | "failed" | "undeliverable";
+  status:
+    | "local-preview"
+    | "pending"
+    | "sending"
+    | "sent"
+    | "failed"
+    | "undeliverable"
+    /** The address rejected it for good, or the shopper marked it as spam. */
+    | "bounced"
+    | "complained"
+    /** Not sent: the address bounced or complained before. */
+    | "suppressed";
   sentAt?: string;
 }
 export interface Member {

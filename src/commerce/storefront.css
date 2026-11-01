@@ -239,6 +239,10 @@
   color: var(--s-text);
   font-size: var(--fx-text-sm);
 }
+/* Inside a form the grid's gap spaces it. */
+.storefront .commerce-form > .commerce-notice {
+  margin: 0;
+}
 .storefront .commerce-notice.error {
   background: #fdeeee;
   color: #a1251b;

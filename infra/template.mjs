@@ -552,7 +552,12 @@ export function template() {
             // Shopper emails from MAIL_FROM's verified identity.
             allow(
               "ses:SendEmail",
-              sub("arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*"),
+              sub("arn:aws:ses:${AWS::Region}:${AWS::AccountId}:*"),
+            ),
+            // Inviting collaborators (backend/invites.ts).
+            allow(
+              ["cognito-idp:ListUsers", "cognito-idp:AdminCreateUser"],
+              get("Users", "Arn"),
             ),
             allow(
               ["logs:CreateLogStream", "logs:PutLogEvents"],
@@ -644,6 +649,8 @@ export function template() {
     RAZORPAY_WEBHOOK_SECRET: ref("RazorpayWebhookSecret"),
     // A verified SES address; empty keeps shopper emails as previews.
     MAIL_FROM: ref("MailFrom"),
+    USER_POOL_ID: ref("Users"),
+    MAIL_CONFIGURATION_SET: ref("MailSet"),
     ASSET_DIR: "/var/task/images",
   };
   const fn = (worker) =>
@@ -762,6 +769,38 @@ export function template() {
     SourceArn: sub(
       "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*",
     ),
+  });
+  // Shopper email bounces and complaints come back to the API function
+  // (backend/mail.ts onMailEvent), which stops mailing those addresses.
+  R.MailSet = resource("AWS::SES::ConfigurationSet", {
+    Name: sub("${AWS::StackName}-mail"),
+    SuppressionOptions: { SuppressedReasons: ["BOUNCE", "COMPLAINT"] },
+  });
+  R.MailEvents = resource("AWS::SES::ConfigurationSetEventDestination", {
+    ConfigurationSetName: ref("MailSet"),
+    EventDestination: {
+      Enabled: true,
+      MatchingEventTypes: ["BOUNCE", "COMPLAINT"],
+      EventBridgeDestination: {
+        EventBusArn: sub(
+          "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default",
+        ),
+      },
+    },
+  });
+  R.MailRule = resource("AWS::Events::Rule", {
+    EventPattern: {
+      source: ["aws.ses"],
+      "detail-type": ["Email Bounced", "Email Complaint Received"],
+      detail: { mail: { tags: { "ses:configuration-set": [ref("MailSet")] } } },
+    },
+    Targets: [{ Id: "api", Arn: get("ApiFunction", "Arn") }],
+  });
+  R.MailInvoke = resource("AWS::Lambda::Permission", {
+    Action: "lambda:InvokeFunction",
+    FunctionName: ref("ApiFunction"),
+    Principal: "events.amazonaws.com",
+    SourceArn: get("MailRule", "Arn"),
   });
   const outputs = {
     EditorBucket: ref("EditorBucket"),

@@ -249,6 +249,8 @@ export async function connect(siteId: string, input: Record<string, unknown>) {
   }
   const previous = await read<StoredConnection>(siteId, "PAYCONN");
   if (previous?.webhook?.id) await dropStripeWebhook(previous);
+  const old = await read<Retired>(siteId, "PAYRETIRED", "stripe");
+  if (old?.dropWith) await forget(siteId, old);
   return save(siteId, {
     provider: name,
     mode,
@@ -339,10 +341,58 @@ export async function webhookSetup(siteId: string) {
     events: ["payment_link.paid"],
   };
 }
+/**
+ * A connection the owner removed, kept a day so payments for checkouts it
+ * already made (Inbox payment pages last 20 hours) still count. It holds
+ * what verifies their webhooks, no tokens; a pasted Stripe key's endpoint
+ * is kept for that day, so the key stays (sealed) only to delete it then.
+ */
+type Retired = Pick<
+  StoredConnection,
+  "provider" | "via" | "account" | "webhook"
+> & {
+  until: number;
+  expires: number;
+  /** Pasted Stripe key, sealed: only to delete its webhook endpoint later. */
+  dropWith?: string;
+};
+const RETIRED_SECONDS = 86400;
+async function retired(siteId: string, name: ProviderId) {
+  const row = await read<Retired>(siteId, "PAYRETIRED", name);
+  if (!row) return undefined;
+  if (row.until > epoch()) return row;
+  await forget(siteId, row);
+  return undefined;
+}
+/** Lets a retired connection go for good, deleting a pasted Stripe key's endpoint. */
+async function forget(siteId: string, row: Retired) {
+  if (row.dropWith && row.webhook?.id)
+    await dropStripeWebhook({
+      provider: "stripe",
+      secret: row.dropWith,
+      webhook: row.webhook,
+    } as StoredConnection);
+  const k = key(siteId, "PAYRETIRED", row.provider);
+  await deleteItem(k.pk, k.sk);
+}
 /** Removes the connection. False when a signed-in account couldn't be told to forget Forma. */
 export async function disconnect(siteId: string) {
   const stored = await read<StoredConnection>(siteId, "PAYCONN");
-  if (stored) await dropStripeWebhook(stored);
+  if (stored) {
+    const previous = await read<Retired>(siteId, "PAYRETIRED", stored.provider);
+    if (previous) await forget(siteId, previous);
+    const pastedStripe =
+      stored.provider === "stripe" && !stored.via && !!stored.webhook?.id;
+    const row: Retired = {
+      provider: stored.provider,
+      ...(stored.via ? { via: stored.via, account: stored.account } : {}),
+      ...(stored.webhook ? { webhook: stored.webhook } : {}),
+      ...(pastedStripe ? { dropWith: stored.secret } : {}),
+      until: epoch() + RETIRED_SECONDS,
+      expires: epoch() + RETIRED_SECONDS * 2,
+    };
+    await putItem({ ...key(siteId, "PAYRETIRED", stored.provider), ...row });
+  }
   const k = key(siteId, "PAYCONN");
   await deleteItem(k.pk, k.sk);
   return stored?.via ? release(stored) : true;
@@ -887,23 +937,34 @@ export async function checkoutPaid(
   siteId: string,
   checkout: Checkout,
   amount: number,
+  evidence?: PaymentNotice,
 ): Promise<boolean> {
+  // Disconnected, or connected to another account since: Forma can't ask,
+  // but the provider's own signed notification about this checkout says.
+  const signed = () =>
+    evidence?.paid !== undefined &&
+    evidence.provider === checkout.provider &&
+    evidence.checkoutId === checkout.id &&
+    (checkout.provider === "stripe"
+      ? evidence.paid === amount
+      : evidence.paid >= amount);
   const stored = await read<StoredConnection>(siteId, "PAYCONN");
-  // A checkout made with another account can't be verified any more.
-  if (!stored || stored.provider !== checkout.provider) return false;
+  if (!stored || stored.provider !== checkout.provider) return signed();
   const call = await caller(siteId, stored);
   if (checkout.provider === "stripe") {
     const { ok, data } = await call<{
       payment_status?: string;
       amount_total?: number;
     }>(`/v1/checkout/sessions/${encodeURIComponent(checkout.id)}`);
-    return ok && data.payment_status === "paid" && data.amount_total === amount;
+    if (!ok) return signed();
+    return data.payment_status === "paid" && data.amount_total === amount;
   }
   const { ok, data } = await call<{
     status?: string;
     amount_paid?: number;
   }>(`/v1/payment_links/${encodeURIComponent(checkout.id)}`);
-  return ok && data.status === "paid" && (data.amount_paid ?? 0) >= amount;
+  if (!ok) return signed();
+  return data.status === "paid" && (data.amount_paid ?? 0) >= amount;
 }
 
 /**
@@ -944,6 +1005,8 @@ export interface PaymentNotice {
   /** An app record's table. */
   table: string;
   checkoutId: string;
+  /** What the signed event says was paid (minor units), if it was. */
+  paid?: number;
 }
 const safeEqual = (a: string, b: string) => {
   const x = Buffer.from(a),
@@ -972,26 +1035,39 @@ export async function readWebhook(
   body: Buffer,
   headers: Record<string, string | undefined>,
 ): Promise<PaymentNotice | null> {
-  const stored = siteId
+  const current = siteId
     ? await read<StoredConnection>(siteId, "PAYCONN")
     : undefined;
-  const secret = siteId
-    ? stored?.provider === name && !stored.via && stored.webhook
-      ? unseal(stored.webhook.secret)
-      : undefined
-    : name === "stripe"
-      ? process.env.STRIPE_WEBHOOK_SECRET
-      : process.env.RAZORPAY_WEBHOOK_SECRET;
+  const sealed = (
+    c?: Pick<StoredConnection, "provider" | "via" | "webhook">,
+  ) =>
+    c?.provider === name && !c.via && c.webhook ? c.webhook.secret : undefined;
+  // A site's own webhook: the current connection's, or one just
+  // disconnected, which still speaks for the checkouts it made.
+  const candidates = siteId
+    ? [sealed(current), sealed(await retired(siteId, name))]
+        .filter((v): v is string => !!v)
+        .map((v) => ({ sealed: v, secret: unseal(v) }))
+    : [
+        {
+          sealed: "",
+          secret:
+            (name === "stripe"
+              ? process.env.STRIPE_WEBHOOK_SECRET
+              : process.env.RAZORPAY_WEBHOOK_SECRET) ?? "",
+        },
+      ].filter((c) => c.secret);
   insist(
-    secret,
+    candidates.length,
     siteId ? 404 : 503,
     siteId ? "Not found." : "This webhook isn’t set up.",
   );
-  const signed =
+  const signedWith = candidates.find((c) =>
     name === "stripe"
-      ? stripeSigned(headers["stripe-signature"] ?? "", body, secret)
-      : safeEqual(headers["x-razorpay-signature"] ?? "", hmac(secret, body));
-  insist(signed, 400, "Invalid signature.");
+      ? stripeSigned(headers["stripe-signature"] ?? "", body, c.secret)
+      : safeEqual(headers["x-razorpay-signature"] ?? "", hmac(c.secret, body)),
+  );
+  insist(signedWith, 400, "Invalid signature.");
   let event: Record<string, unknown>;
   try {
     event = JSON.parse(body.toString()) as Record<string, unknown>;
@@ -999,8 +1075,10 @@ export async function readWebhook(
     throw new HttpError(400, "Invalid JSON.");
   }
   // A signed notification proves the owner's Razorpay webhook works.
+  const stored = current;
   if (
     siteId &&
+    signedWith.sealed === sealed(current) &&
     stored?.webhook &&
     !stored.webhook.confirmed &&
     name === "razorpay"
@@ -1040,6 +1118,10 @@ export async function readWebhook(
       table: str(pick(session, "metadata", "forma_table")),
       id: str(pick(session, "client_reference_id")),
       checkoutId: str(pick(session, "id")),
+      ...(pick(session, "payment_status") === "paid" &&
+      typeof pick(session, "amount_total") === "number"
+        ? { paid: pick(session, "amount_total") as number }
+        : {}),
     };
   } else {
     if (event.event !== "payment_link.paid") return null;
@@ -1051,6 +1133,10 @@ export async function readWebhook(
       table: str(pick(link, "notes", "forma_table")),
       id: str(pick(link, "notes", "forma_id")),
       checkoutId: str(pick(link, "id")),
+      ...(pick(link, "status") === "paid" &&
+      typeof pick(link, "amount_paid") === "number"
+        ? { paid: pick(link, "amount_paid") as number }
+        : {}),
     };
   }
   if (!notice.siteId || !notice.id || !notice.checkoutId) return null;
@@ -1060,10 +1146,11 @@ export async function readWebhook(
   const account = str(
     name === "stripe" ? event.account : pick(event, "account_id"),
   );
-  const site = await read<StoredConnection>(notice.siteId, "PAYCONN");
-  return site?.via && site.provider === name && site.account === account
-    ? notice
-    : null;
+  const speaks = (c?: Pick<StoredConnection, "via" | "provider" | "account">) =>
+    !!c?.via && c.provider === name && c.account === account;
+  if (speaks(await read<StoredConnection>(notice.siteId, "PAYCONN")))
+    return notice;
+  return speaks(await retired(notice.siteId, name)) ? notice : null;
 }
 
 interface ProviderError {

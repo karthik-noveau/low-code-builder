@@ -14,6 +14,7 @@ import { db, getItem } from "./database";
 import { allow, siteAccess } from "./access";
 import {
   audit,
+  buyer,
   event,
   key,
   list,
@@ -39,6 +40,8 @@ import type {
   Submission,
   Variant,
 } from "../src/commerce/types";
+import { accountsOpen } from "./shoppers";
+import { cognitoUser } from "./invites";
 import { getConnection, refundCheckout, type Checkout } from "./payments";
 import { refundAmount } from "../src/commerce/refunds";
 import {
@@ -447,11 +450,11 @@ export async function storefront(siteId: string) {
       (p) => p.status === "published",
     ),
     // Checkout needs the owner's Stripe or Razorpay; locally, without one,
-    // a sandbox stands in. Hosted stores have no customer sign-in yet
-    // (docs/commerce.md), so the storefront doesn't offer it.
+    // a sandbox stands in. Shopper sign-in needs a way to email the code
+    // (shoppers.ts).
     sandbox: local && !connection,
     checkout: local || !!connection,
-    accounts: local,
+    accounts: accountsOpen(),
   };
 }
 export interface Cart {
@@ -738,6 +741,7 @@ export async function checkout(siteId: string, input: Record<string, unknown>) {
     );
   await transact([
     put(siteId, "ORDER", id, order),
+    buyer(siteId, order.email, id),
     put(siteId, "CHECKOUT", checkoutKey, { orderId: id, receipt }),
     event(siteId, "checkout.started"),
   ]);
@@ -1337,7 +1341,8 @@ export async function requestReturn(
   const order = await read<PrivateOrder>(siteId, "ORDER", id);
   insist(
     order &&
-      ((credentials.email && order.email === credentials.email) ||
+      ((credentials.email &&
+        order.email.toLowerCase() === credentials.email.toLowerCase()) ||
         (credentials.receipt &&
           digest(credentials.receipt) === order.receiptHash)),
     404,
@@ -1492,25 +1497,25 @@ export async function addMember(
   siteId: string,
   input: Record<string, unknown>,
 ) {
-  insist(
-    local,
-    503,
-    "Cloud invitations require a configured identity provider.",
-  );
   const access = await siteAccess(actor, siteId);
   allow(access, "owner");
   const address = email(input.email);
-  const user = await getItem<{ id: string }>(`EMAIL#${address}`, "USER");
-  insist(
-    user && user.id !== actor,
-    422,
-    "Create the collaborator's local account first, then add their email.",
-  );
   insist(
     ["manager", "editor", "viewer"].includes(String(input.role)),
     422,
     "Choose manager, editor or viewer.",
   );
+  // Locally, an account on this machine; hosted, the stack's user pool
+  // (invites.ts creates the account and Cognito emails the invitation).
+  const user = local
+    ? await getItem<{ id: string }>(`EMAIL#${address}`, "USER")
+    : await cognitoUser(address);
+  insist(
+    user,
+    422,
+    "Create the collaborator's local account first, then add their email.",
+  );
+  insist(user.id !== actor, 422, "You already own this site.");
   await transact([
     {
       Put: {
@@ -1540,7 +1545,9 @@ export async function addMember(
       siteId,
       address,
       `Access to ${access.site.name}`,
-      `You have ${String(input.role)} access to this local workspace.`,
+      local
+        ? `You have ${String(input.role)} access to this local workspace.`
+        : `You have ${String(input.role)} access to ${access.site.name}. Sign in at ${config.editorOrigin} to open it.`,
     ),
   ]);
   return { ok: true };

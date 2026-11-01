@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   QueryCommand,
   TransactWriteCommand,
@@ -136,6 +136,11 @@ export function message(
   };
   return put(siteId, "MAIL", item.id, item);
 }
+/** Finds a shopper's orders by email without reading every order (shoppers.ts). */
+export const buyerKey = (email: string) =>
+  createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+export const buyer = (siteId: string, email: string, orderId: string) =>
+  put(siteId, "BUYER", `${buyerKey(email)}#${orderId}`, { orderId });
 export function event(siteId: string, name: string): Write {
   return {
     Update: {

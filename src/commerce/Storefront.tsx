@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
-import { storeRequest } from "./client";
-import { ApiError, request } from "../cloud/client";
-import { useSession } from "../brand/useSession";
+import { shopperToken, storeRequest } from "./client";
+import { ApiError } from "../cloud/client";
 import {
   money,
   type CartLine,
@@ -79,7 +78,6 @@ function Totals({ quote }: { quote: Quote }) {
 }
 
 export function Storefront({ siteId }: { siteId: string }) {
-  const session = useSession();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [checkoutFields, setCheckoutFields] = useState({
     email: "",
@@ -131,11 +129,13 @@ export function Storefront({ siteId }: { siteId: string }) {
     }
   };
   useEffect(() => {
-    if (page !== "checkout" || !session.account || data?.accounts === false)
-      return;
+    const token = shopperToken.get(siteId);
+    if (page !== "checkout" || !token || data?.accounts === false) return;
     let active = true;
-    request<{ addresses: Address[]; email: string }>(
-      `/store/${siteId}/account/profile`,
+    storeRequest<{ addresses: Address[]; email: string }>(
+      siteId,
+      "account/read",
+      { token, orders: false },
     )
       .then((profile) => {
         if (active) {
@@ -152,7 +152,7 @@ export function Storefront({ siteId }: { siteId: string }) {
     return () => {
       active = false;
     };
-  }, [page, siteId, session.account, data?.accounts]);
+  }, [page, siteId, data?.accounts]);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -324,6 +324,14 @@ export function Storefront({ siteId }: { siteId: string }) {
     setRequestedProduct("");
     const url = new URL(location.href);
     if (!url.searchParams.has("product")) return;
+    // Opened from the catalog (one product page or several): step back to
+    // it, so Back doesn't show the catalog twice.
+    const depth = (history.state as { formaProducts?: number } | null)
+      ?.formaProducts;
+    if (depth) {
+      history.go(-depth);
+      return;
+    }
     url.searchParams.delete("product");
     history.replaceState(history.state, "", url);
   };
@@ -336,7 +344,12 @@ export function Storefront({ siteId }: { siteId: string }) {
   const openProduct = (id: string) => {
     const url = new URL(location.href);
     url.searchParams.set("product", id);
-    history.pushState(history.state, "", url);
+    const state = history.state as { formaProducts?: number } | null;
+    history.pushState(
+      { ...state, formaProducts: (state?.formaProducts ?? 0) + 1 },
+      "",
+      url,
+    );
     setRequestedProduct(id);
     setPage("shop");
     setError("");

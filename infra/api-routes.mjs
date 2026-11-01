@@ -294,28 +294,43 @@ export const apiRoutes = [
     auth: "none",
     throttle: { burst: 5, rate: 2 },
   },
-  // A shopper's account, signed in with a Forma session (the API answers
-  // 503 on AWS until customer sign-in has its own identity provider).
-  { id: "StoreAccountRoute", route: "GET /store/{id}/account", auth: "jwt" },
+  // A shopper's account: a code emailed to them buys a token for this store
+  // only (backend/shoppers.ts), sent in the body, so these are public routes.
+  {
+    id: "StoreSignInCodeRoute",
+    route: "POST /store/{id}/account/code",
+    auth: "none",
+    throttle: { burst: 3, rate: 1 },
+  },
+  {
+    id: "StoreSignInRoute",
+    route: "POST /store/{id}/account/session",
+    auth: "none",
+    throttle: { burst: 5, rate: 2 },
+  },
+  {
+    id: "StoreSignOutRoute",
+    route: "POST /store/{id}/account/sign-out",
+    auth: "none",
+    throttle: { burst: 5, rate: 2 },
+  },
+  {
+    id: "StoreAccountReadRoute",
+    route: "POST /store/{id}/account/read",
+    auth: "none",
+    throttle: { burst: 10, rate: 5 },
+  },
   {
     id: "StoreAccountSaveRoute",
     route: "POST /store/{id}/account",
-    auth: "jwt",
-  },
-  {
-    id: "StoreProfileRoute",
-    route: "GET /store/{id}/account/profile",
-    auth: "jwt",
-  },
-  {
-    id: "StoreProfileSaveRoute",
-    route: "POST /store/{id}/account/profile",
-    auth: "jwt",
+    auth: "none",
+    throttle: { burst: 5, rate: 2 },
   },
   {
     id: "StoreAccountReturnRoute",
     route: "POST /store/{id}/account/orders/{orderId}/return",
-    auth: "jwt",
+    auth: "none",
+    throttle: { burst: 5, rate: 2 },
   },
 
   // Served by the local server only.

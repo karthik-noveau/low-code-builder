@@ -10,13 +10,13 @@ These are the checks CI and the deploy workflow run before they ever get AWS cre
 - [ ] `npm audit --audit-level=high` (no high or critical advisories)
 - [ ] `npm run infra:build` (stack, bootstrap and domain templates generate; the stack must stay under 51,200 bytes minified for `--template-body` validation)
 - [ ] `npm run local:setup && npm run test:integration` against DynamoDB Local
-- [ ] With the fake providers (see the header of `tests/integration/online-payments.test.ts`): `TEST_FAKE_PROVIDERS=1 npm run test:integration`, and with `MAIL_FROM` and `SES_ENDPOINT` also set, `TEST_MAIL=1`
+- [ ] With the fake providers (see the header of `tests/integration/online-payments.test.ts`, including the two fake platform webhook secrets): `TEST_FAKE_PROVIDERS=1 TEST_FAKE_PORT=8798 npm run test:integration`, and with `MAIL_FROM` and `SES_ENDPOINT` also set, `TEST_MAIL=1`
 - [ ] `npm run release:readiness` and read every item that isn't `verified` ([release-readiness.json](../release-readiness.json)). The deploy script refuses to run until each one is verified with evidence. Mark an item verified only after doing what it says.
 
 ## 1. Account and roles ([deployment](deployment.md#bootstrap-a-development-environment))
 
 - [ ] Choose the AWS account and region for development (ideally a separate account from production)
-- [ ] `npm run aws:bootstrap`, review `.build/bootstrap.json`, then `-- --apply` (artifact bucket, GitHub OIDC role, CloudFormation execution role)
+- [ ] `npm run aws:bootstrap`, review `.build/bootstrap.json`, then `-- --apply` (artifact bucket, GitHub OIDC role, CloudFormation execution role). An environment bootstrapped before the bounce handling was added needs `-- --apply` again (the execution role now manages an SES configuration set and an EventBridge rule)
 - [ ] Create the GitHub `development` and `production` environments; restrict production to the release branch with reviewers
 - [ ] `-- --apply --configure-github` (or set the variables from `.build/github-environment.json` by hand)
 
@@ -24,8 +24,8 @@ These are the checks CI and the deploy workflow run before they ever get AWS cre
 
 - [ ] In SES (same region), verify the sending domain (DKIM records) or at least the sending address
 - [ ] Request production access; until then SES only delivers to verified addresses
-- [ ] Set environment variable `MAIL_FROM` to the verified address (for example `orders@yourdomain`). Leave it empty and store emails stay previews
-- [ ] Later: a configuration set with bounce and complaint handling (not yet built)
+- [ ] Set environment variable `MAIL_FROM` to the verified address (for example `orders@yourdomain`). Leave it empty and store emails stay previews, and stores don't offer customer accounts (the sign-in code is emailed)
+- [ ] Nothing to set up for bounces and complaints: the stack makes the configuration set and EventBridge rule
 
 ## 3. Payments ([deployment](deployment.md#optional-connect-stripe-or-razorpay-by-signing-in), [commerce](commerce.md#checkout-through-the-owners-stripe-or-razorpay))
 
@@ -50,13 +50,17 @@ Owners can always paste their own keys; these steps add **Connect with Stripe/Ra
 ## 5. Verify development (what local tests can't prove)
 
 - [ ] Invite yourself in the Cognito pool, sign in, create and publish a site; a second user can't see it
+- [ ] Store → Team: add a collaborator who isn't in the pool yet; Cognito emails them; they sign in and see the site with their role; remove them and they lose it
 - [ ] Inbox: submit a form on the published site; it arrives; refund a test payment
 - [ ] Store: open the store, add to cart, pay with a Stripe test card (`4242 4242 4242 4242`); the order turns paid **without** returning to the store (close the tab at Stripe's success page): that's the webhook
 - [ ] Let a checkout sit 15 minutes unpaid; the stock comes back and Stripe's checkout is expired
 - [ ] Refund part of the order, then the rest; Stripe shows both refunds
 - [ ] Repeat the payment with Razorpay test mode
 - [ ] The shopper's confirmation and refund emails arrive from the store's name (to a verified address while SES is in the sandbox)
+- [ ] Customer account: sign in on `/customer?site=` with the emailed code; your orders and saved addresses show; sign out
+- [ ] Bounces: trigger a sign-in code to `bounce@simulator.amazonses.com` and `complaint@simulator.amazonses.com` (SES's mailbox simulator); the outbox marks them bounced and complained, and the next email to either is "not sent"
 - [ ] Get paid: connect by signing in with Stripe and Razorpay, then disconnect
+- [ ] Start a checkout, disconnect, then pay it anyway (Inbox payment page): the request still turns paid from the webhook
 - [ ] Throttles: hammering a public route returns 429; CORS from the editor origin works; the published site's Shop link opens `/store`
 - [ ] Publish failures land in the DLQ and retry; restoring a release changes only the route
 - [ ] Record what you checked in `release-readiness.json` (`cloud`, `payments`, `notifications`) with evidence
@@ -69,6 +73,4 @@ Owners can always paste their own keys; these steps add **Connect with Stripe/Ra
 
 ## Still not available on AWS
 
-- Shopper accounts (`/customer`): need a sign-in service for shoppers
-- Inviting collaborators: needs a Cognito user lookup and invitation flow
-- Email deliverability handling (bounces, complaints, suppression)
+Nothing in the store is closed on AWS any more, except the local sandbox payment (it never takes money). Everything above still has to be verified on a real deployment.

@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSession } from "../brand/useSession";
-import { request, signOut } from "../cloud/client";
-import { storeRequest } from "./client";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { ApiError } from "../cloud/client";
+import { shopperToken, storeRequest } from "./client";
 import { money, type Address, type Order } from "./types";
 import { orderNumber, returnLabel, statusLabel } from "./labels";
 import "./commerce.css";
@@ -14,14 +13,18 @@ interface Profile {
   orders: Order[];
 }
 export function CustomerAccount({ siteId }: { siteId: string }) {
-  const session = useSession();
+  // Shoppers sign in to this store only, with a code sent to their email.
+  const [token, setToken] = useState(() => shopperToken.get(siteId));
   const [profile, setProfile] = useState<Profile>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
+  // Sign-in: the email a code went to, and (local preview stores) the code.
+  const [codeFor, setCodeFor] = useState(""),
+    [preview, setPreview] = useState("");
   // The saved address waiting on "Remove this address?" to be answered.
   const [removing, setRemoving] = useState<number>();
-  // Hosted stores don't offer customer accounts yet (the store says so).
+  // A store that can't email codes doesn't offer accounts (the store says so).
   const [closed, setClosed] = useState(false);
   useEffect(() => {
     let active = true;
@@ -34,27 +37,40 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
       active = false;
     };
   }, [siteId]);
-  const endpoint = `/store/${siteId}/account`;
+  const signedOut = useCallback(() => {
+    shopperToken.set(siteId, "");
+    setToken("");
+    setProfile(undefined);
+  }, [siteId]);
+  /** A store call as the signed-in shopper; an expired sign-in signs out. */
+  const call = useCallback(
+    async <T,>(path: string, input: Record<string, unknown> = {}) => {
+      try {
+        return await storeRequest<T>(siteId, path, { ...input, token });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) signedOut();
+        throw e;
+      }
+    },
+    [siteId, token, signedOut],
+  );
   const refresh = useCallback(
     () =>
-      request<Profile>(endpoint)
+      call<Profile>("account/read")
         .then(setProfile)
         .catch((e) => setError(e.message)),
-    [endpoint],
+    [call],
   );
   useEffect(() => {
-    if (session.account && !closed) void refresh();
-  }, [session.account, closed, refresh]);
+    if (token && !closed) void refresh();
+  }, [token, closed, refresh]);
   const saveAddresses = async (addresses: Address[], message: string) => {
     if (!profile) return false;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await request(endpoint, {
-        method: "POST",
-        body: JSON.stringify({ revision: profile.revision, addresses }),
-      });
+      await call("account", { revision: profile.revision, addresses });
       await refresh();
       setNotice(message);
       return true;
@@ -65,7 +81,48 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
       setBusy(false);
     }
   };
-  const next = encodeURIComponent(`/customer?site=${siteId}`);
+  const askForCode = async (email: string) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const sent = await storeRequest<{ preview?: string }>(
+        siteId,
+        "account/code",
+        { email },
+      );
+      setCodeFor(email);
+      setPreview(sent.preview || "");
+      if (!sent.preview)
+        setNotice(`We emailed a six-digit code to ${email}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send a code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const signIn = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = String(new FormData(event.currentTarget).get("code") || "");
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const session = await storeRequest<{ token: string }>(
+        siteId,
+        "account/session",
+        { email: codeFor, code },
+      );
+      shopperToken.set(siteId, session.token);
+      setToken(session.token);
+      setCodeFor("");
+      setPreview("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="commerce-app storefront">
       <div className="store-shell">
@@ -73,13 +130,13 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
           <a href={`/store?site=${siteId}`} className="store-logo store-back">
             ← Back to store
           </a>
-          {session.account && !closed && (
+          {token && !closed && (
             <button
               className="commerce-link"
               onClick={() => {
-                void signOut()
-                  .then(() => location.assign(`/customer?site=${siteId}`))
-                  .catch((e) => setError(e.message));
+                void storeRequest(siteId, "account/sign-out", { token })
+                  .catch(() => undefined)
+                  .finally(signedOut);
               }}
             >
               Sign out
@@ -88,9 +145,9 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
         </header>
         <main className="store-cart store-account">
           <h1>Your account</h1>
-          {(error || session.error) && (
+          {error && (
             <p className="commerce-notice error" role="alert">
-              {error || session.error}
+              {error}
             </p>
           )}
           {notice && (
@@ -111,27 +168,89 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                 </a>
               </div>
             </section>
-          ) : session.loading ? (
-            <p role="status">Loading…</p>
-          ) : !session.account ? (
-            <section className="commerce-panel commerce-form">
+          ) : !token && codeFor ? (
+            <form
+              key="code"
+              className="commerce-panel commerce-form"
+              onSubmit={(e) => void signIn(e)}
+            >
+              <h2>Enter your code</h2>
+              {preview && (
+                <p className="commerce-notice">
+                  Local preview: this store can’t send email, so here’s the
+                  code: <strong>{preview}</strong>
+                </p>
+              )}
+              <label className="commerce-field">
+                Six-digit code
+                <input
+                  name="code"
+                  required
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  autoFocus
+                />
+              </label>
+              <div className="commerce-actions">
+                <button className="commerce-button" disabled={busy}>
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  className="commerce-button secondary"
+                  disabled={busy}
+                  onClick={() => void askForCode(codeFor)}
+                >
+                  Send a new code
+                </button>
+                <button
+                  type="button"
+                  className="commerce-link"
+                  onClick={() => {
+                    setCodeFor("");
+                    setPreview("");
+                    setNotice("");
+                  }}
+                >
+                  Use a different email
+                </button>
+              </div>
+            </form>
+          ) : !token ? (
+            <form
+              key="email"
+              className="commerce-panel commerce-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void askForCode(
+                  String(new FormData(e.currentTarget).get("email") || ""),
+                );
+              }}
+            >
               <h2>Welcome back</h2>
               <p className="commerce-muted">
-                Sign in to see purchases made with your email address and manage
-                delivery addresses.
+                See purchases made with your email address and manage delivery
+                addresses. We’ll email you a code to sign in; no password
+                needed.
               </p>
+              <label className="commerce-field">
+                Email
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  maxLength={254}
+                />
+              </label>
               <div className="commerce-actions">
-                <a className="commerce-button" href={`/login?next=${next}`}>
-                  Sign in
-                </a>
-                <a
-                  className="commerce-button secondary"
-                  href={`/signup?next=${next}`}
-                >
-                  Create account
-                </a>
+                <button className="commerce-button" disabled={busy}>
+                  Email me a code
+                </button>
               </div>
-            </section>
+            </form>
           ) : profile ? (
             <>
               <p className="commerce-muted">{profile.email}</p>
@@ -186,15 +305,9 @@ export function CustomerAccount({ siteId }: { siteId: string }) {
                                 setBusy(true);
                                 setError("");
                                 setNotice("");
-                                void request(
-                                  `/store/${siteId}/account/orders/${order.id}/return`,
-                                  {
-                                    method: "POST",
-                                    body: JSON.stringify({
-                                      reason: fields.get("reason"),
-                                    }),
-                                  },
-                                )
+                                void call(`account/orders/${order.id}/return`, {
+                                  reason: fields.get("reason"),
+                                })
                                   .then(refresh)
                                   .then(() =>
                                     setNotice(

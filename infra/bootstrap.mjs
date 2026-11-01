@@ -280,6 +280,36 @@ export function bootstrapTemplate() {
                     ],
                     "*",
                   ),
+                  // Shopper email bounce and complaint reporting.
+                  allow(
+                    [
+                      "ses:*ConfigurationSet*",
+                      "ses:TagResource",
+                      "ses:UntagResource",
+                      "ses:ListTagsForResource",
+                    ],
+                    sub(
+                      "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${AppStack}-*",
+                    ),
+                  ),
+                  allow(
+                    [
+                      "events:PutRule",
+                      "events:DescribeRule",
+                      "events:DeleteRule",
+                      "events:EnableRule",
+                      "events:DisableRule",
+                      "events:PutTargets",
+                      "events:RemoveTargets",
+                      "events:ListTargetsByRule",
+                      "events:TagResource",
+                      "events:UntagResource",
+                      "events:ListTagsForResource",
+                    ],
+                    sub(
+                      "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AppStack}-*",
+                    ),
+                  ),
                 ],
               },
             },

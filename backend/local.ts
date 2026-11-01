@@ -146,7 +146,8 @@ const server = createServer(async (req, res) => {
           ? prior
           : { start: Date.now(), count: 0 };
       rate.set(id, window);
-      if (++window.count > 180)
+      // Room for the full integration suite in one minute.
+      if (++window.count > 300)
         throw new HttpError(
           429,
           "Too many store requests. Wait a minute and try again.",

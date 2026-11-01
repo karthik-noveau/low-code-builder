@@ -11,13 +11,13 @@
       "id": "identity",
       "title": "Production signup, email verification, recovery and customer identity",
       "status": "requires-live-provider",
-      "evidence": ""
+      "evidence": "Customer identity: shoppers sign in per store with an emailed six-digit code (hashed, expiring, rate-limited, single use) and a store-scoped token; collaborators are found in or invited to the Cognito pool. Integration-tested locally and in AWS mode against a stand-in Cognito. Owner signup stays invitation-only; not verified on a live deployment."
     },
     {
       "id": "payments",
       "title": "Live payment provider, signed webhooks, reconciliation and refunds",
       "status": "local-verified-live-pending",
-      "evidence": "Checkout through owners' Stripe/Razorpay (15-minute stock holds, provider-confirmed payment, signed webhooks for orders, requests and app records), full and partial refunds with idempotency keys: integration-tested against fake provider APIs. Live provider accounts and reconciliation not yet verified."
+      "evidence": "Checkout through owners' Stripe/Razorpay (15-minute stock holds, provider-confirmed payment, signed webhooks for orders, requests and app records, site and platform webhooks, payments that land after disconnect), full and partial refunds with idempotency keys: integration-tested against fake provider APIs. Live provider accounts and reconciliation not yet verified."
     },
     {
       "id": "shipping-tax",
@@ -29,7 +29,7 @@
       "id": "notifications",
       "title": "Production email delivery and deliverability management",
       "status": "local-verified-live-pending",
-      "evidence": "Order, refund and return emails are sent through SES when MAIL_FROM is set (claimed once, retried up to five times), integration-tested against a stand-in SES endpoint. No live SES delivery or bounce/complaint handling yet."
+      "evidence": "Order, refund and return emails are sent through SES when MAIL_FROM is set (claimed once, retried up to five times), integration-tested against a stand-in SES endpoint. Bounces and complaints come back through a configuration set and EventBridge rule; bounced or complained addresses are suppressed (tested in AWS mode with SES-shaped events). No live SES delivery verified yet."
     },
     {
       "id": "billing",

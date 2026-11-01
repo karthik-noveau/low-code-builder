@@ -19,6 +19,7 @@ import {
   type ContentEntry,
   type Discount,
   type Order,
+  type OutboxMessage,
   type Product,
 } from "./types";
 import { ProductEditor } from "./ProductEditor";
@@ -476,6 +477,14 @@ function ConfirmButton({
     </div>
   );
 }
+/** How an email to a shopper went, as the outbox says it. */
+const mailStatus: Partial<Record<OutboxMessage["status"], string>> = {
+  sent: "sent",
+  undeliverable: "couldn’t be delivered",
+  bounced: "bounced: the address doesn’t accept mail",
+  complained: "marked as spam by the shopper",
+  suppressed: "not sent: this address bounced or complained before",
+};
 export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
   const session = useSession();
   const [siteId, setSiteId] = useState(initialSiteId),
@@ -1789,13 +1798,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                   <span className="commerce-muted">
                     · {mail.to} · {date(mail.createdAt)}
                     {mail.status !== "local-preview" &&
-                      ` · ${
-                        mail.status === "sent"
-                          ? "sent"
-                          : mail.status === "undeliverable"
-                            ? "couldn’t be delivered"
-                            : "sending"
-                      }`}
+                      ` · ${mailStatus[mail.status] ?? "sending"}`}
                   </span>
                 </summary>
                 <p className="commerce-article">{mail.body}</p>
@@ -1825,7 +1828,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-notice">
             Owner: all actions. Manager: commerce settings, orders, and
             publishing. Editor: products, content, and website drafts. Viewer:
-            read-only access. Collaborators need an account first.
+            read-only access. Someone new is emailed an invitation to set up
+            their account (on a workspace on this computer, they create their
+            account here first).
           </div>
           {data.role === "owner" && (
             <form

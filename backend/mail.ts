@@ -8,15 +8,22 @@
  * than five minutes, or a failure, is tried again, five attempts in all,
  * then it's "undeliverable". Without MAIL_FROM messages stay
  * "local-preview" (shown in the store's outbox only).
+ *
+ * Hosted, mail goes through the stack's SES configuration set, which reports
+ * bounces and complaints to EventBridge and on to the API function
+ * (`onMailEvent`): the message is marked, and an address that bounced for
+ * good or complained is never mailed again by any store.
  */
+import { createHash } from "node:crypto";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import {
   DeleteCommand,
+  PutCommand,
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { config, isConditional, local } from "./config";
-import { db } from "./database";
+import { config, idPattern, isConditional, local } from "./config";
+import { db, getItem } from "./database";
 import { key, now, partition, read } from "./commerce-data";
 import type { OutboxMessage, StoreSettings } from "../src/commerce/types";
 
@@ -42,6 +49,15 @@ const LEASE_MS = 5 * 60_000;
 const BATCH = 10;
 type Stored = OutboxMessage & { attempts?: number; claimedAt?: string };
 
+/** Addresses never to mail again, Forma-wide (hashed). */
+const suppression = (address: string) => ({
+  pk: "MAILSUPPRESS",
+  sk: createHash("sha256").update(address.trim().toLowerCase()).digest("hex"),
+});
+const isSuppressed = async (address: string) => {
+  const k = suppression(address);
+  return !!(await getItem(k.pk, k.sk));
+};
 /** "Store name" <address>, with the name safe inside the quotes. */
 const sender = (name: string) =>
   `"${name.replace(/["\\\r\n]/g, "").slice(0, 80) || "Store"}" <${mailFrom()}>`;
@@ -137,6 +153,11 @@ export async function deliverMail(siteId: string) {
         await dropOut(siteId, id);
         continue;
       }
+      if (await isSuppressed(m.to)) {
+        await mark(siteId, id, "suppressed").catch(() => undefined);
+        await dropOut(siteId, id);
+        continue;
+      }
       if (!(await claim(siteId, id))) {
         // Out of attempts (a send that never reported back): give up on it.
         if (
@@ -155,6 +176,16 @@ export async function deliverMail(siteId: string) {
             Destination: { ToAddresses: [m.to] },
             ...(settings?.contactEmail
               ? { ReplyToAddresses: [settings.contactEmail] }
+              : {}),
+            // Bounces and complaints come back tagged with the message.
+            ...(process.env.MAIL_CONFIGURATION_SET
+              ? {
+                  ConfigurationSetName: process.env.MAIL_CONFIGURATION_SET,
+                  EmailTags: [
+                    { Name: "site", Value: siteId },
+                    { Name: "mail", Value: id },
+                  ],
+                }
               : {}),
             Content: {
               Simple: {
@@ -184,4 +215,63 @@ export async function deliverMail(siteId: string) {
   } catch (error) {
     console.error("mail_delivery_failed", siteId, String(error).slice(0, 200));
   }
+}
+
+interface MailEvent {
+  eventType?: string;
+  mail?: { tags?: Record<string, string[]> };
+  bounce?: {
+    bounceType?: string;
+    bouncedRecipients?: { emailAddress?: string }[];
+  };
+  complaint?: { complainedRecipients?: { emailAddress?: string }[] };
+}
+/**
+ * A bounce or complaint SES reported (the EventBridge event's detail). A
+ * permanent bounce or a complaint stops mail to that address; the message,
+ * if it's one of ours, says what happened.
+ */
+export async function onMailEvent(detail: MailEvent) {
+  const complained = detail.eventType === "Complaint";
+  const bounced = detail.eventType === "Bounce";
+  if (!complained && !bounced) return;
+  const permanent = complained || detail.bounce?.bounceType === "Permanent";
+  const recipients = (
+    complained
+      ? detail.complaint?.complainedRecipients
+      : detail.bounce?.bouncedRecipients
+  )
+    ?.map((r) => r.emailAddress?.replace(/^.*<([^>]+)>.*$/, "$1"))
+    .filter((a): a is string => !!a && a.length <= 254);
+  if (permanent)
+    for (const address of recipients ?? [])
+      await db.send(
+        new PutCommand({
+          TableName: config.table,
+          Item: {
+            ...suppression(address),
+            reason: complained ? "complaint" : "bounce",
+            at: now(),
+          },
+        }),
+      );
+  const siteId = detail.mail?.tags?.site?.[0] ?? "";
+  const id = detail.mail?.tags?.mail?.[0] ?? "";
+  if (!idPattern.test(siteId) || !/^\d+-[0-9a-f-]{36}$/.test(id)) return;
+  await db
+    .send(
+      new UpdateCommand({
+        TableName: config.table,
+        Key: key(siteId, "MAIL", id),
+        UpdateExpression: "SET #s = :s",
+        ConditionExpression: "attribute_exists(pk)",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: {
+          ":s": complained ? "complained" : "bounced",
+        },
+      }),
+    )
+    .catch((error) => {
+      if (!isConditional(error)) throw error;
+    });
 }

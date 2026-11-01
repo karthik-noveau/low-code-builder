@@ -142,35 +142,78 @@ describe("local account lifecycle", () => {
       (await call("/auth/login", "POST", { email, password })).status,
     ).toBe(401);
   });
-  it("keeps customer addresses and order history private to the signed-in account", async () => {
-    const password = "Local-customer-password-42";
-    const a = (
+  it("signs shoppers in with an emailed code and keeps their addresses private", async () => {
+    const owner = (
       await call("/auth/register", "POST", {
-        email: `customer-a-${randomUUID()}@local.test`,
-        password,
+        email: `store-owner-${randomUUID()}@local.test`,
+        password: "Local-customer-password-42",
       })
     ).data.token;
-    const b = (
-      await call("/auth/register", "POST", {
-        email: `customer-b-${randomUUID()}@local.test`,
-        password,
-      })
-    ).data.token;
-    const site = (await call("/sites", "POST", { name: "Customer test" }, a))
-      .data.site.id;
-    await call(`/sites/${site}/commerce`, "GET", undefined, a);
-    const route = `/store/${site}/account`;
+    const site = (
+      await call("/sites", "POST", { name: "Customer test" }, owner)
+    ).data.site.id;
+    const overview = await call(
+      `/sites/${site}/commerce`,
+      "GET",
+      undefined,
+      owner,
+    );
+    const store = `/store/${site}/account`;
+    // A closed store offers no sign-in.
     expect(
-      (
-        await call(
-          `/store/${randomUUID()}/account`,
-          "POST",
-          { revision: 0, addresses: [] },
-          a,
-        )
-      ).status,
+      (await call(`${store}/code`, "POST", { email: "a@local.test" })).status,
     ).toBe(404);
-    expect((await call(route)).status).toBe(401);
+    await call(
+      `/sites/${site}/commerce/settings`,
+      "PUT",
+      { ...overview.data.settings, enabled: true },
+      owner,
+    );
+    /** The code from the response (local preview) or the store's outbox. */
+    const codeFor = async (email: string) => {
+      const sent = await call(`${store}/code`, "POST", { email });
+      expect(sent.status).toBe(200);
+      if (sent.data.preview) return String(sent.data.preview);
+      const outbox = (
+        await call(`/sites/${site}/commerce`, "GET", undefined, owner)
+      ).data.outbox as { to: string; body: string }[];
+      return /\b(\d{6})\b/.exec(
+        outbox.find((m) => m.to === email)?.body ?? "",
+      )![1];
+    };
+    const aEmail = `customer-a-${randomUUID()}@local.test`;
+    // Wrong codes count; the sixth try fails even with the right code.
+    const code = await codeFor(aEmail);
+    const wrong = code === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++)
+      expect(
+        (await call(`${store}/session`, "POST", { email: aEmail, code: wrong }))
+          .status,
+      ).toBe(401);
+    expect(
+      (await call(`${store}/session`, "POST", { email: aEmail, code })).status,
+    ).toBe(401);
+    // Asking again straight away is refused.
+    expect(
+      (await call(`${store}/code`, "POST", { email: aEmail })).status,
+    ).toBe(429);
+    const bEmail = `customer-b-${randomUUID()}@local.test`;
+    const bCode = await codeFor(bEmail);
+    const session = await call(`${store}/session`, "POST", {
+      email: bEmail.toUpperCase(),
+      code: bCode,
+    });
+    expect(session.status).toBe(201);
+    const b = String(session.data.token);
+    // A code works once.
+    expect(
+      (await call(`${store}/session`, "POST", { email: bEmail, code: bCode }))
+        .status,
+    ).toBe(401);
+    expect(
+      (await call(`${store}/read`, "POST", { token: "f".repeat(64) })).status,
+    ).toBe(401);
+    expect((await call(`${store}/read`, "POST", {})).status).toBe(401);
     const address = {
       name: "Private Customer",
       line1: "1 Test Street",
@@ -179,15 +222,31 @@ describe("local account lifecycle", () => {
       country: "US",
     };
     expect(
-      (await call(route, "POST", { revision: 0, addresses: [address] }, a))
-        .status,
+      (
+        await call(store, "POST", {
+          token: b,
+          revision: 0,
+          addresses: [address],
+        })
+      ).status,
     ).toBe(200);
-    expect((await call(route, "GET", undefined, a)).data.addresses).toEqual([
-      address,
-    ]);
-    expect((await call(route, "GET", undefined, b)).data.addresses).toEqual([]);
+    const read = await call(`${store}/read`, "POST", { token: b });
+    expect(read.data.email).toBe(bEmail);
+    expect(read.data.addresses).toEqual([address]);
     expect(
-      (await call(route, "POST", { revision: 0, addresses: [] }, a)).status,
+      (await call(store, "POST", { token: b, revision: 0, addresses: [] }))
+        .status,
     ).toBe(409);
+    // Another store doesn't know this token.
+    expect(
+      (await call(`/store/${randomUUID()}/account/read`, "POST", { token: b }))
+        .status,
+    ).toBe(404);
+    expect((await call(`${store}/sign-out`, "POST", { token: b })).status).toBe(
+      200,
+    );
+    expect((await call(`${store}/read`, "POST", { token: b })).status).toBe(
+      401,
+    );
   });
 });

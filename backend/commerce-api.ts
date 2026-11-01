@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID, createHmac } from "node:crypto";
-import { HttpError, idPattern, insist, local } from "./config";
+import { HttpError, idPattern, insist } from "./config";
 import { allow, siteAccess } from "./access";
 import { audit, event, list, now, put, read, recent, transact } from "./commerce-data";
 import {
@@ -31,6 +31,13 @@ import {
 import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
 import { deliverMail } from "./mail";
+import {
+  sendSignInCode,
+  shopper,
+  shopperOrders,
+  signInShopper,
+  signOutShopper,
+} from "./shoppers";
 import { storeOnWebsite, websiteProducts } from "./commerce-publishing";
 import type {
   Address,
@@ -186,88 +193,85 @@ async function storeRoutes(
         ]);
       return { value: { ok: true } };
     }
-    if (action === "account" || action === "account/profile") {
-      insist(local, 503, "Live customer accounts are not configured.");
-      insist(
-        actor && request.email,
-        401,
-        "Sign in to view your customer account.",
-      );
+    // Shopper accounts: a code by email, then a token for this store.
+    if (action === "account/code" && method === "POST")
+      return { value: await sendSignInCode(siteId, input) };
+    if (action === "account/session" && method === "POST")
+      return { value: await signInShopper(siteId, input), status: 201 };
+    if (action === "account/sign-out" && method === "POST") {
+      await signOutShopper(siteId, input.token);
+      return { value: { ok: true } };
+    }
+    if (
+      (action === "account" || action === "account/read") &&
+      method === "POST"
+    ) {
       const store = await settings(siteId);
-      insist(store, 404, "Store not found.");
+      insist(store?.enabled, 404, "Store not found.");
       await requireNotDeleting(store.owner, siteId);
-      const customerId = digest(request.email);
+      const email = await shopper(siteId, input.token);
+      const customerId = digest(email);
       const previous = await read<{ revision: number; addresses: Address[] }>(
         siteId,
         "PROFILE",
         customerId,
       );
-      if (method === "GET")
+      if (action === "account/read")
         return {
           value: {
-            email: request.email,
+            email,
             revision: previous?.revision || 0,
             addresses: previous?.addresses || [],
             orders:
-              action === "account/profile"
+              input.orders === false
                 ? []
-                : (
-                    await list<Parameters<typeof publicOrder>[0]>(
-                      siteId,
-                      "ORDER",
-                    )
-                  )
-                    .filter((order) => order.email === request.email)
-                    .map(publicOrder),
+                : (await shopperOrders(siteId, email)).map(publicOrder),
           },
         };
-      if (method === "POST") {
+      insist(
+        input.revision === (previous?.revision || 0),
+        409,
+        "Your profile changed. Refresh first.",
+      );
+      insist(
+        Array.isArray(input.addresses) && input.addresses.length <= 5,
+        422,
+        "Save up to five addresses.",
+      );
+      const addresses = input.addresses.map((raw) => {
+        const value = object(raw);
+        const country = text(value.country, "country", 2);
         insist(
-          input.revision === (previous?.revision || 0),
-          409,
-          "Your profile changed. Refresh first.",
-        );
-        insist(
-          Array.isArray(input.addresses) && input.addresses.length <= 5,
+          /^[A-Z]{2}$/.test(country),
           422,
-          "Save up to five addresses.",
+          "Use a two-letter country code.",
         );
-        const addresses = input.addresses.map((raw) => {
-          const value = object(raw);
-          const country = text(value.country, "country", 2);
-          insist(
-            /^[A-Z]{2}$/.test(country),
-            422,
-            "Use a two-letter country code.",
-          );
-          return {
-            name: text(value.name, "name", 100),
-            line1: text(value.line1, "address", 200),
-            city: text(value.city, "city", 100),
-            postalCode: text(value.postalCode, "postal code", 30),
-            country,
-          };
-        });
-        await transact([
-          put(
-            siteId,
-            "PROFILE",
-            customerId,
-            { addresses, revision: (previous?.revision || 0) + 1 },
-            previous?.revision,
-          ),
-        ]);
-        return { value: { ok: true } };
-      }
+        return {
+          name: text(value.name, "name", 100),
+          line1: text(value.line1, "address", 200),
+          city: text(value.city, "city", 100),
+          postalCode: text(value.postalCode, "postal code", 30),
+          country,
+        };
+      });
+      await transact([
+        put(
+          siteId,
+          "PROFILE",
+          customerId,
+          { addresses, revision: (previous?.revision || 0) + 1 },
+          previous?.revision,
+        ),
+      ]);
+      return { value: { ok: true } };
     }
     const accountReturn = /^account\/orders\/([^/]+)\/return$/.exec(action);
     if (accountReturn && method === "POST") {
-      insist(local, 503, "Live customer accounts are not configured.");
-      insist(actor && request.email, 401, "Sign in to request a return.");
+      const email = await shopper(siteId, input.token);
       return {
         value: {
           order: await requestReturn(siteId, accountReturn[1], input.reason, {
-            email: request.email,
+            email,
           }),
         },
       };

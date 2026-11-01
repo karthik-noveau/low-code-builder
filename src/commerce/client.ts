@@ -59,3 +59,22 @@ export function download(
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+/** A shopper's sign-in for one store (backend/shoppers.ts), kept in this browser. */
+export const shopperToken = {
+  key: (siteId: string) => `forma-shopper-${siteId}`,
+  get(siteId: string) {
+    try {
+      return localStorage.getItem(this.key(siteId)) || "";
+    } catch {
+      return "";
+    }
+  },
+  set(siteId: string, token: string) {
+    try {
+      if (token) localStorage.setItem(this.key(siteId), token);
+      else localStorage.removeItem(this.key(siteId));
+    } catch {
+      /* Signed in for this page only. */
+    }
+  },
+};

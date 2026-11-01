@@ -15,6 +15,7 @@ import { config, HttpError, insist } from "./config";
 import { db } from "./database";
 import {
   audit,
+  buyer,
   event,
   list,
   message,
@@ -144,6 +145,7 @@ export async function startPaidCheckout(
   insist(stock, 409, "Some items just sold out. Update your cart.");
   await transact([
     put(siteId, "ORDER", held.id, held),
+    buyer(siteId, held.email, held.id),
     put(siteId, "CHECKOUT", checkoutKey, { orderId: held.id, receipt }),
     put(siteId, "HOLD", held.id, { orderId: held.id, until: held.holdUntil }),
     ...stock,
@@ -290,7 +292,11 @@ export async function sweepHolds(siteId: string, max = 5) {
 }
 
 /** Asks the provider about a pending order and records it paid if it is. */
-export async function confirmOrder(siteId: string, order: PrivateOrder) {
+export async function confirmOrder(
+  siteId: string,
+  order: PrivateOrder,
+  evidence?: PaymentNotice,
+) {
   // A cancelled order's checkout can still take a payment if the provider
   // refused to cancel it: such a payment is recorded, never lost.
   if (
@@ -301,7 +307,7 @@ export async function confirmOrder(siteId: string, order: PrivateOrder) {
     )
   )
     return order;
-  if (await checkoutPaid(siteId, order.checkout, order.total))
+  if (await checkoutPaid(siteId, order.checkout, order.total, evidence))
     return markPaid(siteId, order);
   if (order.status === "cancelled") return order;
   // Unpaid and out of time: let the stock go now rather than on a sweep.
@@ -428,7 +434,22 @@ export async function onPaymentNotice(notice: PaymentNotice) {
   if (notice.kind !== "order") return;
   const order = await read<PrivateOrder>(notice.siteId, "ORDER", notice.id);
   if (!order || order.checkout?.id !== notice.checkoutId) return;
-  await confirmOrder(notice.siteId, order);
+  await confirmOrder(notice.siteId, order, notice);
+}
+
+/**
+ * Closes every open checkout before the owner disconnects payments: paid
+ * ones are recorded, the rest cancelled with their stock back. One that
+ * can't be closed is left to the sweep (and the retired connection's webhook).
+ */
+export async function closeHolds(siteId: string) {
+  const holds = await list<Hold>(siteId, "HOLD", 5000).catch(
+    () => [] as Hold[],
+  );
+  for (const h of holds)
+    await release(siteId, h.orderId, { force: true }).catch((error) =>
+      console.error("hold_close_failed", siteId, h.orderId, String(error)),
+    );
 }
 
 export { publicOrder };

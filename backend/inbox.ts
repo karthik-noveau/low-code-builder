@@ -6,6 +6,7 @@ import { db, getItem, putItem } from "./database";
 import { readObject, writeObject } from "./objects";
 import {
   checkoutPaid,
+  type PaymentNotice,
   createCheckout,
   currencyCode,
   getConnection,
@@ -328,13 +329,14 @@ type StoredRequest = InboxRequest & { revision: number };
 async function confirmWithProvider(
   siteId: string,
   request: StoredRequest,
+  evidence?: PaymentNotice,
 ): Promise<StoredRequest> {
   const payment = request.payment;
   if (
     !payment?.checkout ||
     payment.status !== "unpaid" ||
     payment.amount === null ||
-    !(await checkoutPaid(siteId, payment.checkout, payment.amount))
+    !(await checkoutPaid(siteId, payment.checkout, payment.amount, evidence))
   )
     return request;
   const next: StoredRequest = {
@@ -365,11 +367,12 @@ export async function confirmRequestCheckout(
   siteId: string,
   requestId: string,
   checkoutId: string,
+  evidence?: PaymentNotice,
 ) {
   if (!idPattern.test(siteId) || !requestIdPattern.test(requestId)) return;
   const request = await read<StoredRequest>(siteId, "REQUEST", requestId);
   if (request?.payment?.checkout?.id === checkoutId)
-    await confirmWithProvider(siteId, request);
+    await confirmWithProvider(siteId, request, evidence);
 }
 /** Sends the visitor to a checkout for the exact total, reusing an open one. */
 async function startCheckout(siteId: string, requestId: string) {
