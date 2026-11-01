@@ -124,12 +124,14 @@ export function message(
   to: string,
   subject: string,
   body: string,
+  html?: string,
 ): Write {
   const item: OutboxMessage = {
     id: `${Date.now()}-${randomUUID()}`,
     to,
     subject,
     body,
+    ...(html ? { html } : {}),
     // Sent by mail.ts when Forma has an SES sender; a preview otherwise.
     status: process.env.MAIL_FROM ? "pending" : "local-preview",
     createdAt: now(),

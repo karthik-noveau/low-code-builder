@@ -438,3 +438,192 @@ describe("marketing", () => {
     ).toBe(409);
   });
 });
+
+describe("closing the gaps", () => {
+  it("counts countries from the visitor's time zone", async () => {
+    await call(
+      `/track/${site}`,
+      "POST",
+      JSON.stringify({ p: "/", z: "Asia/Kolkata", w: 1300 }),
+      "",
+      {
+        "content-type": "text/plain",
+        "user-agent": "Mozilla/5.0 (Country test) Chrome/120",
+      },
+    );
+    const { data } = await call(`/sites/${site}/insights?days=7`);
+    expect(data.countries).toContainEqual(["IN", 1]);
+  });
+  it("shows live stock on product pages and gives the store the site's tracking", async () => {
+    const product = (await page("products/snake-plant")).text;
+    expect(product).toContain("data-forma-stock");
+    expect(product).toMatch(
+      new RegExp(
+        `src="insights.js"[^>]*data-store="[^"]*/store/${site}" data-product="`,
+      ),
+    );
+    const store = (await call(`/store/${site}`, "GET", undefined, "")).data;
+    expect(store.tracking).toEqual({
+      ga4: "G-TEST1234",
+      pixel: "",
+      consent: true,
+    });
+  });
+  it("sends any number of subscribers in steps, designed, with an A/B subject", async () => {
+    const shop = (path: string, input: unknown) =>
+      call(`/store/${site}/${path}`, "POST", input, "");
+    for (let i = 0; i < 65; i++)
+      expect(
+        (
+          await shop("forms", {
+            kind: "newsletter",
+            email: `fan${i}@example.com`,
+            consent: true,
+          })
+        ).status,
+      ).toBe(201);
+    const input = {
+      subject: "Version A",
+      subjectB: "Version B",
+      body: "Hello",
+      name: "Big test",
+      design: {
+        heading: "Big news",
+        image: "https://images.example.com/hero.jpg",
+        buttonLabel: "Shop now",
+        buttonUrl: "http://127.0.0.1:5178/store?site=x",
+        accent: "#336699",
+      },
+    };
+    const preview = await admin("campaigns", "POST", {
+      mode: "preview",
+      ...input,
+    });
+    expect(preview.data.count).toBeGreaterThan(60);
+    expect(preview.data.html).toContain("<h1");
+    expect(preview.data.html).toContain("Big news");
+    expect(preview.data.html).toContain("utm_content=a");
+    expect(
+      (
+        await admin("campaigns", "POST", {
+          mode: "preview",
+          ...input,
+          design: { ...input.design, image: "javascript:x" },
+        })
+      ).status,
+    ).toBe(422);
+    let step = await admin("campaigns", "POST", { mode: "send", ...input });
+    expect(step.status, JSON.stringify(step.data)).toBe(200);
+    expect(step.data.done).toBe(false);
+    let steps = 1;
+    while (!step.data.done) {
+      step = await admin("campaigns", "POST", {
+        mode: "send",
+        id: step.data.campaign.id,
+      });
+      steps++;
+    }
+    expect(steps).toBeGreaterThan(1);
+    const c = step.data.campaign;
+    expect(c.queued).toBe(preview.data.count);
+    expect(c.sentA + c.sentB).toBe(c.queued);
+    expect(c.sentA).toBeGreaterThan(0);
+    expect(c.sentB).toBeGreaterThan(0);
+    const outbox = ((await admin()).data as CommerceOverview).outbox.filter(
+      (m) => m.subject.startsWith("Version"),
+    );
+    expect(outbox.length).toBeGreaterThan(0);
+    const b = outbox.find((m) => m.subject === "Version B")!;
+    expect(b.html).toContain("utm_content=b");
+    expect(b.body).toContain("Big news");
+  });
+  it("reminds shoppers by itself when the owner turns it on", async () => {
+    const overview = (await admin()).data as CommerceOverview;
+    expect(
+      (
+        await admin("settings", "PUT", {
+          ...overview.settings,
+          autoRemind: { enabled: true, hours: 99, discountCode: "" },
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await admin("settings", "PUT", {
+          ...overview.settings,
+          autoRemind: { enabled: true, hours: 0, discountCode: "" },
+        })
+      ).status,
+    ).toBe(200);
+    const shop = (path: string, input?: unknown) =>
+      call(
+        `/store/${site}/${path}`,
+        input === undefined ? "GET" : "POST",
+        input,
+        "",
+      );
+    const store = (await call(`/store/${site}`, "GET", undefined, "")).data;
+    const product = store.products[0];
+    const cart = (
+      await shop("cart", {
+        lines: [
+          {
+            productId: product.id,
+            variantId: product.variants[0].id,
+            quantity: 1,
+          },
+        ],
+        marketId: "default",
+        country: "US",
+      })
+    ).data;
+    const order = (
+      await shop("checkout", {
+        token: cart.token,
+        email: "auto@example.com",
+        address: {
+          name: "Ari",
+          line1: "1 Main St",
+          city: "Test City",
+          postalCode: "10001",
+          country: "US",
+        },
+      })
+    ).data;
+    const open = ((await admin()).data as CommerceOverview).orders.find(
+      (o) => o.id === order.orderId,
+    )!;
+    // Still open: the sweep leaves it alone.
+    expect(open.remindedAt).toBeUndefined();
+    await admin(`orders/${open.id}`, "POST", {
+      revision: open.revision,
+      action: "cancel",
+    });
+    // The next store request sends what's due.
+    await call(`/store/${site}`, "GET", undefined, "");
+    const after = (await admin()).data as CommerceOverview;
+    expect(
+      after.orders.find((o) => o.id === order.orderId)!.remindedAt,
+    ).toBeTruthy();
+    expect(
+      after.outbox.filter(
+        (m) =>
+          m.to === "auto@example.com" &&
+          m.subject === "You left something behind",
+      ),
+    ).toHaveLength(1);
+    expect(
+      after.audit.some(
+        (a) => a.action === "checkout.reminded" && a.actor === "automatic",
+      ),
+    ).toBe(true);
+    await call(`/store/${site}`, "GET", undefined, "");
+    expect(
+      ((await admin()).data as CommerceOverview).outbox.filter(
+        (m) =>
+          m.to === "auto@example.com" &&
+          m.subject === "You left something behind",
+      ),
+    ).toHaveLength(1);
+  });
+});

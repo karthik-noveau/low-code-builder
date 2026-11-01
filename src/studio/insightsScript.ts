@@ -5,6 +5,9 @@
  *   the page, the site that sent the visitor and the campaign (utm_*), and
  *   the screen width for the device. No cookies or stored identifiers;
  *   the API counts unique visitors from a daily hash it never keeps.
+ * - A product page (data-store, data-product) shows live stock from the
+ *   store and marks its Product data in or out of stock, so a published
+ *   page never needs rebuilding when stock changes.
  * - The campaign a visitor arrived with is remembered for the tab and added
  *   to links into the store, so a sale there is credited to it.
  * - Google Analytics (data-ga) and the Meta Pixel (data-pixel), when the
@@ -25,7 +28,8 @@ export const INSIGHTS_SCRIPT = `;(function () {
     var landed = {
       s: params.get("utm_source") || (params.get("gclid") ? "google" : params.get("fbclid") ? "facebook" : ""),
       m: params.get("utm_medium") || (params.get("gclid") ? "cpc" : params.get("fbclid") ? "social" : ""),
-      c: params.get("utm_campaign") || ""
+      c: params.get("utm_campaign") || "",
+      t: params.get("utm_content") || ""
     };
     if (landed.s) {
       utm = landed;
@@ -43,10 +47,39 @@ export const INSIGHTS_SCRIPT = `;(function () {
         var r = document.referrer ? new URL(document.referrer) : null;
         if (r && r.host !== location.host) ref = r.host.replace(/^www\\./, "");
       } catch (e) {}
-      var hit = JSON.stringify({ p: path, r: ref, s: landed.s, m: landed.m, c: landed.c, w: window.innerWidth || 0 });
+      var zone = "";
+      try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+      var hit = JSON.stringify({ p: path, r: ref, s: landed.s, m: landed.m, c: landed.c, t: params.get("utm_content") || "", w: window.innerWidth || 0, z: zone });
       if (navigator.sendBeacon) navigator.sendBeacon(api, hit);
       else fetch(api, { method: "POST", body: hit, keepalive: true }).catch(function () {});
     }
+    // A product page shows live stock, and tells search engines too.
+    var store = me.getAttribute("data-store"), product = me.getAttribute("data-product");
+    var stockLine = document.querySelector("[data-forma-stock]");
+    if (store && product && stockLine)
+      fetch(store).then(function (r) { return r.ok ? r.json() : null; }).then(function (shop) {
+        var found = shop && shop.products && shop.products.filter(function (p) { return p.id === product; })[0];
+        if (!found) return;
+        var left = 0;
+        for (var i = 0; i < found.variants.length; i++) left += Math.max(0, found.variants[i].stock || 0);
+        stockLine.textContent = left <= 0 ? "Sold out" : left <= 5 ? "Only " + left + " left" : "In stock";
+        stockLine.setAttribute("data-state", left <= 0 ? "out" : left <= 5 ? "low" : "in");
+        stockLine.hidden = false;
+        if (left <= 0) {
+          var buy = stockLine.previousElementSibling;
+          if (buy && buy.tagName === "A") { buy.setAttribute("aria-disabled", "true"); buy.style.opacity = ".5"; buy.style.pointerEvents = "none"; }
+        }
+        var scripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (var j = 0; j < scripts.length; j++) {
+          try {
+            var json = JSON.parse(scripts[j].textContent);
+            if (json["@type"] === "Product" && json.offers) {
+              json.offers.availability = left > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+              scripts[j].textContent = JSON.stringify(json);
+            }
+          } catch (e) {}
+        }
+      }).catch(function () {});
     // Store links carry the campaign the visitor came with.
     if (utm && utm.s)
       document.addEventListener("click", function (event) {
@@ -58,6 +91,7 @@ export const INSIGHTS_SCRIPT = `;(function () {
           url.searchParams.set("utm_source", utm.s);
           if (utm.m) url.searchParams.set("utm_medium", utm.m);
           if (utm.c) url.searchParams.set("utm_campaign", utm.c);
+          if (utm.t) url.searchParams.set("utm_content", utm.t);
           link.href = url.toString();
         } catch (e) {}
       }, true);

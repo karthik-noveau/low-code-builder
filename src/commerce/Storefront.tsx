@@ -1,5 +1,11 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
 import { shopperToken, storeRequest } from "./client";
+import {
+  startStoreTracking,
+  trackPurchaseOnce,
+  trackStore,
+  type StoreTracking,
+} from "./storeTracking";
 import { ApiError } from "../cloud/client";
 import {
   money,
@@ -37,6 +43,8 @@ interface StoreData {
   checkout?: boolean;
   /** Whether shoppers can sign in to a customer account here. */
   accounts?: boolean;
+  /** The website's Google Analytics and Meta Pixel, for store events. */
+  tracking?: StoreTracking;
 }
 type Page = "shop" | "cart" | "checkout" | "receipt" | "journal" | "contact";
 /**
@@ -68,6 +76,7 @@ function visitSource(siteId: string) {
       params.get("utm_medium") ||
       (params.get("gclid") ? "cpc" : params.get("fbclid") ? "social" : ""),
     campaign: params.get("utm_campaign") || "",
+    content: params.get("utm_content") || "",
     referrer,
   };
   try {
@@ -201,6 +210,7 @@ export function Storefront({ siteId }: { siteId: string }) {
         const result = await storeRequest<StoreData>(siteId);
         if (!active) return;
         setData(result);
+        startStoreTracking(result.tracking);
         const story = new URLSearchParams(location.search).get("story");
         const linked = story
           ? result.content.find((entry) => entry.slug === story)
@@ -359,7 +369,24 @@ export function Storefront({ siteId }: { siteId: string }) {
             : line,
         )
       : [...lines, { productId, variantId, quantity }];
-    if (await updateCart(updated)) setNotice("Added to your cart.");
+    if (await updateCart(updated)) {
+      setNotice("Added to your cart.");
+      const product = data?.products.find((p) => p.id === productId);
+      const variant = product?.variants.find((v) => v.id === variantId);
+      if (product && variant && data)
+        trackStore("add_to_cart", {
+          currency: data.settings.currency,
+          value: variant.price * quantity,
+          items: [
+            {
+              id: product.id,
+              name: product.title,
+              price: variant.price,
+              quantity,
+            },
+          ],
+        });
+    }
   };
   /** Leaves a product's page (?product=) for the whole catalog. */
   const showAll = () => {
@@ -421,10 +448,54 @@ export function Storefront({ siteId }: { siteId: string }) {
       void storeRequest(siteId, "events", { id, name: "product.view" }).catch(
         () => undefined,
       );
+      const viewed = data?.products.find((p) => p.id === requestedProduct);
+      if (viewed && data)
+        trackStore("view_item", {
+          currency: data.settings.currency,
+          value: Math.min(...viewed.variants.map((v) => v.price)),
+          items: [
+            {
+              id: viewed.id,
+              name: viewed.title,
+              price: Math.min(...viewed.variants.map((v) => v.price)),
+              quantity: 1,
+            },
+          ],
+        });
     } catch {
       /* Analytics must never prevent shopping. */
     }
   }, [requestedProduct, data, siteId]);
+  // Google Analytics and the Meta Pixel hear about checkouts and purchases.
+  useEffect(() => {
+    if (page !== "checkout" || !cart || !data) return;
+    trackStore("begin_checkout", {
+      currency: cart.quote.currency,
+      value: cart.quote.total,
+      items: cart.quote.lines.map((l) => ({
+        id: l.productId,
+        name: l.title,
+        price: l.unitPrice,
+        quantity: l.quantity,
+      })),
+    });
+    // Once per visit to the checkout page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+  useEffect(() => {
+    if (!order || (order.status !== "paid" && order.status !== "fulfilled"))
+      return;
+    trackPurchaseOnce(order.id, {
+      currency: order.currency,
+      value: order.total,
+      items: order.lines.map((l) => ({
+        id: l.productId,
+        name: l.title,
+        price: l.unitPrice,
+        quantity: l.quantity,
+      })),
+    });
+  }, [order]);
   const navigate = (next: Page) => {
     if (next === "shop") showAll();
     if (article) setArticle(undefined);

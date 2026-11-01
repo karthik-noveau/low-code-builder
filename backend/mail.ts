@@ -190,7 +190,12 @@ export async function deliverMail(siteId: string) {
             Content: {
               Simple: {
                 Subject: { Data: m.subject.slice(0, 200), Charset: "UTF-8" },
-                Body: { Text: { Data: m.body, Charset: "UTF-8" } },
+                Body: {
+                  Text: { Data: m.body, Charset: "UTF-8" },
+                  ...(m.html
+                    ? { Html: { Data: m.html, Charset: "UTF-8" } }
+                    : {}),
+                },
               },
             },
           }),

@@ -135,7 +135,7 @@ export async function compileSite(
    * The site's absolute address (canonical links, social cards, sitemap) and
    * where the insights script reports page views.
    */
-  reach: { siteUrl?: string; track?: string } = {},
+  reach: { siteUrl?: string; track?: string; store?: string } = {},
 ): Promise<Artifact[]> {
   const project = structuredClone(input);
   // OWNER_LINK ("{owner}") opens the owner's branded app for this site. The
@@ -337,6 +337,7 @@ export async function compileSite(
             store,
             siteUrl,
             tracker,
+            storeApi: reach.store,
           }).replace('href="styles.css"', `href="${releaseBase}/styles.css"`),
         ),
       });
@@ -433,7 +434,10 @@ export async function compileSite(
       ),
     ),
   });
-  if (tracker && (seo.analytics || seo.ga4 || seo.metaPixel))
+  if (
+    (tracker && (seo.analytics || seo.ga4 || seo.metaPixel)) ||
+    (reach.store && productPages.length)
+  )
     add({
       name: "insights.js",
       type: "text/javascript; charset=utf-8",

@@ -10,6 +10,7 @@
  * still lands after that takes the stock again if it's there; otherwise the
  * order is paid but flagged short, for the owner to refund.
  */
+import { reminderDue } from "./marketing";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { config, HttpError, insist } from "./config";
 import { db } from "./database";
@@ -146,6 +147,7 @@ export async function startPaidCheckout(
   await transact([
     put(siteId, "ORDER", held.id, held),
     buyer(siteId, held.email, held.id),
+    reminderDue(siteId, held.id, held.createdAt),
     put(siteId, "CHECKOUT", checkoutKey, { orderId: held.id, receipt }),
     put(siteId, "HOLD", held.id, { orderId: held.id, until: held.holdUntil }),
     ...stock,

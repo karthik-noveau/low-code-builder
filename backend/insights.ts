@@ -17,15 +17,26 @@ import { db, getItem } from "./database";
 import { allow, siteAccess } from "./access";
 import { key, list, partition, read } from "./commerce-data";
 import type { ApiRequest } from "./api";
+import { countryOf } from "./timezones";
 import type { Order, StoreSettings } from "../src/commerce/types";
 
 const DAY_SECONDS = 86400;
 const KEEP_DAYS = 400;
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** Whether a site's published release counts visits (written at publish). */
+/** What a site's published release measures (written at publish). */
 export function trackingKey(siteId: string) {
   return key(siteId, "TRACKING");
+}
+/** The website's Google Analytics and Pixel, for the store's own events. */
+export async function storeTracking(siteId: string) {
+  const t = await getItem<{ ga4?: string; pixel?: string; consent?: boolean }>(
+    partition(siteId),
+    "TRACKING#",
+  );
+  return t && (t.ga4 || t.pixel)
+    ? { ga4: t.ga4 ?? "", pixel: t.pixel ?? "", consent: t.consent !== false }
+    : undefined;
 }
 async function salt(day: string) {
   const found = await getItem<{ value: string }>("INSIGHTS", `SALT#${day}`);
@@ -69,7 +80,11 @@ export async function track(request: ApiRequest, siteId: string) {
   if (!idPattern.test(siteId) || request.body.length > 2048) return;
   const agent = request.headers["user-agent"] || "";
   if (!agent || BOTS.test(agent)) return;
-  if (!(await getItem(partition(siteId), "TRACKING#"))) return;
+  const setting = await getItem<{ counts?: boolean }>(
+    partition(siteId),
+    "TRACKING#",
+  );
+  if (!setting || setting.counts === false) return;
   let input: Record<string, unknown>;
   try {
     input = JSON.parse(request.body.toString() || "{}");
@@ -84,6 +99,7 @@ export async function track(request: ApiRequest, siteId: string) {
   const medium = clean(input.m, /^[\w .+-]{1,40}$/, 40);
   const campaign = clean(input.c, /^[\w .+-]{1,60}$/, 60);
   const width = Number(input.w) || 0;
+  const country = countryOf(input.z);
   const day = today();
   const visitor = createHash("sha256")
     .update(`${await salt(day)}|${siteId}|${request.ip ?? ""}|${agent}`)
@@ -114,6 +130,9 @@ export async function track(request: ApiRequest, siteId: string) {
     if (medium) counts[`m:${medium}`] = 1;
     if (campaign) counts[`c:${campaign}`] = 1;
     counts[`d:${device(width)}`] = 1;
+    counts[`k:${country || "unknown"}`] = 1;
+    if (input.t === "a" || input.t === "b")
+      counts[`t:${campaign}:${input.t}`] = 1;
     delete counts["r:"];
   }
   await addCounts(siteId, day, counts).catch((error) =>
@@ -245,8 +264,22 @@ export async function insights(actor: string, siteId: string, query = "") {
     row.revenue += o.total;
     channels.set(id, row);
   }
+  // A/B campaigns: orders and sales for each version.
+  const variantSales: Record<string, { orders: number; revenue: number }> = {};
+  for (const o of sold) {
+    const a = o.attribution;
+    if (!a?.campaign || (a.content !== "a" && a.content !== "b")) continue;
+    const id = `${a.campaign}:${a.content}`;
+    variantSales[id] = variantSales[id] ?? { orders: 0, revenue: 0 };
+    variantSales[id].orders++;
+    variantSales[id].revenue += o.total;
+  }
   const events = Object.fromEntries(top(rows, "e:", 50));
-  const tracking = !!(await getItem(partition(siteId), "TRACKING#"));
+  const setting = await getItem<{ counts?: boolean }>(
+    partition(siteId),
+    "TRACKING#",
+  );
+  const tracking = !!setting && setting.counts !== false;
   return {
     days,
     from,
@@ -267,6 +300,9 @@ export async function insights(actor: string, siteId: string, query = "") {
     mediums: top(rows, "m:"),
     campaigns: top(rows, "c:"),
     devices: top(rows, "d:"),
+    countries: top(rows, "k:", 15),
+    variants: top(rows, "t:", 40),
+    variantSales,
     funnel: {
       visits: events["store.visit"] ?? 0,
       productViews: events["product.view"] ?? 0,

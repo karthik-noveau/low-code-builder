@@ -42,7 +42,8 @@ import type {
 } from "../src/commerce/types";
 import { accountsOpen } from "./shoppers";
 import { cognitoUser } from "./invites";
-import { remindCheckout } from "./marketing";
+import { remindCheckout, reminderDue } from "./marketing";
+import { storeTracking } from "./insights";
 import { getConnection, refundCheckout, type Checkout } from "./payments";
 import { refundAmount } from "../src/commerce/refunds";
 import {
@@ -147,6 +148,20 @@ export async function ensureStore(actor: string, siteId: string) {
   insist(stored, 500, "Store could not be initialized.");
   return { access, stored };
 }
+/** Store → Marketing: remind shoppers about unpaid checkouts by themselves. */
+function autoRemind(value: unknown): StoreSettings["autoRemind"] {
+  const v = object(value);
+  return {
+    enabled: v.enabled === true,
+    hours: integer(v.hours ?? 1, "reminder delay", 0, 72),
+    discountCode: text(
+      v.discountCode ?? "",
+      "discount code",
+      40,
+      true,
+    ).toUpperCase(),
+  };
+}
 export async function saveSettings(
   actor: string,
   siteId: string,
@@ -213,6 +228,10 @@ export async function saveSettings(
     enabled: input.enabled === true,
     contactEmail: input.contactEmail ? email(input.contactEmail) : "",
     markets,
+    autoRemind:
+      input.autoRemind === undefined
+        ? stored.autoRemind
+        : autoRemind(input.autoRemind),
     revision: stored.revision + 1,
   };
   await transact([
@@ -463,6 +482,7 @@ export async function storefront(siteId: string) {
     sandbox: local && !connection,
     checkout: local || !!connection,
     accounts: accountsOpen(),
+    tracking: await storeTracking(siteId),
   };
 }
 export interface Cart {
@@ -751,6 +771,7 @@ export async function checkout(siteId: string, input: Record<string, unknown>) {
   await transact([
     put(siteId, "ORDER", id, order),
     buyer(siteId, order.email, id),
+    reminderDue(siteId, id, order.createdAt),
     put(siteId, "CHECKOUT", checkoutKey, { orderId: id, receipt }),
     event(siteId, "checkout.started"),
   ]);
@@ -772,6 +793,7 @@ function attribution(value: unknown): { attribution?: Order["attribution"] } {
     medium: field(v.medium, 40),
     campaign: field(v.campaign, 60),
     referrer: field(v.referrer, 80),
+    content: field(v.content, 40),
   };
   return Object.values(result).some(Boolean) ? { attribution: result } : {};
 }

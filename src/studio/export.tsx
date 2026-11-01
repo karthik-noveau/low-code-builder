@@ -51,14 +51,22 @@ const escape = (value: string) =>
  * and the Meta Pixel), configured by data attributes: the page's CSP runs
  * only the site's own scripts.
  */
-function trackerTag(project: Project, tracker?: RenderOptions["tracker"]) {
+function trackerTag(
+  project: Project,
+  tracker?: RenderOptions["tracker"],
+  /** A product page also asks the store for live stock. */
+  stock?: { api: string; product: string },
+) {
   const seo = seoOf(project);
-  if (!tracker || (!seo.analytics && !seo.ga4 && !seo.metaPixel)) return "";
+  const tracking = !!tracker && (seo.analytics || !!seo.ga4 || !!seo.metaPixel);
+  if (!tracking && !stock) return "";
   const data = [
-    seo.analytics && `data-api="${escape(tracker.api)}"`,
-    seo.ga4 && `data-ga="${escape(seo.ga4)}"`,
-    seo.metaPixel && `data-pixel="${escape(seo.metaPixel)}"`,
-    (seo.ga4 || seo.metaPixel) && seo.consent && 'data-consent="1"',
+    tracking && seo.analytics && `data-api="${escape(tracker!.api)}"`,
+    tracking && seo.ga4 && `data-ga="${escape(seo.ga4)}"`,
+    tracking && seo.metaPixel && `data-pixel="${escape(seo.metaPixel)}"`,
+    tracking && (seo.ga4 || seo.metaPixel) && seo.consent && 'data-consent="1"',
+    stock &&
+      `data-store="${escape(stock.api)}" data-product="${escape(stock.product)}"`,
   ].filter(Boolean);
   return `<script src="insights.js" ${data.join(" ")} defer></script>`;
 }
@@ -136,6 +144,8 @@ type RenderOptions = {
   siteUrl?: string;
   /** Where the insights script sends page views. */
   tracker?: { api: string };
+  /** The public store API (product pages read live stock from it). */
+  storeApi?: string;
 };
 export function renderPage(
   project: Project,
@@ -297,10 +307,22 @@ export function renderProductPage(
         [product.title, path],
       ],
     },
-  )}<link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${trackerTag(project, options.tracker)}</head><body>${renderToStaticMarkup(<Website project={project} page={page} inbox={options.inbox} appApi={options.appApi} store={options.store} ownerHref={options.owner} exporting preview />)}</body></html>`.replace(
-    /href="#/g,
-    `href="${productHref(product)}#`,
-  );
+  )}<link rel="stylesheet" href="styles.css">${appHead(project, options.appApi)}${trackerTag(project, options.tracker, options.storeApi ? { api: options.storeApi, product: product.id } : undefined)}</head><body>${renderToStaticMarkup(
+    <Website
+      project={project}
+      page={page}
+      inbox={options.inbox}
+      appApi={options.appApi}
+      store={options.store}
+      ownerHref={options.owner}
+      exporting
+      preview
+    />,
+  ).replace(
+    // Live stock goes under the Buy button (insights.js fills it in).
+    /(>Buy now[\s\S]*?<\/a>)/,
+    '$1<p class="product-stock" data-forma-stock hidden></p>',
+  )}</body></html>`.replace(/href="#/g, `href="${productHref(product)}#`);
 }
 /** Where visitors land after sending a request from a published site. */
 export function renderThanksPage(project: Project) {

@@ -1423,8 +1423,11 @@ describe.skipIf(!enabled)(
         expect(await stock()).toBe(1);
         expect((await shop("cart/read", { token })).data.cart.lines).toEqual([]);
         // With an SES sender, the confirmation is sent from the store's name.
+        // Other test files' mail goes through the same fake SES: find this shopper's.
         if (process.env.TEST_MAIL === "1")
-          expect(emails.at(-1)).toMatchObject({
+          expect(
+            emails.find((e) => e.Destination.ToAddresses[0] === shopper.email),
+          ).toMatchObject({
             FromEmailAddress: expect.stringMatching(/<store@forma\.test>$/),
             Destination: { ToAddresses: [shopper.email] },
             Content: { Simple: { Subject: { Data: expect.stringMatching(/confirmed/) } } },

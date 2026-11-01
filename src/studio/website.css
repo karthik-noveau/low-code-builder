@@ -4030,3 +4030,27 @@ body > .website {
   white-space: nowrap;
   overflow-wrap: normal;
 }
+
+/* Live stock under a product page's Buy button (insights.js fills it in).
+   Text keeps the site's colour; the dot says in, low or out. */
+.website .product-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.website .product-stock::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f9e5b;
+  content: "";
+}
+.website .product-stock[data-state="low"]::before {
+  background: #e0a100;
+}
+.website .product-stock[data-state="out"]::before {
+  background: #d64545;
+}

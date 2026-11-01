@@ -41,6 +41,8 @@ export interface StoreSettings {
   currency: string;
   markets: Market[];
   contactEmail: string;
+  /** Reminders sent by themselves this many hours after a checkout runs out unpaid. */
+  autoRemind?: { enabled: boolean; hours: number; discountCode: string };
 }
 export interface CartLine {
   productId: string;
@@ -109,11 +111,23 @@ export interface Order extends Quote {
     medium: string;
     campaign: string;
     referrer: string;
+    /** utm_content: which version of a campaign (A/B tests send "a" or "b"). */
+    content?: string;
   };
 }
 /** Who a campaign goes to; always people who subscribed. */
 export type CampaignAudience =
   "subscribers" | "customers" | "prospects" | "lapsed";
+/** How a campaign email looks (backend/marketing.ts emailHtml). */
+export interface CampaignDesign {
+  heading: string;
+  /** An https image shown above the message. */
+  image: string;
+  buttonLabel: string;
+  buttonUrl: string;
+  /** Six-digit hex for the button and accents. */
+  accent: string;
+}
 export interface Campaign {
   id: string;
   /** Its utm_campaign name, e.g. "spring-sale". */
@@ -122,10 +136,15 @@ export interface Campaign {
   body: string;
   audience: CampaignAudience;
   discountCode: string;
+  design?: CampaignDesign;
+  /** A second subject line: half the audience gets each (utm_content a / b). */
+  subjectB?: string;
   status: "sending" | "sent";
   total: number;
-  /** Messages written to the outbox so far. */
+  /** Messages written to the outbox so far, and how many got each version. */
   queued: number;
+  sentA?: number;
+  sentB?: number;
   createdAt: string;
   updatedAt: string;
   sentAt?: string;
@@ -204,6 +223,8 @@ export interface OutboxMessage {
   to: string;
   subject: string;
   body: string;
+  /** A designed version (campaigns); `body` stays the plain-text one. */
+  html?: string;
   createdAt: string;
   /** "local-preview" without an email sender; otherwise how sending went. */
   status:

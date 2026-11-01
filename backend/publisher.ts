@@ -162,19 +162,22 @@ export async function publishJob(job: Job) {
         commerce,
         `${config.apiOrigin}/inbox/${job.siteId}`,
         `${config.apiOrigin}/apps/${job.siteId}`,
-        { siteUrl, track: `${config.apiOrigin}/track/${job.siteId}` },
+        {
+          siteUrl,
+          track: `${config.apiOrigin}/track/${job.siteId}`,
+          store: `${config.apiOrigin}/store/${job.siteId}`,
+        },
       );
-      // Page views count only for sites whose owner left insights on.
-      if (project.seo?.analytics === false)
-        await deleteItem(
-          trackingKey(job.siteId).pk,
-          trackingKey(job.siteId).sk,
-        );
-      else
-        await putItem({
-          ...trackingKey(job.siteId),
-          since: new Date().toISOString(),
-        });
+      // What the site measures, read by insights.ts (page views count only
+      // when insights are on) and by the store (Google Analytics, Pixel).
+      await putItem({
+        ...trackingKey(job.siteId),
+        counts: project.seo?.analytics !== false,
+        ga4: project.seo?.ga4 ?? "",
+        pixel: project.seo?.metaPixel ?? "",
+        consent: project.seo?.consent !== false,
+        since: new Date().toISOString(),
+      });
       // Bounded uploads; promote only after every artifact and its manifest are durable.
       for (let i = 0; i < files.length; i += 4)
         await Promise.all(

@@ -32,7 +32,7 @@ import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
 import { deliverMail, mailFrom } from "./mail";
 import { importCustomers } from "./migration";
-import { campaigns } from "./marketing";
+import { campaigns, sweepReminders } from "./marketing";
 import { getConnection } from "./payments";
 import {
   sendSignInCode,
@@ -166,6 +166,8 @@ export async function commerceApi(
 ): Promise<{ value: unknown; status?: number } | undefined> {
   const result = await storeRoutes(request);
   const site = /^\/(?:store|sites)\/([^/]+)/.exec(request.path)?.[1];
+  // Reminders that came due go out with the next store request.
+  if (result && site && idPattern.test(site)) await sweepReminders(site);
   if (result && site && request.method !== "GET" && idPattern.test(site))
     await deliverMail(site);
   return result;

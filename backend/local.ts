@@ -111,7 +111,12 @@ const server = createServer(async (req, res) => {
     const publicForm =
       req.method === "POST" && /^\/inbox\/[^/?]+(?:\?|$)/.test(req.url || "");
     // App forms and lookups on published sites read the response, so they get open CORS (no credentials).
-    const publicApp = isPublicAppPath((req.url || "").split("?")[0]);
+    const path = (req.url || "").split("?")[0];
+    // So do page views (insights.js) and a product page's live stock (the store's catalogue).
+    const publicApp =
+      isPublicAppPath(path) ||
+      (req.method === "POST" && /^\/track\/[^/]+$/.test(path)) ||
+      (req.method === "GET" && /^\/store\/[^/]+$/.test(path));
     if (publicApp) res.setHeader("access-control-allow-origin", "*");
     if (origin && !allowedOrigins.has(origin) && !publicForm && !publicApp)
       throw new HttpError(403, "Origin is not allowed.");

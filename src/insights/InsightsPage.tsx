@@ -28,6 +28,10 @@ export interface Insights {
   mediums: [string, number][];
   campaigns: [string, number][];
   devices: [string, number][];
+  countries: [string, number][];
+  /** A/B visits: "campaign:a" → visits. */
+  variants: [string, number][];
+  variantSales: Record<string, { orders: number; revenue: number }>;
   funnel: {
     visits: number;
     productViews: number;
@@ -287,6 +291,13 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                 label={(d) => d[0].toUpperCase() + d.slice(1)}
                 empty="No visits yet."
               />
+              <Ranked
+                title="Countries"
+                note="Visits, from the visitor’s time zone"
+                rows={data.countries}
+                label={countryName}
+                empty="No visits yet."
+              />
               {data.store && (
                 <Funnel
                   funnel={data.funnel}
@@ -338,6 +349,7 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                 )}
               </section>
             )}
+            <AbTests data={data} />
             <LinkBuilder siteId={siteId} />
           </div>
         )}
@@ -349,6 +361,82 @@ export function InsightsPage({ siteId }: { siteId: string }) {
   );
 }
 
+const regions = (() => {
+  try {
+    return new Intl.DisplayNames(undefined, { type: "region" });
+  } catch {
+    return undefined;
+  }
+})();
+const countryName = (code: string) =>
+  code === "unknown" ? "Unknown" : (regions?.of(code) ?? code);
+
+/** A/B campaigns: visits and sales for each subject line. */
+function AbTests({ data }: { data: Insights }) {
+  const campaigns = new Map<string, { a: number; b: number }>();
+  for (const [id, visits] of data.variants) {
+    const name = id.slice(0, -2),
+      variant = id.slice(-1);
+    const row = campaigns.get(name) ?? { a: 0, b: 0 };
+    if (variant === "a" || variant === "b") row[variant] = visits;
+    campaigns.set(name, row);
+  }
+  for (const id of Object.keys(data.variantSales))
+    if (!campaigns.has(id.slice(0, -2)))
+      campaigns.set(id.slice(0, -2), { a: 0, b: 0 });
+  if (!campaigns.size) return null;
+  const sales = (name: string, v: "a" | "b") =>
+    data.variantSales[`${name}:${v}`] ?? { orders: 0, revenue: 0 };
+  return (
+    <section className="commerce-panel">
+      <h2>A/B tests</h2>
+      <p className="commerce-muted">
+        Campaigns sent with two subject lines: which one brought more visits and
+        sales.
+      </p>
+      <div className="commerce-scroll">
+        <table className="commerce-table">
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Version</th>
+              <th>Visits</th>
+              <th>Orders</th>
+              <th>Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...campaigns].flatMap(([name, visits]) => {
+              // Sales decide; visits break a tie.
+              const score = (v: "a" | "b") =>
+                sales(name, v).revenue * 1000 + visits[v];
+              const winner =
+                score("a") === score("b")
+                  ? ""
+                  : score("a") > score("b")
+                    ? "a"
+                    : "b";
+              return (["a", "b"] as const).map((v) => (
+                <tr key={`${name}:${v}`}>
+                  <td>{v === "a" ? <strong>{name}</strong> : ""}</td>
+                  <td>
+                    {v.toUpperCase()}{" "}
+                    {winner === v && (
+                      <span className="commerce-badge">Ahead</span>
+                    )}
+                  </td>
+                  <td>{number(visits[v])}</td>
+                  <td>{number(sales(name, v).orders)}</td>
+                  <td>{money(sales(name, v).revenue, data.currency)}</td>
+                </tr>
+              ));
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 function Kpi({
   label,
   value,

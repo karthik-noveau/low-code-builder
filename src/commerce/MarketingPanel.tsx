@@ -5,6 +5,7 @@ import {
   money,
   type Campaign,
   type CampaignAudience,
+  type CampaignDesign,
   type CommerceOverview,
   type Order,
 } from "./types";
@@ -55,7 +56,20 @@ export function MarketingPanel({
   const [name, setName] = useState("");
   const [audience, setAudience] = useState<CampaignAudience>("subscribers");
   const [discountCode, setDiscountCode] = useState("");
-  const [preview, setPreview] = useState<{ body: string; count: number }>();
+  const [testing, setTesting] = useState(false);
+  const [subjectB, setSubjectB] = useState("");
+  const [look, setLook] = useState<CampaignDesign>({
+    heading: "",
+    image: "",
+    buttonLabel: "",
+    buttonUrl: "",
+    accent: "#1c1c1c",
+  });
+  const [preview, setPreview] = useState<{
+    body: string;
+    html: string;
+    count: number;
+  }>();
   const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<{ queued: number; total: number }>();
   const [history, setHistory] = useState<Campaign[]>([]);
@@ -68,8 +82,12 @@ export function MarketingPanel({
     name: name || subject,
     audience,
     discountCode,
+    subjectB: testing ? subjectB : "",
+    design: look,
   };
-  const ready = subject.trim() && body.trim();
+  const ready = subject.trim() && body.trim() && (!testing || subjectB.trim());
+  const setLookPart = (part: Partial<CampaignDesign>) =>
+    setLook((l) => ({ ...l, ...part }));
   const live = data.hosting.mail;
 
   const loadHistory = useCallback(async () => {
@@ -90,10 +108,14 @@ export function MarketingPanel({
       return;
     }
     const timer = setTimeout(() => {
-      commerceRequest<{ body: string; count: number }>(siteId, "campaigns", {
-        mode: "preview",
-        ...input,
-      })
+      commerceRequest<{ body: string; html: string; count: number }>(
+        siteId,
+        "campaigns",
+        {
+          mode: "preview",
+          ...input,
+        },
+      )
         .then((r) => {
           setPreview(r);
           setError("");
@@ -104,7 +126,18 @@ export function MarketingPanel({
     }, 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteId, subject, body, name, audience, discountCode, canManage]);
+  }, [
+    siteId,
+    subject,
+    body,
+    name,
+    audience,
+    discountCode,
+    canManage,
+    testing,
+    subjectB,
+    look,
+  ]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -163,6 +196,8 @@ export function MarketingPanel({
       setBody("");
       setName("");
       setDiscountCode("");
+      setSubjectB("");
+      setTesting(false);
       setProgress(undefined);
       await Promise.all([loadHistory(), onChanged()]);
     }).finally(() => setProgress(undefined));
@@ -229,6 +264,37 @@ export function MarketingPanel({
               onChange={(e) => setSubject(e.target.value)}
             />
           </label>
+          <label className="marketing-check">
+            <input
+              type="checkbox"
+              checked={testing}
+              onChange={(e) => setTesting(e.target.checked)}
+            />
+            A/B test the subject line
+            <small>
+              Half your audience gets each subject. Insights shows which one
+              brought more visits and sales.
+            </small>
+          </label>
+          {testing && (
+            <label className="commerce-field">
+              Subject B
+              <input
+                value={subjectB}
+                maxLength={160}
+                onChange={(e) => setSubjectB(e.target.value)}
+              />
+            </label>
+          )}
+          <label className="commerce-field">
+            Heading
+            <input
+              value={look.heading}
+              maxLength={120}
+              placeholder="The big line at the top of the email"
+              onChange={(e) => setLookPart({ heading: e.target.value })}
+            />
+          </label>
           <label className="commerce-field">
             Message
             <textarea
@@ -239,6 +305,52 @@ export function MarketingPanel({
               onChange={(e) => setBody(e.target.value)}
             />
           </label>
+          <details className="marketing-design">
+            <summary>Design: image, button and colour</summary>
+            <label className="commerce-field">
+              Image address
+              <input
+                value={look.image}
+                maxLength={2000}
+                placeholder="https://…/banner.jpg"
+                onChange={(e) => setLookPart({ image: e.target.value.trim() })}
+              />
+              <small>A wide picture shown above the message (https).</small>
+            </label>
+            <div className="marketing-pair">
+              <label className="commerce-field">
+                Button text
+                <input
+                  value={look.buttonLabel}
+                  maxLength={40}
+                  placeholder="Shop the sale"
+                  onChange={(e) => setLookPart({ buttonLabel: e.target.value })}
+                />
+              </label>
+              <label className="commerce-field">
+                Button link
+                <input
+                  value={look.buttonUrl}
+                  maxLength={2000}
+                  placeholder={`${location.origin}/store?site=${siteId}`}
+                  onChange={(e) =>
+                    setLookPart({ buttonUrl: e.target.value.trim() })
+                  }
+                />
+              </label>
+            </div>
+            <label className="commerce-field marketing-colour">
+              Brand colour
+              <span>
+                <input
+                  type="color"
+                  value={look.accent}
+                  onChange={(e) => setLookPart({ accent: e.target.value })}
+                />
+                {look.accent}
+              </span>
+            </label>
+          </details>
           <div className="marketing-pair">
             <label className="commerce-field">
               Offer
@@ -348,8 +460,14 @@ export function MarketingPanel({
               </p>
               <div className="marketing-email">
                 <strong>{subject}</strong>
+                {testing && subjectB && <strong>B: {subjectB}</strong>}
                 <small>From {data.settings.name}</small>
-                <p>{preview.body}</p>
+                <iframe
+                  title="Email preview"
+                  className="marketing-frame"
+                  sandbox=""
+                  srcDoc={preview.html}
+                />
               </div>
             </>
           ) : (
@@ -370,6 +488,7 @@ export function MarketingPanel({
                   <th>Campaign</th>
                   <th>Audience</th>
                   <th>Recipients</th>
+                  <th>A/B</th>
                   <th>Status</th>
                   <th>Sent</th>
                 </tr>
@@ -386,6 +505,11 @@ export function MarketingPanel({
                     </td>
                     <td>{AUDIENCES.find(([v]) => v === c.audience)?.[1]}</td>
                     <td>{c.total}</td>
+                    <td>
+                      {c.subjectB
+                        ? `A ${c.sentA ?? 0} · B ${c.sentB ?? 0}`
+                        : "—"}
+                    </td>
                     <td>
                       <span
                         className={`commerce-badge ${c.status === "sent" ? "" : "neutral"}`}
@@ -412,6 +536,12 @@ export function MarketingPanel({
         </a>
       </section>
 
+      <AutoReminders
+        siteId={siteId}
+        data={data}
+        discounts={discounts.map((d) => d.code)}
+        onChanged={onChanged}
+      />
       <AbandonedCheckouts
         siteId={siteId}
         orders={abandoned}
@@ -423,6 +553,116 @@ export function MarketingPanel({
   );
 }
 
+/** Reminders sent by themselves, a set time after a checkout runs out unpaid. */
+function AutoReminders({
+  siteId,
+  data,
+  discounts,
+  onChanged,
+}: {
+  siteId: string;
+  data: CommerceOverview;
+  discounts: string[];
+  onChanged: () => Promise<void>;
+}) {
+  const saved = data.settings.autoRemind ?? {
+    enabled: false,
+    hours: 1,
+    discountCode: "",
+  };
+  const [draft, setDraft] = useState(saved);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const changed = JSON.stringify(draft) !== JSON.stringify(saved);
+  const save = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await commerceRequest(
+        siteId,
+        "settings",
+        { ...data.settings, autoRemind: draft },
+        "PUT",
+      );
+      await onChanged();
+      setMessage(
+        draft.enabled
+          ? `Shoppers are reminded ${draft.hours} ${draft.hours === 1 ? "hour" : "hours"} after a checkout runs out unpaid.`
+          : "Automatic reminders are off.",
+      );
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Couldn’t save.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="commerce-panel commerce-form">
+      <h2>Automatic reminders</h2>
+      <p className="commerce-muted">
+        Email each shopper once when they leave a checkout unpaid, without
+        lifting a finger. Sent with the store’s next activity after the delay.
+      </p>
+      <label className="marketing-check">
+        <input
+          type="checkbox"
+          checked={draft.enabled}
+          onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
+        />
+        Remind shoppers automatically
+      </label>
+      {draft.enabled && (
+        <div className="marketing-pair">
+          <label className="commerce-field">
+            After
+            <select
+              value={draft.hours}
+              onChange={(e) =>
+                setDraft({ ...draft, hours: Number(e.target.value) })
+              }
+            >
+              {[1, 3, 6, 12, 24, 48].map((h) => (
+                <option key={h} value={h}>
+                  {h} {h === 1 ? "hour" : "hours"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="commerce-field">
+            Offer
+            <select
+              value={draft.discountCode}
+              onChange={(e) =>
+                setDraft({ ...draft, discountCode: e.target.value })
+              }
+            >
+              <option value="">No discount</option>
+              {discounts.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      <div className="commerce-actions">
+        <button
+          className="commerce-button"
+          disabled={busy || !changed}
+          onClick={() => void save()}
+        >
+          Save
+        </button>
+        {message && (
+          <span className="commerce-muted" role="status">
+            {message}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
 function AbandonedCheckouts({
   siteId,
   orders,
