@@ -1,41 +1,135 @@
 /* Insights page (InsightsPage.tsx); panels, stats and tables come from commerce.css. */
-.insights-body.is-loading {
-  opacity: 0.6;
-  transition: opacity 0.2s;
+.insights-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  transition: opacity 0.2s var(--fx-ease);
 }
+.insights-body.is-loading {
+  opacity: 0.55;
+}
+html body .admin-ui .insights-body .commerce-panel {
+  margin: 0;
+}
+.insights .commerce-notice {
+  margin-bottom: 16px;
+}
+
+/* Period switch */
 .insights-range {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--ui-border);
   border-radius: 10px;
-  background: var(--ui-canvas);
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
 }
 .insights-range button {
-  padding: 6px 12px;
+  min-height: 30px;
+  padding: 0 12px;
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: var(--ui-muted);
+  color: var(--fx-muted);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.insights-range button:hover {
+  color: var(--fx-text);
 }
 .insights-range button[aria-pressed="true"] {
-  background: var(--fx-surface, #fff);
-  color: var(--ui-ink);
-  box-shadow: var(--ui-shadow-sm);
+  background: var(--fx-surface);
+  color: var(--fx-text);
+  box-shadow:
+    0 0 0 1px var(--fx-border),
+    0 1px 2px rgba(17, 17, 20, 0.06);
 }
-.insights-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+
+/* Totals: one strip of cells, each with a small trend line. */
+/* Cells draw their own dividers, so a wrapped row leaves no grey gap. */
+html body .admin-ui .insights .insights-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  margin: 0;
+  background: var(--fx-surface);
+}
+html body .admin-ui .insights .insights-kpis .commerce-stat {
+  position: relative;
+  background: transparent;
+  box-shadow:
+    1px 0 0 var(--fx-border),
+    0 1px 0 var(--fx-border);
+  align-content: start;
+  padding: 16px 18px 14px;
+}
+html body .admin-ui .insights .insights-kpis .commerce-stat > span {
+  font-size: 13px;
+}
+html body .admin-ui .insights .insights-kpis .commerce-stat > strong {
+  margin-top: 6px;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+html body .admin-ui .insights .insights-kpis .commerce-stat > small {
+  font-size: 12.5px;
+}
+.insights-spark {
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin-top: 10px;
+  overflow: visible;
+  color: var(--fx-accent);
+}
+.insights-spark path:last-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Card headers with the period's total on the right. */
+.insights-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+}
+.insights-head > div {
+  min-width: 0;
+}
+.insights-head p {
+  margin: 0;
+}
+.insights-head > strong {
+  flex: none;
+  color: var(--fx-text);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Charts */
+.insights-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.insights-charts > .commerce-panel {
+  min-width: 0;
 }
 .insights-chart {
   position: relative;
-  margin-top: 12px;
+  margin-top: 18px;
 }
 .insights-chart svg {
   display: block;
@@ -43,73 +137,92 @@
   touch-action: pan-y;
 }
 .insights-axis line {
-  stroke: var(--ui-border);
+  stroke: var(--fx-grid-line);
   stroke-width: 1;
 }
+.insights-axis g:first-child line {
+  stroke: var(--fx-border-strong);
+}
 .insights-axis text {
-  fill: var(--ui-muted);
+  fill: var(--fx-muted);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 .insights-line {
   fill: none;
-  stroke: var(--ui-accent);
+  stroke: var(--fx-accent);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
-.insights-area {
-  fill: var(--ui-accent);
-  opacity: 0.08;
+.insights-area-top {
+  stop-color: var(--fx-accent);
+  stop-opacity: 0.22;
+}
+.insights-area-bottom {
+  stop-color: var(--fx-accent);
+  stop-opacity: 0;
 }
 .insights-crosshair {
-  stroke: var(--ui-border-strong);
+  stroke: var(--fx-border-hover);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
 .insights-dot {
-  fill: var(--ui-accent);
-  stroke: var(--fx-surface, #fff);
+  fill: var(--fx-accent);
+  stroke: var(--fx-surface);
   stroke-width: 2;
 }
 .insights-bar {
-  fill: var(--ui-accent);
-  opacity: 0.85;
+  fill: var(--fx-accent);
+  opacity: 0.8;
+  transition: opacity 0.12s;
 }
 .insights-bar.is-active {
   opacity: 1;
 }
 .insights-tooltip {
   position: absolute;
-  top: -6px;
+  top: -10px;
   display: grid;
-  gap: 1px;
-  padding: 7px 10px;
-  border: 1px solid var(--ui-border);
-  border-radius: 8px;
-  background: var(--fx-surface, #fff);
-  box-shadow: var(--ui-shadow-sm);
-  color: var(--ui-ink);
+  gap: 2px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--fx-contrast);
+  box-shadow: var(--fx-shadow-pop);
+  color: var(--fx-on-contrast);
   font-size: 12.5px;
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
 }
 .insights-tooltip small {
-  color: var(--ui-muted);
   font-size: 11px;
+  opacity: 0.7;
 }
 .insights-table {
-  margin-top: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--fx-border);
   font-size: 13px;
 }
 .insights-table summary {
-  color: var(--ui-muted);
+  width: max-content;
+  color: var(--fx-muted);
+  font-weight: 550;
   cursor: pointer;
+}
+.insights-table summary:hover {
+  color: var(--fx-text);
 }
 .insights-table .commerce-scroll {
   max-height: 280px;
-  margin-top: 8px;
+  margin-top: 10px;
   overflow: auto;
+}
+html body .admin-ui .insights .commerce-table :is(th, td).num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .sr-only {
   position: absolute;
@@ -119,86 +232,185 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Ranked lists: name, share and count, with a thin bar underneath. */
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 0 22px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 .insights-ranked ol {
   display: grid;
-  gap: 6px;
-  margin: 14px 0 0;
+  gap: 12px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 .insights-ranked li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 32px;
-  padding: 0 10px;
-  color: var(--ui-ink);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 6px 12px;
+  color: var(--fx-text);
   font-size: 13px;
-}
-.insights-ranked-bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  min-width: 4px;
-  border-radius: 0 4px 4px 0;
-  background: var(--ui-accent-soft);
-}
-.insights-ranked-name,
-.insights-ranked li strong {
-  position: relative;
 }
 .insights-ranked-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.insights-ranked li strong {
-  flex: none;
+.insights-ranked-share {
+  color: var(--fx-muted);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.insights-ranked li strong small {
-  color: var(--ui-muted);
-  font-weight: 500;
+.insights-ranked li strong {
+  min-width: 2ch;
+  font-weight: 650;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.insights-ranked-track {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--fx-surface-2);
+}
+.insights-ranked-track > span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: var(--fx-accent);
 }
 .insights-empty {
-  margin: 14px 0 0;
-  color: var(--ui-muted);
+  margin: 16px 0 0;
+  padding: 18px 12px;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+  color: var(--fx-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Store funnel: one column per step, bars on a shared baseline. */
+.insights-funnel ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.insights-funnel li {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 2px;
+  min-width: 0;
+}
+.insights-funnel-name {
+  overflow: hidden;
+  color: var(--fx-muted);
+  font-size: 12.5px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insights-funnel li > strong {
+  color: var(--fx-text);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.insights-funnel-rate {
+  color: var(--fx-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.insights-funnel-bar {
+  display: flex;
+  align-items: flex-end;
+  height: 96px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--fx-surface-2);
+}
+.insights-funnel-bar > span {
+  width: 100%;
+  height: max(3px, calc(var(--share) * 100%));
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(
+    180deg,
+    var(--fx-accent),
+    color-mix(in srgb, var(--fx-accent) 70%, var(--fx-surface))
+  );
+}
+.insights-funnel-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--fx-warning-soft);
+  color: var(--fx-text-2);
   font-size: 13px;
 }
+.insights-funnel-note svg {
+  color: var(--fx-warning);
+}
+html body .admin-ui .insights-funnel-note .commerce-link {
+  margin-left: auto;
+  padding: 0;
+}
+
+/* Campaign link builder */
 .insights-builder-fields {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 .insights-builder-result {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--ui-border);
+  padding: 8px 8px 8px 14px;
   border-radius: 10px;
-  background: var(--ui-canvas);
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
 }
-.insights-builder-result code {
+html body .admin-ui .insights-builder-result code {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   overflow-wrap: anywhere;
-  color: var(--ui-ink);
+  color: var(--fx-text-2);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 12.5px;
+  line-height: 1.5;
 }
 .insights-builder-result .commerce-button {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 6px;
+}
+
+@media (max-width: 1100px) {
+  .insights-charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 860px) {
   .insights-builder-fields {
@@ -208,12 +420,46 @@
     grid-column: 1 / -1;
   }
 }
+/* Narrow screens: the funnel turns into rows with bars across. */
+@media (max-width: 700px) {
+  .insights-funnel ol {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .insights-funnel li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: none;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+  .insights-funnel li > strong {
+    grid-row: 1 / 3;
+    grid-column: 2;
+    align-self: center;
+    font-size: 18px;
+  }
+  .insights-funnel-bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    margin-top: 2px;
+    border-radius: 99px;
+  }
+  .insights-funnel-bar > span {
+    width: max(4px, calc(var(--share) * 100%));
+    height: 100%;
+    border-radius: inherit;
+  }
+}
 @media (max-width: 560px) {
   .insights-builder-result {
     flex-direction: column;
     align-items: stretch;
+    padding: 12px;
   }
   .insights-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .insights-head > strong {
+    font-size: 17px;
   }
 }

@@ -267,6 +267,7 @@ export function MarketingPanel({
           <label className="marketing-check">
             <input
               type="checkbox"
+              role="switch"
               checked={testing}
               onChange={(e) => setTesting(e.target.checked)}
             />
@@ -423,7 +424,7 @@ export function MarketingPanel({
               </button>
             </div>
           ) : (
-            <div className="commerce-actions">
+            <div className="commerce-actions marketing-send">
               <button
                 className="commerce-button secondary"
                 disabled={busy || !ready}
@@ -471,7 +472,21 @@ export function MarketingPanel({
               </div>
             </>
           ) : (
-            <p className="commerce-muted">
+            <div className="marketing-email is-empty" aria-hidden="true">
+              <span className="marketing-skeleton is-short" />
+              <span className="marketing-skeleton is-tiny" />
+              <div className="marketing-skeleton-body">
+                <span className="marketing-skeleton is-image" />
+                <span className="marketing-skeleton is-title" />
+                <span className="marketing-skeleton" />
+                <span className="marketing-skeleton" />
+                <span className="marketing-skeleton is-short" />
+                <span className="marketing-skeleton is-button" />
+              </div>
+            </div>
+          )}
+          {!preview && (
+            <p className="commerce-muted marketing-preview-hint">
               Write a subject and message to see the email and who it reaches.
             </p>
           )}
@@ -606,6 +621,7 @@ function AutoReminders({
       <label className="marketing-check">
         <input
           type="checkbox"
+          role="switch"
           checked={draft.enabled}
           onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
         />
@@ -646,7 +662,7 @@ function AutoReminders({
           </label>
         </div>
       )}
-      <div className="commerce-actions">
+      <div className="commerce-actions marketing-send">
         <button
           className="commerce-button"
           disabled={busy || !changed}

@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { AppShell, PageHeading } from "../brand/AppShell";
 import { useSession } from "../brand/useSession";
 import { Icon } from "../studio/Icon";
@@ -168,11 +176,15 @@ export function InsightsPage({ siteId }: { siteId: string }) {
             className={loading ? "insights-body is-loading" : "insights-body"}
             aria-busy={loading}
           >
-            <section className="insights-kpis" aria-label="Totals">
+            <section
+              className="commerce-stats insights-kpis"
+              aria-label="Totals"
+            >
               <Kpi
                 label="Visitors"
                 value={number(data.totals.visitors)}
                 note={`${number(data.totals.views)} page views`}
+                trend={data.series.map((d) => d.visitors)}
               />
               <Kpi
                 label="Pages per visit"
@@ -188,6 +200,7 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                   label="Orders"
                   value={number(data.totals.orders)}
                   note="Paid, in this period"
+                  trend={data.series.map((d) => d.orders)}
                 />
               )}
               {data.store && (
@@ -195,6 +208,7 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                   label="Sales"
                   value={money(data.totals.revenue, data.currency)}
                   note={`${data.currency} orders`}
+                  trend={data.series.map((d) => d.revenue)}
                 />
               )}
               {data.store && (
@@ -209,54 +223,67 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                 />
               )}
             </section>
-            <section className="commerce-panel">
-              <h2>Visitors</h2>
-              <p className="commerce-muted">Unique visitors each day.</p>
-              <LineChart
-                points={data.series.map((d) => ({
-                  label: d.day,
-                  value: d.visitors,
-                }))}
-                format={(v) =>
-                  `${number(v)} ${v === 1 ? "visitor" : "visitors"}`
-                }
-              />
-              <DataTable
-                caption="Visitors and page views by day"
-                headings={["Day", "Visitors", "Page views"]}
-                rows={data.series.map((d) => [
-                  shortDay(d.day),
-                  number(d.visitors),
-                  number(d.views),
-                ])}
-              />
-            </section>
-            {data.store && (
+            <div className={data.store ? "insights-charts" : undefined}>
               <section className="commerce-panel">
-                <h2>Sales</h2>
-                <p className="commerce-muted">
-                  Paid {data.currency} orders each day.
-                </p>
-                <BarChart
+                <PanelHead
+                  title="Visitors"
+                  note="Unique visitors each day."
+                  total={number(data.totals.visitors)}
+                />
+                <LineChart
                   points={data.series.map((d) => ({
                     label: d.day,
-                    value: d.revenue,
-                    extra: d.orders,
+                    value: d.visitors,
                   }))}
-                  format={(v, orders) =>
-                    `${money(v, data.currency)} · ${number(orders ?? 0)} ${orders === 1 ? "order" : "orders"}`
+                  format={(v) =>
+                    `${number(v)} ${v === 1 ? "visitor" : "visitors"}`
                   }
                 />
                 <DataTable
-                  caption="Sales by day"
-                  headings={["Day", "Orders", "Sales"]}
+                  caption="Visitors and page views by day"
+                  headings={["Day", "Visitors", "Page views"]}
                   rows={data.series.map((d) => [
                     shortDay(d.day),
-                    number(d.orders),
-                    money(d.revenue, data.currency),
+                    number(d.visitors),
+                    number(d.views),
                   ])}
                 />
               </section>
+              {data.store && (
+                <section className="commerce-panel">
+                  <PanelHead
+                    title="Sales"
+                    note={`Paid ${data.currency} orders each day.`}
+                    total={money(data.totals.revenue, data.currency)}
+                  />
+                  <BarChart
+                    points={data.series.map((d) => ({
+                      label: d.day,
+                      value: d.revenue,
+                      extra: d.orders,
+                    }))}
+                    format={(v, orders) =>
+                      `${money(v, data.currency)} · ${number(orders ?? 0)} ${orders === 1 ? "order" : "orders"}`
+                    }
+                  />
+                  <DataTable
+                    caption="Sales by day"
+                    headings={["Day", "Orders", "Sales"]}
+                    rows={data.series.map((d) => [
+                      shortDay(d.day),
+                      number(d.orders),
+                      money(d.revenue, data.currency),
+                    ])}
+                  />
+                </section>
+              )}
+            </div>
+            {data.store && (
+              <Funnel
+                funnel={data.funnel}
+                abandoned={data.abandoned}
+                siteId={siteId}
+              />
             )}
             <div className="insights-grid">
               <Ranked
@@ -298,13 +325,6 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                 label={countryName}
                 empty="No visits yet."
               />
-              {data.store && (
-                <Funnel
-                  funnel={data.funnel}
-                  abandoned={data.abandoned}
-                  siteId={siteId}
-                />
-              )}
             </div>
             {data.store && (
               <section className="commerce-panel">
@@ -321,8 +341,8 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                           <th>Source</th>
                           <th>Medium</th>
                           <th>Campaign</th>
-                          <th>Orders</th>
-                          <th>Sales</th>
+                          <th className="num">Orders</th>
+                          <th className="num">Sales</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -335,8 +355,10 @@ export function InsightsPage({ siteId }: { siteId: string }) {
                             </td>
                             <td>{c.medium || "—"}</td>
                             <td>{c.campaign || "—"}</td>
-                            <td>{number(c.orders)}</td>
-                            <td>{money(c.revenue, data.currency)}</td>
+                            <td className="num">{number(c.orders)}</td>
+                            <td className="num">
+                              {money(c.revenue, data.currency)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -369,7 +391,7 @@ const regions = (() => {
   }
 })();
 const countryName = (code: string) =>
-  code === "unknown" ? "Unknown" : (regions?.of(code) ?? code);
+  code === "unknown" ? "Not detected" : (regions?.of(code) ?? code);
 
 /** A/B campaigns: visits and sales for each subject line. */
 function AbTests({ data }: { data: Insights }) {
@@ -400,9 +422,9 @@ function AbTests({ data }: { data: Insights }) {
             <tr>
               <th>Campaign</th>
               <th>Version</th>
-              <th>Visits</th>
-              <th>Orders</th>
-              <th>Sales</th>
+              <th className="num">Visits</th>
+              <th className="num">Orders</th>
+              <th className="num">Sales</th>
             </tr>
           </thead>
           <tbody>
@@ -425,9 +447,11 @@ function AbTests({ data }: { data: Insights }) {
                       <span className="commerce-badge">Ahead</span>
                     )}
                   </td>
-                  <td>{number(visits[v])}</td>
-                  <td>{number(sales(name, v).orders)}</td>
-                  <td>{money(sales(name, v).revenue, data.currency)}</td>
+                  <td className="num">{number(visits[v])}</td>
+                  <td className="num">{number(sales(name, v).orders)}</td>
+                  <td className="num">
+                    {money(sales(name, v).revenue, data.currency)}
+                  </td>
                 </tr>
               ));
             })}
@@ -441,17 +465,72 @@ function Kpi({
   label,
   value,
   note,
+  trend,
 }: {
   label: string;
   value: string;
   note: string;
+  /** Daily values for a small line under the number. */
+  trend?: number[];
 }) {
   return (
     <div className="commerce-stat">
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{note}</small>
+      {trend && trend.length > 1 && <Sparkline values={trend} />}
     </div>
+  );
+}
+/** useId without the punctuation that breaks url(#…) references. */
+const useSvgId = () => `g${useId().replace(/[^\w-]/g, "")}`;
+function Sparkline({ values }: { values: number[] }) {
+  const id = useSvgId();
+  const max = Math.max(...values, 1);
+  const w = 100,
+    h = 28;
+  const line = values
+    .map(
+      (v, i) =>
+        `${i ? "L" : "M"}${((i / (values.length - 1)) * w).toFixed(2)},${(h - 2 - (v / max) * (h - 4)).toFixed(2)}`,
+    )
+    .join("");
+  return (
+    <svg
+      className="insights-spark"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.18" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${line}L${w},${h}L0,${h}Z`} fill={`url(#${id})`} />
+      <path d={line} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+/** A chart card's title and note, with the period's total on the right. */
+function PanelHead({
+  title,
+  note,
+  total,
+}: {
+  title: string;
+  note: string;
+  total: string;
+}) {
+  return (
+    <header className="insights-head">
+      <div>
+        <h2>{title}</h2>
+        <p className="commerce-muted">{note}</p>
+      </div>
+      <strong>{total}</strong>
+    </header>
   );
 }
 function DataTable({
@@ -471,8 +550,10 @@ function DataTable({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr>
-              {headings.map((h) => (
-                <th key={h}>{h}</th>
+              {headings.map((h, i) => (
+                <th key={h} className={i ? "num" : undefined}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -480,7 +561,9 @@ function DataTable({
             {rows.map((r) => (
               <tr key={r[0]}>
                 {r.map((cell, i) => (
-                  <td key={i}>{cell}</td>
+                  <td key={i} className={i ? "num" : undefined}>
+                    {cell}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -625,6 +708,7 @@ function LineChart({
     )
     .join("");
   const area = `${line}L${x(points.length - 1)},${yAt(top, 0)}L${x(0)},${yAt(top, 0)}Z`;
+  const fill = useSvgId();
   return (
     <div className="insights-chart" ref={box}>
       <svg
@@ -644,7 +728,13 @@ function LineChart({
           format={compact}
           labels={points.map((p) => p.label)}
         />
-        <path className="insights-area" d={area} />
+        <defs>
+          <linearGradient id={fill} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" className="insights-area-top" />
+            <stop offset="1" className="insights-area-bottom" />
+          </linearGradient>
+        </defs>
+        <path className="insights-area" d={area} fill={`url(#${fill})`} />
         <path className="insights-line" d={line} />
         {at !== null && (
           <g>
@@ -747,6 +837,7 @@ function Ranked({
   empty: string;
 }) {
   const max = Math.max(...rows.map((r) => r[1]), 1);
+  const total = rows.reduce((n, r) => n + r[1], 0) || 1;
   return (
     <section className="commerce-panel insights-ranked">
       <h2>{title}</h2>
@@ -755,13 +846,14 @@ function Ranked({
         <ol>
           {rows.map(([name, value]) => (
             <li key={name} title={`${label(name)}: ${number(value)}`}>
-              <span
-                className="insights-ranked-bar"
-                style={{ width: `${(value / max) * 100}%` }}
-                aria-hidden="true"
-              />
               <span className="insights-ranked-name">{label(name)}</span>
+              <span className="insights-ranked-share">
+                {Math.round((value / total) * 100)}%
+              </span>
               <strong>{number(value)}</strong>
+              <span className="insights-ranked-track" aria-hidden="true">
+                <span style={{ width: `${(value / max) * 100}%` }} />
+              </span>
             </li>
           ))}
         </ol>
@@ -787,38 +879,44 @@ function Funnel({
     ["Began checkout", funnel.checkouts],
     ["Paid", funnel.paid],
   ];
-  const max = Math.max(funnel.visits, 1);
+  const max = Math.max(...steps.map((s) => s[1]), 1);
   return (
-    <section className="commerce-panel insights-ranked insights-funnel">
-      <h2>Store funnel</h2>
-      <p className="commerce-muted">
-        Where shoppers drop off, and the share who carry on at each step.
-      </p>
+    <section className="commerce-panel insights-funnel">
+      <PanelHead
+        title="Store funnel"
+        note="Where shoppers drop off, and the share who carry on at each step."
+        total={
+          funnel.visits
+            ? `${Math.round((funnel.paid / funnel.visits) * 100)}% paid`
+            : "—"
+        }
+      />
       <ol>
         {steps.map(([name, value], i) => {
           const before = i ? steps[i - 1][1] : 0;
           return (
             <li key={name} title={`${name}: ${number(value)}`}>
-              <span
-                className="insights-ranked-bar"
-                style={{ width: `${(value / max) * 100}%` }}
-                aria-hidden="true"
-              />
-              <span className="insights-ranked-name">{name}</span>
-              <strong>
-                {number(value)}
-                {i > 0 && before > 0 && (
-                  <small> · {Math.round((value / before) * 100)}%</small>
-                )}
-              </strong>
+              <span className="insights-funnel-name">{name}</span>
+              <strong>{number(value)}</strong>
+              <span className="insights-funnel-rate">
+                {i === 0
+                  ? "Start"
+                  : before
+                    ? `${Math.round((value / before) * 100)}% of previous`
+                    : "—"}
+              </span>
+              <span className="insights-funnel-bar" aria-hidden="true">
+                <span style={{ "--share": value / max } as CSSProperties} />
+              </span>
             </li>
           );
         })}
       </ol>
       {abandoned > 0 && (
-        <p className="insights-empty">
+        <p className="insights-funnel-note">
+          <Icon name="mail" size={14} />
           {number(abandoned)} {abandoned === 1 ? "checkout" : "checkouts"} ran
-          out unpaid.{" "}
+          out unpaid.
           <a
             className="commerce-link"
             href={`/commerce?site=${encodeURIComponent(siteId)}&section=marketing`}

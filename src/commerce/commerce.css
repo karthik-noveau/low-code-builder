@@ -1160,11 +1160,23 @@ html body .admin-ui .migrate .commerce-link {
 }
 
 /* Store → Marketing (MarketingPanel.tsx) */
+.marketing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+html body .admin-ui .marketing .commerce-panel,
+html body .admin-ui .marketing .commerce-notice {
+  margin: 0;
+}
 .marketing-compose {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
+}
+html body .admin-ui .marketing-compose > .commerce-form {
+  gap: 18px;
 }
 .marketing-pair {
   display: grid;
@@ -1176,18 +1188,24 @@ html body .admin-ui .migrate .commerce-link {
   font-size: 12px;
   font-weight: 400;
 }
+/* The preview stays in view while the form scrolls. */
+html body .admin-ui .marketing-preview {
+  position: sticky;
+  top: 16px;
+}
 .marketing-email {
   display: grid;
   gap: 4px;
-  margin-top: 12px;
-  padding: 16px;
-  border: 1px solid var(--ui-border);
+  margin-top: 14px;
+  padding: 14px;
   border-radius: 12px;
-  background: var(--ui-canvas);
+  background: var(--fx-surface-2, var(--ui-canvas));
+  box-shadow: inset 0 0 0 1px var(--fx-border, var(--ui-border));
 }
 .marketing-email strong {
   color: var(--ui-ink);
-  font-size: 15px;
+  font-size: 14.5px;
+  line-height: 1.4;
 }
 .marketing-email small {
   color: var(--ui-muted);
@@ -1201,50 +1219,162 @@ html body .admin-ui .migrate .commerce-link {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* Before anything is written: the shape of an email. */
+.marketing-email.is-empty {
+  gap: 8px;
+}
+.marketing-skeleton {
+  display: block;
+  width: 100%;
+  height: 9px;
+  border-radius: 99px;
+  background: var(--fx-surface-3, var(--ui-border));
+}
+.marketing-skeleton.is-short {
+  width: 55%;
+}
+.marketing-skeleton.is-tiny {
+  width: 30%;
+  height: 7px;
+  opacity: 0.7;
+}
+.marketing-skeleton-body {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--fx-surface, #fff);
+  box-shadow: 0 0 0 1px var(--fx-border, var(--ui-border));
+}
+.marketing-skeleton.is-image {
+  height: 96px;
+  border-radius: 8px;
+  opacity: 0.6;
+}
+.marketing-skeleton.is-title {
+  width: 70%;
+  height: 14px;
+  margin: 4px 0 2px;
+}
+.marketing-skeleton.is-button {
+  width: 120px;
+  height: 30px;
+  margin-top: 6px;
+  border-radius: 8px;
+  background: color-mix(
+    in srgb,
+    var(--fx-accent, var(--ui-accent)) 35%,
+    transparent
+  );
+}
+.marketing-preview-hint {
+  margin: 12px 0 0;
+  text-align: center;
+}
 .marketing-offer {
   max-width: 280px;
   margin: 14px 0;
 }
-@media (max-width: 960px) {
-  .marketing-compose {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 560px) {
-  .marketing-pair {
-    grid-template-columns: 1fr;
-  }
-}
 .marketing-check {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 16px;
   align-items: center;
-  margin: 4px 0 12px;
-  color: var(--ui-ink);
-  font-size: 13.5px;
-  font-weight: 600;
-}
-.marketing-check small {
-  grid-column: 2;
-  color: var(--ui-muted);
-  font-size: 12px;
-  font-weight: 400;
-}
-.marketing-design {
-  margin: 4px 0 14px;
   padding: 12px 14px;
-  border: 1px solid var(--ui-border);
   border-radius: 12px;
-}
-.marketing-design summary {
+  background: var(--fx-surface-2, var(--ui-canvas));
   color: var(--ui-ink);
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
+.marketing-check input {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+.marketing-check small {
+  grid-column: 1;
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+/* Switches instead of bare checkboxes. */
+html body .admin-ui .marketing input[role="switch"] {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 99px;
+  background: var(--fx-faint);
+  transition: background 0.18s var(--fx-ease);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+html body .admin-ui .marketing input[role="switch"]::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: "";
+  transition: transform 0.18s var(--fx-ease);
+}
+html body .admin-ui .marketing input[role="switch"]:checked {
+  background: var(--fx-accent);
+}
+html body .admin-ui .marketing input[role="switch"]:checked::after {
+  transform: translateX(16px);
+}
+.marketing-design {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--fx-border, var(--ui-border));
+}
+.marketing-design summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: var(--ui-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+.marketing-design summary::-webkit-details-marker {
+  display: none;
+}
+.marketing-design summary::before {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--ui-muted);
+  border-bottom: 1.5px solid var(--ui-muted);
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+.marketing-design[open] summary::before {
+  transform: rotate(45deg);
+}
+.marketing-design summary:hover {
+  background: var(--fx-hover, var(--ui-canvas));
+}
 .marketing-design[open] summary {
-  margin-bottom: 12px;
+  border-bottom: 1px solid var(--fx-border, var(--ui-border));
+}
+.marketing-design > :not(summary) {
+  margin: 14px 14px 0;
+}
+.marketing-design > :last-child {
+  margin-bottom: 14px;
 }
 .marketing-colour span {
   display: flex;
@@ -1260,12 +1390,44 @@ html body .admin-ui .migrate .commerce-link {
 }
 .marketing-frame {
   width: 100%;
-  height: 520px;
+  height: 560px;
   margin-top: 10px;
   border: 0;
   border-radius: 10px;
   background: #f4f4f2;
 }
-.marketing-design .commerce-field {
-  margin-bottom: 12px;
+/* Actions sit on a divider at the foot of the card, primary on the right. */
+html body .admin-ui .marketing-send {
+  justify-content: flex-end;
+  margin-top: 2px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fx-border);
+}
+html body .admin-ui .marketing-send > [role="status"] {
+  margin-right: auto;
+  order: -1;
+}
+html body .admin-ui .marketing .commerce-panel > .commerce-link:last-child {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 0;
+}
+@media (max-width: 960px) {
+  .marketing-compose {
+    grid-template-columns: 1fr;
+  }
+  html body .admin-ui .marketing-preview {
+    position: static;
+  }
+}
+@media (max-width: 560px) {
+  .marketing-pair {
+    grid-template-columns: 1fr;
+  }
+  html body .admin-ui .marketing-send {
+    justify-content: stretch;
+  }
+  html body .admin-ui .marketing-send > .commerce-button {
+    flex: 1;
+  }
 }
