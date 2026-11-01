@@ -12,6 +12,8 @@ import "./public.css";
 
 const navigation = [
   ["/features", "Product"],
+  ["/enterprise", "Enterprise"],
+  ["/migrate", "Migrate"],
   ["/templates", "Templates"],
   ["/pricing", "Pricing"],
   ["/help", "Resources"],
@@ -92,11 +94,13 @@ export function Footer() {
           <a href="/features">Website builder</a>
           <a href="/templates">Templates</a>
           <a href="/pricing">Pricing & hosting</a>
+          <a href="/enterprise">Enterprise</a>
           <a href="/new">Start a website</a>
         </div>
         <div className="pub-footer-col">
           <h2>Resources</h2>
           <a href="/help">Guides & help</a>
+          <a href="/migrate">Move from Shopify or Wix</a>
           <a href="/help/publish">Publishing a website</a>
           <a href="/workspace">Your workspace</a>
           <a href="/editor">Continue your draft</a>

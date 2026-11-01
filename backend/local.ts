@@ -315,10 +315,13 @@ const sitesServer = createServer(async (req, res) => {
     if (!live) throw new Error("Not published");
     const explicit = /^releases\/([^/]+)\/(.*)$/.exec(tail);
     const release = explicit?.[1] || live.releaseId;
-    const file = (explicit ? explicit[2] : tail) || "index.html";
+    let file = (explicit ? explicit[2] : tail) || "index.html";
+    // Clean addresses (and old ones a redirect page answers): /about is
+    // about.html. Not /about/: its relative links would point a level down.
+    if (/^[a-z0-9-]+(?:\/[a-z0-9-]+){0,3}$/.test(file)) file += ".html";
     if (
       !idPattern.test(release) ||
-      !/^(?:(?:[a-z0-9-]+\/)?[a-z0-9-]+\.html|styles\.css|app\.js|logic\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
+      !/^(?:(?:[a-z0-9-]+\/){0,3}[a-z0-9-]+\.html|styles\.css|app\.js|logic\.js|sw\.js|manifest\.webmanifest|icon\.svg|icon-(?:192|512)\.png|images\/[a-f0-9]{64}\.(?:png|jpeg|gif|webp))$/.test(
         file,
       )
     )

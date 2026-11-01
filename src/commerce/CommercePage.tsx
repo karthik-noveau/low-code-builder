@@ -25,6 +25,9 @@ import {
 import { ProductEditor } from "./ProductEditor";
 import { MarketsEditor } from "./MarketsEditor";
 import { parseCsv, toCsv } from "./csv";
+import { PRODUCT_COLUMNS, parseExport, SOURCE_NAMES } from "./migrate";
+import { MigrationPanel } from "./MigrationPanel";
+import { importProductDrafts } from "./importer";
 import { activityLabel, orderNumber, returnLabel, statusLabel } from "./labels";
 import { refundAmount } from "./refunds";
 import "./commerce.css";
@@ -40,6 +43,7 @@ const sections = [
   "Discounts",
   "Content",
   "Inbox",
+  "Import & migrate",
   "Markets",
   "Team",
   "Integrations",
@@ -54,6 +58,8 @@ const descriptions: Record<Section, string> = {
   Discounts: "Create offers with clear limits and expiry dates.",
   Content: "Write and publish stories for your storefront.",
   Inbox: "Read form submissions and preview store emails.",
+  "Import & migrate":
+    "Bring products, customers and old links over from Shopify, Wix or a spreadsheet.",
   Markets: "Choose where you sell, and how you price and deliver.",
   Team: "Give collaborators the access they need.",
   Integrations: "Send order and product updates to other tools you use.",
@@ -400,18 +406,6 @@ const INTEGRATION_EVENTS = [
 const eventLabel = (key: string) =>
   INTEGRATION_EVENTS.find(([value]) => value === key)?.[1] ||
   activityLabel(key);
-/** Expected product CSV columns, in order; export and import share them. */
-const PRODUCT_COLUMNS = [
-  "title",
-  "description",
-  "collection",
-  "image",
-  "status",
-  "variant",
-  "sku",
-  "price",
-  "stock",
-];
 /** Order list filters: which statuses each chip shows. */
 const ORDER_FILTERS = [
   ["All", []],
@@ -768,95 +762,31 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       );
   };
   const importProducts = async (file?: File) => {
-    if (!file) return;
+    if (!file || !data) return;
     setError("");
     setBusy(true);
     try {
-      if (file.size > 1024 * 1024)
-        throw new Error("CSV files must be under 1 MB.");
-      const [headings, ...rows] = parseCsv(await file.text());
-      const expected = PRODUCT_COLUMNS;
-      if (
-        !headings ||
-        expected.some((h, i) => headings[i] !== h) ||
-        headings.length !== expected.length
-      )
+      if (file.size > 15 * 1024 * 1024)
+        throw new Error("CSV files must be under 15 MB.");
+      // Forma's template, or a Shopify or Wix export as it comes.
+      const parsed = parseExport(parseCsv(await file.text()));
+      if (parsed.kind !== "products")
         throw new Error(
-          `CSV columns must be: ${expected.join(", ")}. Export a catalog to get the template.`,
+          "That’s a customers file. Import it from Import & migrate.",
         );
-      if (!rows.length || rows.length > 500)
-        throw new Error("Import between one and 500 variant rows.");
-      const groups = new Map<
-        string,
-        {
-          title: string;
-          description: string;
-          collection: string;
-          image: string;
-          status: string;
-          variants: {
-            title: string;
-            sku: string;
-            price: number;
-            stock: number;
-            prices: object;
-          }[];
-        }
-      >();
-      for (const [
-        title,
-        description,
-        collection,
-        image,
-        status,
-        variant,
-        sku,
-        price,
-        stock,
-      ] of rows) {
-        if (
-          !title ||
-          !Number.isFinite(Number(price)) ||
-          !Number.isInteger(Number(stock)) ||
-          !price.trim() ||
-          !stock.trim() ||
-          Number(price) < 0 ||
-          Number(stock) < 0
-        )
-          throw new Error(
-            "Every row needs a title, nonnegative price, and whole stock quantity.",
-          );
-        const group = groups.get(title) || {
-          title,
-          description,
-          collection,
-          image,
-          status,
-          variants: [],
-        };
-        group.variants.push({
-          title: variant || "Default",
-          sku,
-          price: Math.round(Number(price) * 100),
-          stock: Number(stock),
-          prices: {},
-        });
-        groups.set(title, group);
-      }
-      let completed = 0;
-      for (const product of groups.values()) {
-        try {
-          await commerceRequest(siteId, "products", product);
-          completed++;
-        } catch (e) {
-          throw new Error(
-            `${completed} products imported before the error: ${e instanceof Error ? e.message : "Could not import"}. Existing products were preserved.`,
-          );
-        }
-      }
+      const result = await importProductDrafts(
+        siteId,
+        parsed.products,
+        data.products,
+        () => {},
+      );
       await refresh();
+      if (result.failed.length)
+        throw new Error(
+          `${result.created} products imported. ${result.failed.length} couldn’t be: ${result.failed[0].title}: ${result.failed[0].reason}`,
+        );
       setNotice(
-        `Imported ${completed} new products. Imports create new products; edit existing products from the catalog.`,
+        `Imported ${result.created} ${result.created === 1 ? "product" : "products"} from ${SOURCE_NAMES[parsed.source]}.${result.skipped ? ` ${result.skipped} already in your catalog were skipped.` : ""}${result.overLimit ? ` ${result.overLimit} didn’t fit: the catalog holds 500 products.` : ""}`,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Import failed.");
@@ -936,7 +866,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 },
                 {
                   title: "Place a test order",
-                  note: "Try payment, shipping, and refunds. No money is taken.",
+                  note: data.hosting.payments
+                    ? "Try payment, shipping, and refunds with your provider’s test mode."
+                    : "Try payment, shipping, and refunds. No money is taken.",
                   done: !!data.orders.length,
                   to: "Orders" as Section,
                   action: "View orders",
@@ -965,8 +897,12 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 ))}
               </ul>
               <p className="commerce-footer-note">
-                Payments and notification emails are tests. No money is taken
-                and no emails leave this computer.
+                {data.hosting.payments
+                  ? "Payments go through your connected payment account."
+                  : "Payments are tests until you connect Stripe or Razorpay. No money is taken."}{" "}
+                {data.hosting.mail
+                  ? "Shopper emails are sent from your store’s name."
+                  : "Shopper emails are kept as previews in your Inbox."}
               </p>
             </section>
           </div>
@@ -1045,8 +981,16 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           </div>
           {canEdit && (
             <p className="commerce-hint commerce-import-hint">
-              Import columns, in order: {PRODUCT_COLUMNS.join(", ")}. One row
-              per variant. Tip: export first to get a template.
+              Import a Shopify or Wix product export as it is, or Forma’s
+              columns: {PRODUCT_COLUMNS.join(", ")} (one row per variant).
+              Moving a whole store?{" "}
+              <button
+                className="commerce-link"
+                onClick={() => go("Import & migrate")}
+              >
+                Use Import &amp; migrate
+              </button>
+              .
             </p>
           )}
           {!data.products.length ? (
@@ -1531,6 +1475,18 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
       return !data.customers.length ? (
         <Empty icon="heart" title="No customers yet">
           <p>Customer records are created after a successful payment.</p>
+          {canManage && (
+            <p>
+              Moving from another store?{" "}
+              <button
+                className="commerce-link"
+                onClick={() => go("Import & migrate")}
+              >
+                Import your customers
+              </button>{" "}
+              from Shopify, Wix or a spreadsheet.
+            </p>
+          )}
         </Empty>
       ) : (
         <div className="commerce-panel commerce-index">
@@ -1561,8 +1517,11 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               <tr key={c.id}>
                 {customerSelection.cell(c.id, c.name || c.email)}
                 <td>
-                  <strong>{c.name}</strong>
-                  <small>{c.email}</small>
+                  <strong>{c.name || c.email}</strong>
+                  <small>
+                    {c.email}
+                    {c.imported && ` · From ${SOURCE_NAMES[c.imported.from]}`}
+                  </small>
                 </td>
                 <td>{c.orders}</td>
                 <td>
@@ -1570,7 +1529,12 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                     <div key={code}>{money(amount, code)}</div>
                   ))}
                 </td>
-                <td>{date(c.updatedAt)}</td>
+                <td>
+                  {/* Imported history has no date of its own. */}
+                  {c.imported && c.orders <= c.imported.orders
+                    ? "—"
+                    : date(c.updatedAt)}
+                </td>
               </tr>
             ))}
           </Table>
@@ -1810,6 +1774,18 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           </section>
         </>
       );
+    if (section === "Import & migrate")
+      return (
+        <MigrationPanel
+          siteId={siteId}
+          products={data.products}
+          currency={data.settings.currency}
+          canEdit={canEdit}
+          canManage={canManage}
+          onImported={refresh}
+          openSection={go}
+        />
+      );
     if (section === "Markets")
       return (
         <MarketsEditor
@@ -1828,9 +1804,10 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-notice">
             Owner: all actions. Manager: commerce settings, orders, and
             publishing. Editor: products, content, and website drafts. Viewer:
-            read-only access. Someone new is emailed an invitation to set up
-            their account (on a workspace on this computer, they create their
-            account here first).
+            read-only access.{" "}
+            {data.hosting.local
+              ? "On a workspace on this computer, people create their account here first."
+              : "Someone new is emailed an invitation to set up their account."}
           </div>
           {data.role === "owner" && (
             <form
@@ -1907,8 +1884,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         <>
           <div className="commerce-notice">
             Integrations let another tool you run, like an inventory app,
-            receive a record of orders and product changes. Nothing is sent
-            outside this computer yet.
+            receive a signed record of orders and product changes. Your tool
+            reads them from the integration’s event feed; Forma doesn’t push
+            them to it.
           </div>
           {data.role === "owner" && (
             <form

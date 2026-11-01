@@ -2824,3 +2824,64 @@
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
 }
+
+/* Settings → Moved pages (RedirectsPanel.tsx) */
+.redirects-panel {
+  display: grid;
+  gap: 10px;
+}
+.redirects-panel .muted-note {
+  margin: 0;
+}
+.redirects-add {
+  display: grid;
+  gap: 8px;
+}
+.redirects-add .field {
+  margin: 0;
+}
+.redirects-add .field input + input,
+.redirects-add .field select + input {
+  margin-top: 6px;
+}
+.redirects-list {
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.redirects-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 4px 4px 8px;
+  border-radius: 6px;
+}
+.redirects-list li:hover {
+  background: var(--surface-muted, rgb(0 0 0 / 0.04));
+}
+.redirects-list li > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.redirects-list code,
+.redirects-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.redirects-list code {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.redirects-list small {
+  color: var(--muted);
+  font-size: 12px;
+}

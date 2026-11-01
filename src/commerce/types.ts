@@ -14,6 +14,8 @@ export interface Product {
   image: string;
   collection: string;
   status: "active" | "draft" | "archived";
+  /** The product's address on the store it came from (Shopify or Wix), kept so old links redirect. */
+  handle?: string;
   variants: Variant[];
   translations: Record<string, { title: string; description: string }>;
   createdAt: string;
@@ -138,10 +140,21 @@ export interface Customer {
   id: string;
   email: string;
   name: string;
+  /** Includes orders brought over from another store (`imported`). */
   orders: number;
   spent: Record<string, number>;
   updatedAt: string;
+  phone?: string;
+  /** What a migration brought over, already counted in `orders` and `spent`. */
+  imported?: {
+    from: MigrationSource;
+    orders: number;
+    spent: number;
+    currency: string;
+    at: string;
+  };
 }
+export type MigrationSource = "shopify" | "wix" | "csv";
 export interface Submission {
   id: string;
   name: string;
@@ -216,6 +229,8 @@ export interface CommerceOverview {
     paidOrders: number;
     returningCustomers: number;
   };
+  /** What this store runs on: a workspace on this computer, real email, a payment account. */
+  hosting: { local: boolean; mail: boolean; payments: boolean };
 }
 export const money = (amount: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(

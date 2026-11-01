@@ -13,6 +13,7 @@ import { DATA_SCRIPT } from "../src/blocks/data/runtime";
 import { needsDataScript } from "../src/blocks/data/project";
 import { LOGIC_SCRIPT } from "../src/blocks/logic/runtime";
 import { needsLogicScript } from "../src/blocks/logic/project";
+import { movedPaths, redirectPage } from "../src/studio/redirects";
 import {
   collectionImages,
   itemHref,
@@ -352,6 +353,22 @@ export async function compileSite(
       body: Buffer.from(LOGIC_SCRIPT),
     });
   for (const file of files) add(file);
+  // Old addresses from Shopify, Wix or an earlier site: the owner's list,
+  // then the store's imported products. A real page at that path wins.
+  for (const redirect of [
+    ...(project.redirects ?? []),
+    ...(commerce?.moved
+      ? movedPaths(commerce.moved.shopUrl, commerce.moved.products)
+      : []),
+  ]) {
+    const name = `${redirect.from}.html`;
+    if (!artifacts.some((a) => a.name === name))
+      add({
+        name,
+        type: "text/html; charset=utf-8",
+        body: Buffer.from(redirectPage(redirect)),
+      });
+  }
   insist(
     artifacts.reduce((sum, file) => sum + file.body.length, 0) <=
       30 * 1024 * 1024,

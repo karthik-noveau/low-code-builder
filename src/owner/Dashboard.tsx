@@ -15,6 +15,7 @@ import {
   formatRelativeTime,
   greetingFor,
   pluralise,
+  formatNumber,
 } from "./format";
 import {
   cardIcon,
@@ -223,7 +224,7 @@ function DashboardCard({ cardId }: { cardId: string }) {
     ? tone === "slate"
       ? formatMoneyCompact(value, app.currency)
       : ctx.money(value)
-    : value.toLocaleString("en-IN");
+    : formatNumber(value, ctx.model.app.currency);
   return (
     <StatCard
       tone={tone}
@@ -518,7 +519,7 @@ function PeopleListCard({ list }: { list: AppList }) {
                       <span className="ow-amount">
                         {total?.money || sortField?.type === "money"
                           ? ctx.money(value)
-                          : value.toLocaleString("en-IN")}
+                          : formatNumber(value, ctx.model.app.currency)}
                       </span>
                     )}
                   </GoLink>
@@ -542,7 +543,7 @@ function ChartCard({ chart, now }: { chart: AppChart; now: Date }) {
     (chart.op === "sum" &&
       table?.fields.find((f) => f.id === chart.field)?.type === "money");
   const show = (v: number) =>
-    money ? ctx.money(v) : v.toLocaleString("en-IN");
+    money ? ctx.money(v) : formatNumber(v, ctx.model.app.currency);
   const max = Math.max(...bars.map((b) => b.value), 0);
   const current = bars[bars.length - 1];
   const awarded = !!table?.actions.some((a) =>

@@ -42,6 +42,16 @@ export const pageMeta: Record<string, { title: string; description: string }> =
       description:
         "Understand where your Forma drafts, account details, images, and published pages are stored.",
     },
+    "/enterprise": {
+      title: "Enterprise — Forma",
+      description:
+        "Websites, stores and custom business apps on one platform, deployed on your own cloud and shaped to your requirements.",
+    },
+    "/migrate": {
+      title: "Move from Shopify or Wix — Forma",
+      description:
+        "Bring products, customers and old links over from Shopify or Wix. Preview every file before it's saved, and keep your search rankings.",
+    },
     "/login": {
       title: "Welcome back — Forma",
       description: "Sign in to your Forma workspace.",
@@ -321,6 +331,30 @@ export const guides = [
     ],
   },
   {
+    id: "migrate",
+    category: "Moving to Forma",
+    title: "Move your store from Shopify or Wix",
+    time: "5 min read",
+    steps: [
+      [
+        "Export from your old store",
+        "In Shopify, export all products and all customers as plain CSV files (Products → Export, Customers → Export). In Wix, export your catalog from Store Products and your contacts from Contacts. Shopify’s URL redirects export (Online Store → Navigation) is worth taking too.",
+      ],
+      [
+        "Import products and customers",
+        "Open your store, choose Import & migrate and drop in each file. Forma recognises where it came from, shows you what it found and anything that won’t come across, and saves nothing until you choose Import. Running the same file again never makes duplicates.",
+      ],
+      [
+        "Keep your old links working",
+        "Imported products keep their old address: /products/… and /product-page/… forward to the same product in your Forma store when you publish. For pages and blog posts, add moved pages in the editor’s Settings, or import Shopify’s redirect CSV there.",
+      ],
+      [
+        "Switch your domain",
+        "Your old store keeps selling until you point your domain at Forma. Connect it from Domains, publish, check a few old links, then cancel your old plan.",
+      ],
+    ],
+  },
+  {
     id: "publish",
     category: "Going live",
     title: "Publish with room to change your mind",
@@ -383,3 +417,47 @@ export const faqs = [
     "Use Undo in the editor, recover the copy your browser keeps when you switch websites, or put an earlier published version of your website back live.",
   ],
 ];
+export const enterpriseFaqs = [
+  [
+    "Can Forma really handle our requirement?",
+    "Forma combines pages, a store and business apps (tables, forms, workflow steps, roles and dashboards) that share the same records, so most requirements are built on the platform rather than around it. Bring the requirement and we’ll show you a working version.",
+  ],
+  [
+    "Where is our data stored?",
+    "In the AWS account you choose: DynamoDB for records and orders, S3 and CloudFront for published sites and images, and Cognito for sign-in. Everything exports to CSV.",
+  ],
+  [
+    "How do people get access?",
+    "Owners invite collaborators as managers, editors or viewers. Each change to the store is recorded in its activity log.",
+  ],
+  [
+    "Does it connect to our other systems?",
+    "Orders and product changes are available as signed event feeds for your own tools, and every list exports to CSV. Payments go through your Stripe or Razorpay account.",
+  ],
+  [
+    "Can we move an existing store?",
+    "Yes. Shopify and Wix product and customer exports import as they are, and old product links keep working. See the migration page for exactly what comes across.",
+  ],
+] as const;
+export const migrationFaqs = [
+  [
+    "Will I lose my search rankings?",
+    "Old product and collection addresses forward to the same product in your Forma store, and you can add any other page, or import Shopify’s redirect list. Search engines follow these to the new pages.",
+  ],
+  [
+    "Do my customers need new passwords?",
+    "No. Customers sign in to their account with a one-time code sent to their email, so there are no passwords to move or reset.",
+  ],
+  [
+    "What happens to customers who opted in to marketing?",
+    "They join your newsletter list with their consent carried over. Nobody is emailed during the import.",
+  ],
+  [
+    "What about my past orders?",
+    "Each customer’s order count and total spend come across. The orders themselves stay in your old store’s export for your records.",
+  ],
+  [
+    "Can I try it before switching?",
+    "Yes. Import into a new workspace, check everything, and keep selling on your old store until you point your domain at Forma.",
+  ],
+] as const;

@@ -12,6 +12,11 @@ export interface CommerceBinding {
   shopUrl?: string;
   /** The catalogue as the website shows it, when the store puts it there. */
   products?: StoreProduct[];
+  /** The store's address and its imported products' old handles, for redirects. */
+  moved?: {
+    shopUrl: string;
+    products: { handle: string; url: string; collection: string }[];
+  };
   checksum: string;
 }
 const storeUrl = (siteId: string) => {
@@ -52,16 +57,31 @@ export async function publicationCommerce(
   siteId: string,
 ): Promise<CommerceBinding> {
   const settings = await read<StoreSettings>(siteId, "SETTINGS");
-  if (
-    !storeOnWebsite(settings) ||
-    !settings ||
-    (!settings.linkFromWebsite && !settings.useCatalogOnWebsite)
-  )
-    return { checksum: "" };
+  if (!storeOnWebsite(settings) || !settings) return { checksum: "" };
   const binding: Omit<CommerceBinding, "checksum"> = {};
   if (settings.linkFromWebsite) binding.shopUrl = storeUrl(siteId).toString();
   if (settings.useCatalogOnWebsite)
     binding.products = await websiteProducts(siteId, settings);
+  // A store moved from Shopify or Wix keeps its old product addresses.
+  const handled = (await list<Product>(siteId, "PRODUCT")).filter(
+    (p) => p.status === "active" && p.handle,
+  );
+  if (handled.length)
+    binding.moved = {
+      shopUrl: storeUrl(siteId).toString(),
+      products: handled
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((p) => {
+          const url = storeUrl(siteId);
+          url.searchParams.set("product", p.id);
+          return {
+            handle: p.handle!,
+            url: url.toString(),
+            collection: p.collection,
+          };
+        }),
+    };
+  if (!Object.keys(binding).length) return { checksum: "" };
   return {
     ...binding,
     checksum: createHash("sha256")

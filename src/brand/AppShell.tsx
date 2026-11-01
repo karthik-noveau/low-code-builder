@@ -54,6 +54,7 @@ const STORE_NAV: { label: string; items: [string, string][] }[] = [
       ["Discounts", "percent"],
       ["Content", "type"],
       ["Inbox", "mail"],
+      ["Import & migrate", "upload"],
     ],
   },
   {

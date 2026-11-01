@@ -6,6 +6,7 @@ import { IconButton, Field, ColorField, Range, type Notify } from "./ui";
 import { sectionMeta, safeImage, type Section } from "./model";
 import { templateOptions } from "./templates";
 import { PaymentsPanel } from "./PaymentsPanel";
+import { RedirectsPanel } from "./RedirectsPanel";
 
 type ThemeKey = "scale" | "spacing" | "buttons";
 /** Site-wide design tokens. The middle option is each token's default. */
@@ -699,6 +700,11 @@ export function Sidebar({
               GET PAID
             </h4>
             <PaymentsPanel />
+            <div className="panel-divider" />
+            <h4 className="eyebrow-label" id="moved-pages">
+              MOVED PAGES
+            </h4>
+            <RedirectsPanel />
             <div className="panel-divider" />
             <h4 className="eyebrow-label">YOUR PROJECT</h4>
             <p className="muted-note">

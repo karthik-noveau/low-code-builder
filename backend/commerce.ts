@@ -305,6 +305,12 @@ export async function saveProduct(
     422,
     "Use up to eight translations.",
   );
+  const handle = text(input.handle || "", "product handle", 100, true);
+  insist(
+    !handle || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(handle),
+    422,
+    "A product handle uses lowercase letters, numbers and dashes.",
+  );
   const product: Product = {
     id,
     revision: (previous?.revision || 0) + 1,
@@ -313,6 +319,7 @@ export async function saveProduct(
     image,
     collection: text(input.collection || "", "collection", 80, true),
     status: input.status as Product["status"],
+    ...(handle ? { handle } : {}),
     variants,
     translations,
     createdAt: previous?.createdAt || now(),

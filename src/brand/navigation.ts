@@ -13,6 +13,8 @@ export function safeDestination(value: string | null) {
 export const publicPaths = [
   "/",
   "/features",
+  "/enterprise",
+  "/migrate",
   "/templates",
   "/pricing",
   "/about",

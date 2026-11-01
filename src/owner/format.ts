@@ -60,6 +60,13 @@ export const formatRelativeTime = (
   return formatDate(date);
 };
 
+/**
+ * A plain figure grouped the way the shop's customers read it: lakh and
+ * crore groups (1,00,000) for rupee shops, the browser's own grouping otherwise.
+ */
+export const formatNumber = (value: number, currency: string) =>
+  value.toLocaleString(currency === "INR" ? "en-IN" : undefined);
+
 /** ₹8.6L / ₹1.2Cr for a stat card where the full figure would overflow. */
 export function formatMoneyCompact(value: number, currency: string) {
   const amount = Number.isFinite(value) ? value : 0;
@@ -72,9 +79,9 @@ export function formatMoneyCompact(value: number, currency: string) {
   return formatMoney(amount, currency);
 }
 
-/** Strips grouping and the rupee sign; at most two decimals, else null. */
+/** Strips grouping and a currency sign; at most two decimals, else null. */
 export const parseAmount = (input: string): number | null => {
-  const cleaned = input.replace(/[,\s₹]/g, "");
+  const cleaned = input.replace(/[,\s₹$€£]/g, "");
   if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : null;

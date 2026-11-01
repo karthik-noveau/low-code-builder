@@ -8,7 +8,7 @@ import { ApiError } from "../cloud/client";
 import { recordTitle, type AppRecord } from "../apps/model";
 import { errorText } from "../apps/app-helpers";
 import { useOwner } from "./context";
-import { formatDate, formatPhone, pluralise } from "./format";
+import { formatDate, formatNumber, formatPhone, pluralise } from "./format";
 import { countIn, historyOf, isPaused, type People } from "./roles";
 import { useToast } from "./toast";
 import {
@@ -134,7 +134,11 @@ export function PeoplePage({ p }: { p: People }) {
               tone="dark"
               icon="wallet"
               label={`Overall ${totalWord}`}
-              value={total.money ? ctx.money(sum) : sum.toLocaleString("en-IN")}
+              value={
+                total.money
+                  ? ctx.money(sum)
+                  : formatNumber(sum, ctx.model.app.currency)
+              }
               meta={`All ${plural}, all time`}
             />
             <StatCard
@@ -144,7 +148,7 @@ export function PeoplePage({ p }: { p: People }) {
               value={
                 total.money
                   ? ctx.money(average)
-                  : average.toLocaleString("en-IN")
+                  : formatNumber(average, ctx.model.app.currency)
               }
               meta="Across the whole shop"
             />
@@ -343,9 +347,10 @@ export function PeoplePage({ p }: { p: People }) {
                               <span className="ow-amount">
                                 {total.money
                                   ? ctx.money(Number(r.totals?.[total.id] ?? 0))
-                                  : Number(
-                                      r.totals?.[total.id] ?? 0,
-                                    ).toLocaleString("en-IN")}
+                                  : formatNumber(
+                                      Number(r.totals?.[total.id] ?? 0),
+                                      ctx.model.app.currency,
+                                    )}
                               </span>
                             </td>
                           )}

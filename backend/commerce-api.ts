@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID, createHmac } from "node:crypto";
-import { HttpError, idPattern, insist } from "./config";
+import { HttpError, idPattern, insist, local } from "./config";
 import { allow, siteAccess } from "./access";
 import { audit, event, list, now, put, read, recent, transact } from "./commerce-data";
 import {
@@ -30,7 +30,9 @@ import {
 } from "./commerce";
 import type { ApiRequest } from "./api";
 import { requireNotDeleting } from "./lifecycle";
-import { deliverMail } from "./mail";
+import { deliverMail, mailFrom } from "./mail";
+import { importCustomers } from "./migration";
+import { getConnection } from "./payments";
 import {
   sendSignInCode,
   shopper,
@@ -149,6 +151,11 @@ export async function overview(
         (o) => o.status === "paid" || o.status === "fulfilled",
       ).length,
       returningCustomers: customers.filter((c) => c.orders > 1).length,
+    },
+    hosting: {
+      local,
+      mail: !!mailFrom(),
+      payments: !!(await getConnection(siteId).catch(() => null)),
     },
   };
 }
@@ -344,6 +351,8 @@ async function storeRoutes(
     return { value: { settings: await saveSettings(actor, siteId, input) } };
   if (action === "products" && method === "POST")
     return { value: { product: await saveProduct(actor, siteId, input) } };
+  if (action === "customers" && method === "POST")
+    return { value: await importCustomers(actor, siteId, input) };
   if (action === "discounts" && method === "POST")
     return { value: { discount: await saveDiscount(actor, siteId, input) } };
   if (action === "content" && method === "POST")

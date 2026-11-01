@@ -15,6 +15,12 @@ await build({
   target: "node22",
   packages: "external",
   loader: { ".css": "empty" },
+  // The same build-time settings Vite gives the browser bundle.
+  define: {
+    "import.meta.env.VITE_SALES_EMAIL": JSON.stringify(
+      process.env.VITE_SALES_EMAIL || "",
+    ),
+  },
 });
 const { renderPage, metadataFor, publicPaths, privatePaths, previewPaths } =
   await import(pathToFileURL(resolve(".build/brand-render.mjs")).href);

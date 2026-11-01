@@ -195,6 +195,11 @@ export const apiRoutes = [
     auth: "jwt",
   },
   {
+    id: "CommerceCustomersRoute",
+    route: "POST /sites/{id}/commerce/customers",
+    auth: "jwt",
+  },
+  {
     id: "CommerceDiscountsRoute",
     route: "POST /sites/{id}/commerce/discounts",
     auth: "jwt",

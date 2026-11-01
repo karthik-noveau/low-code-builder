@@ -61,6 +61,7 @@ Owners can always paste their own keys; these steps add **Connect with Stripe/Ra
 - [ ] Bounces: trigger a sign-in code to `bounce@simulator.amazonses.com` and `complaint@simulator.amazonses.com` (SES's mailbox simulator); the outbox marks them bounced and complained, and the next email to either is "not sent"
 - [ ] Get paid: connect by signing in with Stripe and Razorpay, then disconnect
 - [ ] Start a checkout, disconnect, then pay it anyway (Inbox payment page): the request still turns paid from the webhook
+- [ ] Migration: Store → Import & migrate a real Shopify products export and customers export; publish; `https://<site>/products/<handle>` and `/collections/<type>` forward to the store, and a page's clean address (`/about`) loads (the site router changed, so this proves the CloudFront function update)
 - [ ] Throttles: hammering a public route returns 429; CORS from the editor origin works; the published site's Shop link opens `/store`
 - [ ] Publish failures land in the DLQ and retry; restoring a release changes only the route
 - [ ] Record what you checked in `release-readiness.json` (`cloud`, `payments`, `notifications`) with evidence

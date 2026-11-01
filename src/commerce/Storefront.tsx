@@ -99,7 +99,10 @@ export function Storefront({ siteId }: { siteId: string }) {
     [marketId, setMarketId] = useState(""),
     [country, setCountry] = useState("");
   const [search, setSearch] = useState(""),
-    [collection, setCollection] = useState(""),
+    // ?collection= opens one collection (links from an old store's collection pages).
+    [collection, setCollection] = useState(
+      () => new URLSearchParams(location.search).get("collection") ?? "",
+    ),
     [discount, setDiscount] = useState("");
   const [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),

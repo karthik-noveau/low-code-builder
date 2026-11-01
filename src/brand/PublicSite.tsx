@@ -4,6 +4,7 @@ import { MotionTabs } from "./MotionTabs";
 import { Arrow } from "./Brand";
 import { Shell, FinalCTA } from "./Shell";
 import { TemplateArt } from "./TemplateArt";
+import { Enterprise, Migrate } from "./EnterprisePages";
 import { collections, faqs, guides } from "./content";
 
 function TemplateCard({ item }: { item: (typeof collections)[number] }) {
@@ -53,6 +54,18 @@ function Faq({ items }: { items: readonly (readonly string[])[] }) {
         </details>
       ))}
     </div>
+  );
+}
+function Checks({ items }: { items: string[] }) {
+  return (
+    <ul className="pub-checks">
+      {items.map((item) => (
+        <li key={item}>
+          <Icon name="check" size={15} />
+          {item}
+        </li>
+      ))}
+    </ul>
   );
 }
 function Home() {
@@ -176,6 +189,32 @@ function Home() {
               <TemplateCard item={item} key={item.id} />
             ))}
           </div>
+        </div>
+      </section>
+      <section className="pub-section">
+        <div className="pub-container pub-usecases pub-home-paths">
+          {[
+            [
+              "/migrate",
+              "Moving from Shopify or Wix?",
+              "Bring your products, customers and old links with you. Every file is previewed before it’s saved.",
+              "See what comes across",
+            ],
+            [
+              "/enterprise",
+              "Built around your requirements",
+              "Stores, portals and business apps shaped to how your team works, on your own cloud.",
+              "Forma for enterprises",
+            ],
+          ].map(([href, title, text, cta]) => (
+            <a className="pub-usecase" href={href} key={href} data-reveal>
+              <h3>{title}</h3>
+              <p>{text}</p>
+              <span className="pub-link">
+                {cta} <Arrow />
+              </span>
+            </a>
+          ))}
         </div>
       </section>
       <section className="pub-section">
@@ -408,7 +447,7 @@ function Features() {
             </p>
             <ul className="pub-checks">
               {[
-                "14 section types, ready to make your own",
+                "Ready-made sections and blocks, ready to make your own",
                 "Reusable sections and shared headers",
                 "Undo, redo, and a little room to experiment",
               ].map((item) => (
@@ -492,6 +531,47 @@ function Features() {
             <p>
               Keep creating. Your live website changes only when you choose.
             </p>
+          </div>
+        </section>
+        <section className="pub-feature is-reverse" data-reveal>
+          <div className="pub-feature-copy">
+            <span className="pub-label">04 · Run the business</span>
+            <h2>A store and apps, built in.</h2>
+            <p>
+              Sell with a full store, and build the app behind your website:
+              tables, forms, workflow steps, roles and dashboards that share the
+              same records.
+            </p>
+            <Checks
+              items={[
+                "Products, markets, discounts, refunds and customer accounts",
+                "Business apps for bookings, requests, quotes and rewards",
+                "Stripe, Razorpay, UPI and bank transfer payments",
+                "Import products and customers from Shopify or Wix",
+              ]}
+            />
+            <a className="pub-link" href="/enterprise">
+              See what teams build <Arrow />
+            </a>
+          </div>
+          <div className="pub-demo pub-release">
+            <div className="pub-release-status">
+              <i /> Your store and app, one place.
+            </div>
+            {[
+              ["Orders & delivery", "Paid · ready to ship", "12 today"],
+              ["Appointments", "Booked · confirmed", "8 this week"],
+              ["Customer rewards", "Points collected", "1,240 pts"],
+            ].map(([title, note, value]) => (
+              <div className="pub-release-row" key={title}>
+                <span>
+                  <b>{title}</b>
+                  <small>{note}</small>
+                </span>
+                <span>{value}</span>
+              </div>
+            ))}
+            <p>Records, steps and totals stay in step with your website.</p>
           </div>
         </section>
       </div>
@@ -934,6 +1014,10 @@ export function PublicSite({ path }: { path: string }) {
       <Home />
     ) : path === "/templates" ? (
       <Templates />
+    ) : path === "/enterprise" ? (
+      <Enterprise />
+    ) : path === "/migrate" ? (
+      <Migrate />
     ) : path === "/features" ? (
       <Features />
     ) : path === "/pricing" ? (

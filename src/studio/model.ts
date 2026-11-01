@@ -1,5 +1,6 @@
 import { validateCollections, type Collection } from "./collections";
 import { validatePayments, type PaymentSettings } from "./payments";
+import { validateRedirects, type Redirect } from "./redirects";
 import { validateApp, type App } from "../apps/model";
 import type { Node } from "../blocks/model";
 import {
@@ -214,6 +215,8 @@ export interface Project {
   payments?: PaymentSettings;
   /** The site's business app: tables, steps, forms and dashboard. */
   app?: App;
+  /** Old addresses (from a previous site) that send visitors to new ones. */
+  redirects?: Redirect[];
 }
 export const uid = () => crypto.randomUUID();
 export const pageHref = (slug: string) =>
@@ -640,6 +643,7 @@ export function validateProject(value: unknown): value is Project {
         p.savedSections.every(sectionValid))) &&
     (p.collections === undefined || validateCollections(p.collections)) &&
     (p.payments === undefined || validatePayments(p.payments)) &&
+    (p.redirects === undefined || validateRedirects(p.redirects)) &&
     (p.app === undefined ||
       validateApp(
         p.app,

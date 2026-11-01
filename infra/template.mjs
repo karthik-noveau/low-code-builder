@@ -195,8 +195,9 @@ async function handler(event) {
   let live;
   try { live = await kvs.get(match[1]); } catch (_) { return {statusCode: 404}; }
   const explicit = /^releases\\/([a-f0-9-]{36})\\/(.*)$/.exec(match[2]);
-  const file = (explicit ? explicit[2] : match[2]) || 'index.html';
-  if (!/^(?:(?:[a-z0-9-]+\\/)?[a-z0-9-]+\\.html|styles\\.css|app\\.js|logic\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
+  let file = (explicit ? explicit[2] : match[2]) || 'index.html';
+  if (/^[a-z0-9-]+(?:\\/[a-z0-9-]+){0,3}$/.test(file)) file += '.html';
+  if (!/^(?:(?:[a-z0-9-]+\\/){0,3}[a-z0-9-]+\\.html|styles\\.css|app\\.js|logic\\.js|sw\\.js|manifest\\.webmanifest|icon\\.svg|icon-(?:192|512)\\.png|images\\/[a-f0-9]{64}\\.(?:png|jpeg|gif|webp))$/.test(file)) return {statusCode: 404};
   request.uri = '/sites/' + match[1] + '/releases/' + (explicit ? explicit[1] : live) + '/' + file;
   return request;
 }`;

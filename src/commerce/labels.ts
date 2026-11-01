@@ -31,6 +31,7 @@ const actions: Record<string, string> = {
   "settings.updated": "Changed store settings",
   "product.created": "Added a product",
   "product.updated": "Edited a product",
+  "customers.imported": "Imported customers",
   "discount.saved": "Saved a discount",
   "content.saved": "Saved an article",
   "integration.saved": "Saved an integration",
