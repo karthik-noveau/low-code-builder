@@ -63,7 +63,7 @@ export function TemplatePreview({ id }: { id: string }) {
           A working business · {item.works.join(" · ")} · Replace sample text
           and testimonials before publishing.
         </span>
-        <span>Fully editable in Forma</span>
+        <span>Fully editable in Skynoveau</span>
       </div>
       <div className="pub-preview-stage">
         <main

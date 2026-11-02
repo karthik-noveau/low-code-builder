@@ -1071,7 +1071,7 @@ export function AppFormMarkup({
     <p className="app-preview-note">
       <Icon name="lock" size={13} />
       {mode === "export"
-        ? "Works when published with Forma."
+        ? "Works when published with Skynoveau."
         : "Works on your published site."}
     </p>
   );

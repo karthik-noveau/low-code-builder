@@ -70,7 +70,7 @@ function resolveHref(
 }
 /** The body of an item's own page: everything known about it, plus its call to action. */
 /**
- * The visitor action form. Published sites post straight to the Forma inbox
+ * The visitor action form. Published sites post straight to the Skynoveau inbox
  * (no script needed); in the editor it is a working mock that never sends.
  */
 function RequestForm({
@@ -197,8 +197,8 @@ function RequestForm({
       )}
       {tried && (
         <small className="site-request-note" role="status">
-          This is a preview. Once published with Forma, requests arrive in your
-          Inbox.
+          This is a preview. Once published with Skynoveau, requests arrive in
+          your Inbox.
         </small>
       )}
     </form>
@@ -520,7 +520,7 @@ export function SectionContent({
   inbox?: string;
   /** Published sites: the public app API app forms talk to, e.g. https://api…/apps/<site id>. */
   appApi?: string;
-  /** Published sites: Forma Store's products for store repeats. */
+  /** Published sites: Skynoveau Store's products for store repeats. */
   store?: StoreProduct[];
   /** This section's title is the page's main heading (pages without a hero). */
   main?: boolean;
@@ -1215,7 +1215,7 @@ export function Website({
   inbox?: string;
   /** Published sites: the public app API (`{appApi}/forms/:formId…`) app forms use. */
   appApi?: string;
-  /** Published sites: Forma Store's products for store repeats. */
+  /** Published sites: Skynoveau Store's products for store repeats. */
   store?: StoreProduct[];
   /** Render this collection item's page instead of `page`'s sections. */
   item?: { collection: Collection; item: CollectionItem };

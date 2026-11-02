@@ -304,7 +304,7 @@ function RepeatSource({
         }
         hint={
           ref.kind === "store"
-            ? "Your Forma Store’s active products, written into the page when you publish. Publish again after changing products."
+            ? "Your Skynoveau Store’s active products, written into the page when you publish. Publish again after changing products."
             : "Collections are written into the page when you publish. App lists load live, and show only the fields you allow."
         }
       />
@@ -761,7 +761,7 @@ function ViewEditor({ app, viewId }: { app: App; viewId: string }) {
           if (Number.isFinite(n) && n >= 1 && n <= 100)
             update({ limit: n }, "limit");
         }}
-        hint="1 to 100. Record numbers and anything not ticked above never leave Forma."
+        hint="1 to 100. Record numbers and anything not ticked above never leave Skynoveau."
       />
       {warnings.map((w) => (
         <p key={w} className="dp-warning" role="note">

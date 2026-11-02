@@ -43,56 +43,56 @@ export const previewPaths = collections.map((item) => `/templates/${item.id}`);
 export function metadataFor(path: string) {
   if (path === "/commerce")
     return {
-      title: "Store management — Forma",
+      title: "Store management — Skynoveau Builder",
       description: "Manage your products, orders, customers and storefront.",
     };
   if (path === "/insights")
     return {
-      title: "Insights — Forma",
+      title: "Insights — Skynoveau Builder",
       description: "Visitors, sources, campaigns and sales for your website.",
     };
   if (path === "/apps")
     return {
-      title: "App — Forma",
+      title: "App — Skynoveau Builder",
       description:
         "Run your website's business app: records, steps and totals.",
     };
   if (path === "/owner")
     return {
-      title: "Shop owner — Forma",
+      title: "Shop owner — Skynoveau Builder",
       description: "Run your shop: review submissions, customers and rewards.",
     };
   if (path === "/store")
     return {
-      title: "Storefront — Forma",
-      description: "Explore this Forma store.",
+      title: "Storefront — Skynoveau Builder",
+      description: "Explore this Skynoveau store.",
     };
   if (path === "/customer")
     return {
-      title: "Customer account — Forma",
+      title: "Customer account — Skynoveau Builder",
       description: "Your orders and delivery addresses.",
     };
   if (path === "/account")
     return {
-      title: "Account settings — Forma",
+      title: "Account settings — Skynoveau Builder",
       description: "Manage your account security and local data.",
     };
   if (pageMeta[path]) return pageMeta[path];
   const guide = guides.find((guide) => path === `/help/${guide.id}`);
   if (guide)
     return {
-      title: `${guide.title} — Forma guides`,
+      title: `${guide.title} — Skynoveau Builder guides`,
       description: guide.steps[0][1],
     };
   const template = collections.find((item) => path === `/templates/${item.id}`);
   if (template)
     return {
-      title: `${template.name} template — Forma`,
+      title: `${template.name} template — Skynoveau Builder`,
       description: template.subtitle,
     };
   return {
-    title: "Page not found — Forma",
-    description: "Find your way back to Forma.",
+    title: "Page not found — Skynoveau Builder",
+    description: "Find your way back to Skynoveau.",
   };
 }
 

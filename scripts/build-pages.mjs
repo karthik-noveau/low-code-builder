@@ -46,7 +46,7 @@ for (const path of [...publicPaths, ...privatePaths, ...previewPaths, "/404"]) {
     )
     .replace(
       "</head>",
-      `<meta property="og:type" content="website" /><meta property="og:site_name" content="Forma" /><meta property="og:title" content="${escape(meta.title)}" /><meta property="og:description" content="${escape(meta.description)}" />${privatePaths.includes(path) || path === "/404" ? '<meta name="robots" content="noindex, nofollow" />' : ""}${origin && (publicPage || previewPaths.includes(path)) ? `<link rel="canonical" href="${escape(origin + path)}" />` : ""}</head>`,
+      `<meta property="og:type" content="website" /><meta property="og:site_name" content="Skynoveau Builder" /><meta property="og:title" content="${escape(meta.title)}" /><meta property="og:description" content="${escape(meta.description)}" />${privatePaths.includes(path) || path === "/404" ? '<meta name="robots" content="noindex, nofollow" />' : ""}${origin && (publicPage || previewPaths.includes(path)) ? `<link rel="canonical" href="${escape(origin + path)}" />` : ""}</head>`,
     )
     .replace(
       '<div id="root"></div>',

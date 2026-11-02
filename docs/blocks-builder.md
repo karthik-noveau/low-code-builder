@@ -1,6 +1,6 @@
 # Blocks builder
 
-Forma pages are built from **blocks**: small pieces (text, button, image,
+Skynoveau pages are built from **blocks**: small pieces (text, button, image,
 input, list…) nested inside layout blocks (section, box, row, columns, grid).
 A **prebuilt section** is just a ready-made block tree that owners insert and
 then change freely. There is one system: today's fixed section types (hero,
@@ -242,7 +242,7 @@ blocks; the backend and its public API (`backend/apps.ts`) are unchanged.
   adds one (making the business app if there isn't one) and adds the form;
   tracking looks in the orders or bookings table.
 - **Preview and export.** Only the first step shows, disabled, with "Works
-  on your published site" / "Works when published with Forma".
+  on your published site" / "Works when published with Skynoveau".
 
 ## Data (phase 4)
 
@@ -255,7 +255,7 @@ read API in `backend/apps.ts`.
   `stat` (a dashboard card's figure or a collection's count), `chart` (a
   dashboard chart, bars or a line) and `table` (a view's rows; one card per
   row on phones). `props.source` is `collection:<id>`, `view:<id>`,
-  `card:<id>`, `chart:<id>` or `store:products` (Forma Store, below).
+  `card:<id>`, `chart:<id>` or `store:products` (Skynoveau Store, below).
 - **Bindings.** Inside a repeat, `node.bind` maps a prop to `field:<id>`,
   `item:title`, `item:link` or `item:index`; store products also give
   `item:price`, `item:image`, `item:description` and `item:category`. Text props get the shown value
@@ -273,7 +273,7 @@ read API in `backend/apps.ts`.
   The compiler draws them into the page as HTML (`RenderContext.store`) and
   publishes their photos with the site. Without the store's catalogue on
   the website ("Fill published product blocks…" off, no open store, or the
-  hosted mode, where Forma Store doesn't run) a store repeat shows its
+  hosted mode, where Skynoveau Store doesn't run) a store repeat shows its
   "When there are no products" box. Changing products or prices changes the
   release's `commerceChecksum`, so publishing again rebuilds (stock alone
   doesn't). The classic cards have no add-to-cart button (the header's Shop
@@ -388,7 +388,7 @@ stays as it was; the smart types still render.
   look doesn't draw are added). `src/blocks/convert.test.tsx` checks this
   for every template. Publishing bumps `compilerVersion` to 11. Products
   (Botanical, its Home and Collection pages) publish pixel-identically at
-  1280 and 390 px both with Forma Store's catalogue and without a store;
+  1280 and 390 px both with Skynoveau Store's catalogue and without a store;
   the test compares what the pages show (tags, links, images, words) with
   and without a catalogue. `compilerVersion` 12 republishes products blocks
   as store repeats.

@@ -1,5 +1,5 @@
 /**
- * Moving a store to Forma: customers exported from Shopify, Wix or any
+ * Moving a store to Skynoveau: customers exported from Shopify, Wix or any
  * spreadsheet (parsed in the browser, src/commerce/migrate.ts) arrive here in
  * batches. Each one is matched by email, so importing the same file twice
  * changes nothing: the history it brings (orders and spend on the old store)

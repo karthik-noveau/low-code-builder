@@ -1,4 +1,4 @@
-/* Forma's product UI. Website/template palettes remain independently editable. */
+/* Skynoveau's product UI. Website/template palettes remain independently editable. */
 :root {
   --ui-ink: #1d2926;
   --ui-text: #3c4a45;
@@ -9,14 +9,14 @@
   --ui-canvas: #f6f7f3;
   --ui-surface: #ffffff;
   --ui-surface-alt: #eef1e9;
-  --ui-accent: #086b4f;
-  --ui-accent-hover: #07523e;
-  --ui-accent-soft: #e9f3ed;
-  --ui-accent-border: #aacbb8;
-  --ui-accent-panel: #e4ede2;
-  --ui-accent-panel-border: #c5d7c7;
-  --ui-highlight: #d2e7d8;
-  --ui-highlight-hover: #e2efe5;
+  --ui-accent: #5646e6;
+  --ui-accent-hover: #4836d6;
+  --ui-accent-soft: #efedfd;
+  --ui-accent-border: #c3bdf6;
+  --ui-accent-panel: #ecebfb;
+  --ui-accent-panel-border: #d3cff7;
+  --ui-highlight: #dedafb;
+  --ui-highlight-hover: #ebe9fc;
   --ui-dark: #23372e;
   --ui-dark-raised: #334b3e;
   --ui-dark-hover: #435f4e;

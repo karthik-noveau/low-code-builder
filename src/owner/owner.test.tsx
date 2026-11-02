@@ -189,7 +189,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("sign in", () => {
-  it("shows the branded sign-in when signed out, and signs in with Forma", async () => {
+  it("shows the branded sign-in when signed out, and signs in with Skynoveau", async () => {
     signedIn(null);
     vi.mocked(cloud.signIn).mockRejectedValueOnce(
       new cloud.ApiError(401, "Invalid email or password."),

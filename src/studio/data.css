@@ -151,7 +151,7 @@
 /* The box shows the focus its borderless input can't. */
 .data-search:focus-within {
   border-color: var(--ui-accent);
-  box-shadow: var(--fx-ring, 0 0 0 3px rgba(59, 104, 240, 0.25));
+  box-shadow: var(--fx-ring, 0 0 0 3px rgba(86, 70, 230, 0.25));
 }
 .data-toolbar .primary-button {
   display: inline-flex;

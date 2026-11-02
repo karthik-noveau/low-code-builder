@@ -148,7 +148,7 @@ export async function publishJob(job: Job) {
       const prefix = `sites/${job.siteId}/releases/${releaseId}`;
       const commerce = await publicationCommerce(job.siteId);
       // The address search engines and social cards should use: the owner's
-      // choice, else the primary domain, else the site's Forma address.
+      // choice, else the primary domain, else the site's Skynoveau address.
       const site = await getSite(job.owner, job.siteId);
       const siteUrl =
         (project.seo?.siteUrl && project.seo.siteUrl.replace(/\/?$/, "/")) ||

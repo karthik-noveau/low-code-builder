@@ -27,7 +27,7 @@ import { db, getItem } from "./database";
 import { key, now, partition, read } from "./commerce-data";
 import type { OutboxMessage, StoreSettings } from "../src/commerce/types";
 
-/** The verified SES address Forma sends from; empty keeps mail as previews. */
+/** The verified SES address Skynoveau sends from; empty keeps mail as previews. */
 export const mailFrom = () => process.env.MAIL_FROM || "";
 let client: SESv2Client | undefined;
 const ses = () =>
@@ -49,7 +49,7 @@ const LEASE_MS = 5 * 60_000;
 const BATCH = 10;
 type Stored = OutboxMessage & { attempts?: number; claimedAt?: string };
 
-/** Addresses never to mail again, Forma-wide (hashed). */
+/** Addresses never to mail again, Skynoveau-wide (hashed). */
 const suppression = (address: string) => ({
   pk: "MAILSUPPRESS",
   sk: createHash("sha256").update(address.trim().toLowerCase()).digest("hex"),

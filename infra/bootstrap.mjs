@@ -36,7 +36,7 @@ export function bootstrapTemplate() {
   return {
     AWSTemplateFormatVersion: "2010-09-09",
     Description:
-      "One-time Forma CI bootstrap: private artifacts, GitHub OIDC and scoped deployment roles. No fixed compute.",
+      "One-time Skynoveau CI bootstrap: private artifacts, GitHub OIDC and scoped deployment roles. No fixed compute.",
     Parameters: {
       AppStack: { Type: "String", AllowedPattern: "^forma-[a-z0-9-]{1,40}$" },
       Repository: {

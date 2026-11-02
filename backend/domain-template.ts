@@ -10,7 +10,7 @@ export function domainTemplate(input: {
   return {
     AWSTemplateFormatVersion: "2010-09-09",
     Description:
-      "Forma owned-domain HTTPS delivery. Deploy in us-east-1 for CloudFront certificates.",
+      "Skynoveau owned-domain HTTPS delivery. Deploy in us-east-1 for CloudFront certificates.",
     Resources: {
       Certificate: {
         Type: "AWS::CertificateManager::Certificate",
@@ -29,7 +29,7 @@ export function domainTemplate(input: {
           DistributionConfig: {
             Enabled: true,
             Aliases: [input.hostname],
-            Comment: `Forma domain ${input.hostname}`,
+            Comment: `Skynoveau domain ${input.hostname}`,
             PriceClass: "PriceClass_100",
             HttpVersion: "http2and3",
             IPV6Enabled: true,

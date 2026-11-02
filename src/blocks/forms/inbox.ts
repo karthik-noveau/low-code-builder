@@ -1,5 +1,5 @@
 /**
- * Contact and Email signup forms as form blocks posting to the Forma inbox
+ * Contact and Email signup forms as form blocks posting to the Skynoveau inbox
  * (`target: "inbox"`, drawn by classic.tsx). The inbox reads the boxes
  * named name, email and message (src/studio/requests.ts).
  */

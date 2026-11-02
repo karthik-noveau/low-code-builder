@@ -117,7 +117,7 @@ export const greetingFor = (date: Date = new Date()): Greeting => {
 };
 
 /**
- * What the dashboard greets: Forma accounts have an email, not a name, so
+ * What the dashboard greets: Skynoveau accounts have an email, not a name, so
  * "selvam.balaji@shop.in" greets "Selvam".
  */
 export function firstNameOf(email: string) {

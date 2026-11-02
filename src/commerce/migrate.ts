@@ -1,6 +1,6 @@
 /**
  * Reading another store's exports in the browser: Shopify's product and
- * customer CSVs, Wix's catalog and contacts CSVs, and Forma's own product
+ * customer CSVs, Wix's catalog and contacts CSVs, and Skynoveau's own product
  * CSV. The source is recognised from the headings; nothing has to be edited
  * first. The result is what the store API takes (saveProduct, and
  * importCustomers in backend/migration.ts), with a note of everything that
@@ -46,7 +46,7 @@ export type Parsed =
       notes: string[];
     };
 
-/** Forma's own product CSV columns, in order (export and import share them). */
+/** Skynoveau's own product CSV columns, in order (export and import share them). */
 export const PRODUCT_COLUMNS = [
   "title",
   "description",
@@ -65,7 +65,7 @@ export const SOURCE_NAMES: Record<Parsed["source"], string> = {
   shopify: "Shopify",
   wix: "Wix",
   csv: "Spreadsheet",
-  forma: "Forma",
+  forma: "Skynoveau",
 };
 
 /** Plain text from a product description written as HTML. */
@@ -155,7 +155,7 @@ export function parseExport(rows: string[][]): Parsed {
   if (col.any("email", "email 1", "e-mail", "email address"))
     return customers(body, col);
   throw new Error(
-    "This doesn’t look like a Shopify or Wix export. Use a products or customers CSV exported from your store, or Forma’s product template.",
+    "This doesn’t look like a Shopify or Wix export. Use a products or customers CSV exported from your store, or Skynoveau’s product template.",
   );
 }
 
@@ -317,7 +317,7 @@ function shopifyProducts(body: string[][], col: Columns): Parsed {
     );
   if (truncated)
     notes.push(
-      `Forma keeps ${MAX_VARIANTS} variants a product; ${count(truncated, "variant")} beyond that were left out.`,
+      `Skynoveau keeps ${MAX_VARIANTS} variants a product; ${count(truncated, "variant")} beyond that were left out.`,
     );
   if (compareAt)
     notes.push(
@@ -457,7 +457,7 @@ function wixProducts(body: string[][], col: Columns): Parsed {
     );
   if (truncated)
     notes.push(
-      `Forma keeps ${MAX_VARIANTS} variants a product; ${count(truncated, "variant")} beyond that were left out.`,
+      `Skynoveau keeps ${MAX_VARIANTS} variants a product; ${count(truncated, "variant")} beyond that were left out.`,
     );
   return {
     kind: "products",

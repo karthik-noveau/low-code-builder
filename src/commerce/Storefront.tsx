@@ -1456,7 +1456,7 @@ export function Storefront({ siteId }: { siteId: string }) {
             {data?.accounts !== false && (
               <a href={`/customer?site=${siteId}`}>Your account</a>
             )}
-            <span>Built with Forma</span>
+            <span>Built with Skynoveau</span>
           </div>
         </footer>
       </div>

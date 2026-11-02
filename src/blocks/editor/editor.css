@@ -1714,7 +1714,7 @@ html body .studio.canvas-first .node-inspector .sp-device .device-note {
 }
 :root[data-theme="dark"] .sp-row.is-override .sp-label,
 :root[data-theme="dark"] .sp-box-label.is-override {
-  color: #8fadff;
+  color: #a89dff;
 }
 .sp-dot {
   display: inline-block;
@@ -1725,11 +1725,11 @@ html body .studio.canvas-first .node-inspector .sp-device .device-note {
   background: #2563eb;
 }
 :root[data-theme="dark"] .sp-dot {
-  background: #4f7cff;
+  background: #7c6cff;
 }
 /* White numbers need the deeper fill (4.5:1). */
 :root[data-theme="dark"] .sp-group-badge {
-  background: var(--fx-accent-fill, #3d68ea);
+  background: var(--fx-accent-fill, #5d4cf0);
 }
 .sp-reset {
   position: relative;
@@ -2023,10 +2023,10 @@ html
   color: color-mix(in srgb, #2563eb 55%, transparent);
 }
 :root[data-theme="dark"] .sp-matrix button.chosen {
-  color: #8fadff;
+  color: #a89dff;
 }
 :root[data-theme="dark"] .sp-matrix button.covered {
-  color: color-mix(in srgb, #8fadff 55%, transparent);
+  color: color-mix(in srgb, #a89dff 55%, transparent);
 }
 .sp-arrange-options {
   display: flex;

@@ -388,7 +388,7 @@ function FormRoot({
     <p className="app-preview-note">
       <Icon name="lock" size={13} />
       {ctx.exporting
-        ? "Works when published with Forma."
+        ? "Works when published with Skynoveau."
         : "Works on your published site."}
     </p>
   );

@@ -1,7 +1,7 @@
 /**
  * insights.js, loaded by published pages when tracking is on (src/studio/seo.ts).
  *
- * - Forma's own counts (data-api): one anonymous page view per load, with
+ * - Skynoveau's own counts (data-api): one anonymous page view per load, with
  *   the page, the site that sent the visitor and the campaign (utm_*), and
  *   the screen width for the device. No cookies or stored identifiers;
  *   the API counts unique visitors from a daily hash it never keeps.
@@ -14,7 +14,7 @@
  *   owner set them, load only after the visitor agrees if data-consent is
  *   set, and never for visitors asking not to be tracked.
  *
- * Published sites only run scripts Forma writes, so it stands alone and never throws.
+ * Published sites only run scripts Skynoveau writes, so it stands alone and never throws.
  */
 export const INSIGHTS_SCRIPT = `;(function () {
   try {

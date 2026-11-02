@@ -47,7 +47,7 @@ export interface RenderContext {
   inbox?: string;
   /** Published sites: the public app API app forms talk to. */
   appApi?: string;
-  /** Published sites: Forma Store's products for store repeats (none without a catalogue on the website). */
+  /** Published sites: Skynoveau Store's products for store repeats (none without a catalogue on the website). */
   store?: StoreProduct[];
   /** Preview only: the theme switch. */
   dark?: boolean;

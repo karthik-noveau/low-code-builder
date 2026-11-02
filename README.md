@@ -1,4 +1,4 @@
-# Forma — Website Studio
+# Skynoveau — Website Studio
 
 A branded website-building product with public pages, template previews, an account dashboard, a visual editor, a local DynamoDB backend, account workspaces, versioned drafts, static publishing, rollback, and owned-domain onboarding. Built with React, TypeScript, Vite, and Zustand.
 
@@ -19,7 +19,7 @@ See [local development and API](docs/backend.md), [CI, AWS deployment, and usage
 
 ## Product pages
 
-- `/`: Forma homepage with shared logo, typography, palette, and navigation.
+- `/`: Skynoveau homepage with shared logo, typography, palette, and navigation.
 - `/features`, `/templates`, `/templates/:id`, `/pricing`, `/about`: product, searchable starting points, working full-site previews, transparent hosting options, and brand story.
 - `/help`, `/help/:id`, `/privacy`: practical guides, search, FAQs, and storage/privacy details.
 - `/login`, `/signup`, `/workspace`, `/new`, `/editor`, `/domains?site=…`: account entry, saved websites with search/filter/sort, template-based creation, and editing. Dashboard links load the selected saved version and preserve a browser recovery copy.

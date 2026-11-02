@@ -132,7 +132,7 @@ export function scoreProject(project: Project): Scorecard {
       field: "Image description",
       pass: !heavy.length,
       title: `Use a smaller image in ${heavy[0]?.section.name ?? page.name}`,
-      detail: `${heavy.length === 1 ? "An image" : `${heavy.length} images`} on ${page.name} ${heavy.length === 1 ? "is" : "are"} ${kb(Math.max(0, ...heavy.map((h) => h.bytes)))}${heavy.length === 1 ? "" : " or more"}. Upload it again: Forma resizes new uploads, which loads much faster on phones.`,
+      detail: `${heavy.length === 1 ? "An image" : `${heavy.length} images`} on ${page.name} ${heavy.length === 1 ? "is" : "are"} ${kb(Math.max(0, ...heavy.map((h) => h.bytes)))}${heavy.length === 1 ? "" : " or more"}. Upload it again: Skynoveau resizes new uploads, which loads much faster on phones.`,
     });
     add({
       id: `speed-count-${page.id}`,

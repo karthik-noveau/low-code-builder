@@ -230,7 +230,7 @@ export function TabBar({
 }
 
 /**
- * The Contact and Email signup form. It posts to the Forma inbox (or the
+ * The Contact and Email signup form. It posts to the Skynoveau inbox (or the
  * owner's own endpoint, an https address); in the editor it never sends.
  * `fields` and `extras` come from an inbox form block (its field blocks and
  * any other blocks the owner put in it).

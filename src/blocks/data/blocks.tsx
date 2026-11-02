@@ -191,7 +191,7 @@ function useStoreProducts(
     items: queryStore(SAMPLE_PRODUCTS, "", limit).map(storeItem),
     note:
       catalog.status !== "ready"
-        ? "Sample products. On a workspace site with Forma Store, your products show here."
+        ? "Sample products. On a workspace site with Skynoveau Store, your products show here."
         : !catalog.open
           ? "Sample products. Open your store in Store management and its products show here."
           : !catalog.website

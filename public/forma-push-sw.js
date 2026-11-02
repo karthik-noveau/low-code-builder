@@ -1,5 +1,5 @@
 /*
- * Forma's notification worker for the owner's app page. It only shows push
+ * Skynoveau's notification worker for the owner's app page. It only shows push
  * notifications ({ title, body, url }) and opens the record on click. It has
  * no fetch handler, so it never caches or changes how the editor loads.
  * Registered from the app page when the owner turns notifications on.
@@ -35,10 +35,10 @@ self.addEventListener("push", (event) => {
   }
   const url = safeUrl(data.url);
   event.waitUntil(
-    self.registration.showNotification(text(data.title, 120) || "Forma", {
+    self.registration.showNotification(text(data.title, 120) || "Skynoveau", {
       body: text(data.body, 400),
-      icon: "/forma.svg",
-      badge: "/forma.svg",
+      icon: "/skynoveau.svg",
+      badge: "/skynoveau.svg",
       // A newer notice about the same record replaces the older one.
       tag: url,
       data: { url },

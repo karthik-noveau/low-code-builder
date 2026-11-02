@@ -123,7 +123,7 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
         },
         body: Buffer.alloc(0),
       };
-    // Stripe or Razorpay says a checkout was paid: Forma's platform webhook
+    // Stripe or Razorpay says a checkout was paid: Skynoveau's platform webhook
     // (signed-in accounts) or a site's own (pasted keys).
     const hook = /^\/payments\/webhooks\/(stripe|razorpay)(?:\/([^/]+))?$/.exec(
       path,
@@ -248,7 +248,7 @@ async function route(request: ApiRequest): Promise<ApiResponse> {
       // Checkouts already open are closed first (paid ones recorded).
       await closeHolds(siteId);
       const revoked = await disconnect(siteId);
-      // The account may still list Forma; the owner can remove it there.
+      // The account may still list Skynoveau; the owner can remove it there.
       return jsonResponse({
         connection: null,
         ...(revoked ? {} : { revoked: false }),

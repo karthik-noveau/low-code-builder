@@ -1,6 +1,6 @@
 /**
  * The branded owner app (/owner?site=<id>): a full-screen app for running a
- * site's business app, without Forma's chrome — the shop's name, logo and
+ * site's business app, without Skynoveau's chrome — the shop's name, logo and
  * colour, a sidebar per table, and the Dhanlaxmi Rewards owner screens.
  *
  * Deep links: &page=dashboard|submissions|customers|customer|settings,
@@ -237,7 +237,7 @@ export function OwnerApp({ siteId: initialSiteId }: { siteId: string }) {
       <Notice
         icon="box"
         title={`${brand.name} doesn't have an app yet`}
-        text="The owner app runs a website's business app — records, steps and totals. Add one from a template in the Forma editor, then come back here."
+        text="The owner app runs a website's business app — records, steps and totals. Add one from a template in the Skynoveau editor, then come back here."
         brand={brand}
         action={
           <ButtonLink
@@ -351,7 +351,7 @@ function SitePicker({ onPick }: { onPick: (id: string) => void }) {
             <EmptyState
               icon="box"
               title="No shops yet"
-              description="Create a website in Forma first."
+              description="Create a website in Skynoveau first."
             />
           ) : (
             <ul className="ow-siteList">

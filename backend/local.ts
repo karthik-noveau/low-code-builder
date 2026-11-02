@@ -347,7 +347,7 @@ const sitesServer = createServer(async (req, res) => {
         : "no-store",
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin",
-      // Scripts are Forma's own (app.js, logic.js, insights.js, sw.js), plus Google
+      // Scripts are Skynoveau's own (app.js, logic.js, insights.js, sw.js), plus Google
       // Analytics and the Meta Pixel when the owner turns them on.
       "content-security-policy": `default-src 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; font-src 'self' https:; script-src 'self' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' ${config.apiOrigin} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.facebook.com; manifest-src 'self'; worker-src 'self'; form-action 'self' https: ${config.apiOrigin}; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com; base-uri 'self'; frame-ancestors 'none'`,
     });

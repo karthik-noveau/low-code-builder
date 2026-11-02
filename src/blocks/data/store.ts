@@ -1,5 +1,5 @@
 /**
- * Forma Store products as a repeat's items (source `store:products`, an
+ * Skynoveau Store products as a repeat's items (source `store:products`, an
  * optional `category` prop). The catalogue isn't in the project: the
  * publisher reads it (backend/commerce-publishing.ts) and draws the items
  * into the page (`RenderContext.store`); the editor reads the same list
@@ -18,7 +18,7 @@ export const STORE_PATHS = ["price", "image", "description", "category"];
 /** The most products a site's pages are given (a repeat shows up to 24). */
 export const MAX_STORE_PRODUCTS = 100;
 
-/** A price in minor units, as Forma Store shows it on the website. */
+/** A price in minor units, as Skynoveau Store shows it on the website. */
 export const storePrice = (minor: number, currency: string) =>
   new Intl.NumberFormat("en", { style: "currency", currency }).format(
     minor / 100,

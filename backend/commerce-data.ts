@@ -132,7 +132,7 @@ export function message(
     subject,
     body,
     ...(html ? { html } : {}),
-    // Sent by mail.ts when Forma has an SES sender; a preview otherwise.
+    // Sent by mail.ts when Skynoveau has an SES sender; a preview otherwise.
     status: process.env.MAIL_FROM ? "pending" : "local-preview",
     createdAt: now(),
   };

@@ -47,7 +47,7 @@ const escape = (value: string) =>
       ]!,
   );
 /**
- * Forma's insights script (and, when the owner set them, Google Analytics
+ * Skynoveau's insights script (and, when the owner set them, Google Analytics
  * and the Meta Pixel), configured by data attributes: the page's CSP runs
  * only the site's own scripts.
  */
@@ -138,7 +138,7 @@ type RenderOptions = {
   inbox?: string;
   appApi?: string;
   owner?: string;
-  /** Forma Store's products, when its catalogue is on the website. */
+  /** Skynoveau Store's products, when its catalogue is on the website. */
   store?: StoreProduct[];
   /** The site's absolute address, for canonical links, social cards and the sitemap. */
   siteUrl?: string;
@@ -449,7 +449,7 @@ export async function buildSiteArchive(project: Project) {
   zip.file("project.forma.json", JSON.stringify(project, null, 2));
   zip.file(
     "README.txt",
-    `${project.name}\n\nOpen index.html in a browser, or upload all files to a static host such as Netlify, Cloudflare Pages, or GitHub Pages. Keep the images folder and styles.css beside the HTML files.\n\nEdit again: import project.forma.json into Forma.\n\nForms: configure your form endpoint in the editor before exporting. Product cards link to URLs you provide; payments, inventory, and order processing require an external commerce provider.\n\nStarter photography: Unsplash. Custom remote images remain linked to their source.\n`,
+    `${project.name}\n\nOpen index.html in a browser, or upload all files to a static host such as Netlify, Cloudflare Pages, or GitHub Pages. Keep the images folder and styles.css beside the HTML files.\n\nEdit again: import project.forma.json into Skynoveau.\n\nForms: configure your form endpoint in the editor before exporting. Product cards link to URLs you provide; payments, inventory, and order processing require an external commerce provider.\n\nStarter photography: Unsplash. Custom remote images remain linked to their source.\n`,
   );
   return zip.generateAsync({ type: "blob" });
 }

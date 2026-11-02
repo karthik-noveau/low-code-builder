@@ -356,8 +356,8 @@ html[data-theme="dark"]
   .studio-header
   .header-actions
   .primary-button:hover:not(:disabled) {
-  background: #2f5ae0;
-  border-color: #2f5ae0;
+  background: #4836d6;
+  border-color: #4836d6;
 }
 html[data-theme="dark"] .studio.canvas-first .danger-text {
   color: #ff8080;

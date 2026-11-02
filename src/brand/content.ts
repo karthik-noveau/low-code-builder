@@ -1,7 +1,7 @@
 import type { TemplateId } from "../studio/model";
 
 export const brand = {
-  name: "Forma",
+  name: "Skynoveau Builder",
   tagline: "A little idea. A whole new website.",
   description:
     "Build a website that feels like you. Start with a considered template, make it your own, and publish when you are ready.",
@@ -9,77 +9,77 @@ export const brand = {
 export const pageMeta: Record<string, { title: string; description: string }> =
   {
     "/": {
-      title: "Forma — Your website workspace",
+      title: "Skynoveau Builder — Your website workspace",
       description: brand.description,
     },
     "/features": {
-      title: "Website builder — Forma",
+      title: "Website builder — Skynoveau Builder",
       description:
-        "A visual editor, your own design system, and a clear path to publishing. Meet the tools inside Forma.",
+        "A visual editor, your own design system, and a clear path to publishing. Meet the tools inside Skynoveau.",
     },
     "/templates": {
-      title: "Website templates — Forma",
+      title: "Website templates — Skynoveau Builder",
       description:
         "Working business templates: an online store, restaurant ordering, grocery delivery, salon bookings, home services, tuition, events, a gym and a studio.",
     },
     "/pricing": {
-      title: "Pricing & hosting — Forma",
+      title: "Pricing & hosting — Skynoveau Builder",
       description:
         "Start locally at no cost. Export your website or connect usage-based hosting when you are ready.",
     },
     "/about": {
-      title: "Our approach — Forma",
+      title: "Our approach — Skynoveau Builder",
       description:
-        "Good tools leave room for your point of view. Discover the thinking behind Forma.",
+        "Good tools leave room for your point of view. Discover the thinking behind Skynoveau.",
     },
     "/help": {
-      title: "Guides & help — Forma",
+      title: "Guides & help — Skynoveau Builder",
       description:
-        "Get started, shape your pages, save your work, and take your first website live with Forma.",
+        "Get started, shape your pages, save your work, and take your first website live with Skynoveau.",
     },
     "/privacy": {
-      title: "Data & privacy — Forma",
+      title: "Data & privacy — Skynoveau Builder",
       description:
-        "Understand where your Forma drafts, account details, images, and published pages are stored.",
+        "Understand where your Skynoveau drafts, account details, images, and published pages are stored.",
     },
     "/enterprise": {
-      title: "Enterprise — Forma",
+      title: "Enterprise — Skynoveau Builder",
       description:
         "Websites, stores and custom business apps on one platform, deployed on your own cloud and shaped to your requirements.",
     },
     "/migrate": {
-      title: "Move from Shopify or Wix — Forma",
+      title: "Move from Shopify or Wix — Skynoveau Builder",
       description:
         "Bring products, customers and old links over from Shopify or Wix. Preview every file before it's saved, and keep your search rankings.",
     },
     "/login": {
-      title: "Welcome back — Forma",
-      description: "Sign in to your Forma workspace.",
+      title: "Welcome back — Skynoveau Builder",
+      description: "Sign in to your Skynoveau workspace.",
     },
     "/signup": {
-      title: "Make something yours — Forma",
+      title: "Make something yours — Skynoveau Builder",
       description:
-        "Create your local Forma workspace and start your next website.",
+        "Create your local Skynoveau workspace and start your next website.",
     },
     "/domains": {
-      title: "Domains & publishing — Forma",
+      title: "Domains & publishing — Skynoveau Builder",
       description:
         "Connect your own domain, configure HTTPS, and manage your published website.",
     },
     "/workspace": {
-      title: "Your websites — Forma",
+      title: "Your websites — Skynoveau Builder",
       description: "A home for your ideas, drafts, and published websites.",
     },
     "/workspace/templates": {
-      title: "Templates — Forma",
+      title: "Templates — Skynoveau Builder",
       description: "Preview the templates and start a website from one.",
     },
     "/new": {
-      title: "Start a website — Forma",
+      title: "Start a website — Skynoveau Builder",
       description: "Choose a starting point and give your new website a name.",
     },
     "/editor": {
-      title: "Website Studio — Forma",
+      title: "Website Studio — Skynoveau Builder",
       description: "Design, edit, preview, and publish your website.",
     },
   };
@@ -254,10 +254,10 @@ export const guides = [
       ],
       [
         "Prove ownership and secure the address",
-        "Forma shows a record to add where you bought your domain (your domain provider). Copy its name and value into a new record of the type shown, then choose Check connection. Next, Forma shows a second record that secures your site with HTTPS. Add it the same way and leave it in place so the security certificate keeps renewing.",
+        "Skynoveau shows a record to add where you bought your domain (your domain provider). Copy its name and value into a new record of the type shown, then choose Check connection. Next, Skynoveau shows a second record that secures your site with HTTPS. Add it the same way and leave it in place so the security certificate keeps renewing.",
       ],
       [
-        "Point your domain to Forma",
+        "Point your domain to Skynoveau",
         "The last record sends visitors to your website. For www and other subdomains it is a CNAME. A main domain needs an ALIAS record (some providers call it ANAME); if yours doesn’t offer one, use www instead. Don’t change your email records. Check connection confirms everything works before your domain goes live.",
       ],
       [
@@ -332,7 +332,7 @@ export const guides = [
   },
   {
     id: "migrate",
-    category: "Moving to Forma",
+    category: "Moving to Skynoveau",
     title: "Move your store from Shopify or Wix",
     time: "5 min read",
     steps: [
@@ -342,15 +342,15 @@ export const guides = [
       ],
       [
         "Import products and customers",
-        "Open your store, choose Import & migrate and drop in each file. Forma recognises where it came from, shows you what it found and anything that won’t come across, and saves nothing until you choose Import. Running the same file again never makes duplicates.",
+        "Open your store, choose Import & migrate and drop in each file. Skynoveau recognises where it came from, shows you what it found and anything that won’t come across, and saves nothing until you choose Import. Running the same file again never makes duplicates.",
       ],
       [
         "Keep your old links working",
-        "Imported products keep their old address: /products/… and /product-page/… forward to the same product in your Forma store when you publish. For pages and blog posts, add moved pages in the editor’s Settings, or import Shopify’s redirect CSV there.",
+        "Imported products keep their old address: /products/… and /product-page/… forward to the same product in your Skynoveau store when you publish. For pages and blog posts, add moved pages in the editor’s Settings, or import Shopify’s redirect CSV there.",
       ],
       [
         "Switch your domain",
-        "Your old store keeps selling until you point your domain at Forma. Connect it from Domains, publish, check a few old links, then cancel your old plan.",
+        "Your old store keeps selling until you point your domain at Skynoveau. Connect it from Domains, publish, check a few old links, then cancel your old plan.",
       ],
     ],
   },
@@ -390,7 +390,7 @@ export const guides = [
       ],
       [
         "Connect cloud hosting when ready",
-        "The project includes an optional AWS deployment path. Hosting is billed by the provider for usage and stored data. Live deployment is disabled by default and requires your account configuration; it is not a paid Forma subscription.",
+        "The project includes an optional AWS deployment path. Hosting is billed by the provider for usage and stored data. Live deployment is disabled by default and requires your account configuration; it is not a paid Skynoveau subscription.",
       ],
     ],
   },
@@ -406,7 +406,7 @@ export const faqs = [
   ],
   [
     "Can I move my website elsewhere?",
-    "Yes. Export your static website to host it elsewhere, and keep the editable project backup so you can continue working in Forma.",
+    "Yes. Export your static website to host it elsewhere, and keep the editable project backup so you can continue working in Skynoveau.",
   ],
   [
     "Can I sell products?",
@@ -419,8 +419,8 @@ export const faqs = [
 ];
 export const enterpriseFaqs = [
   [
-    "Can Forma really handle our requirement?",
-    "Forma combines pages, a store and business apps (tables, forms, workflow steps, roles and dashboards) that share the same records, so most requirements are built on the platform rather than around it. Bring the requirement and we’ll show you a working version.",
+    "Can Skynoveau really handle our requirement?",
+    "Skynoveau combines pages, a store and business apps (tables, forms, workflow steps, roles and dashboards) that share the same records, so most requirements are built on the platform rather than around it. Bring the requirement and we’ll show you a working version.",
   ],
   [
     "Where is our data stored?",
@@ -442,7 +442,7 @@ export const enterpriseFaqs = [
 export const migrationFaqs = [
   [
     "Will I lose my search rankings?",
-    "Old product and collection addresses forward to the same product in your Forma store, and you can add any other page, or import Shopify’s redirect list. Search engines follow these to the new pages.",
+    "Old product and collection addresses forward to the same product in your Skynoveau store, and you can add any other page, or import Shopify’s redirect list. Search engines follow these to the new pages.",
   ],
   [
     "Do my customers need new passwords?",
@@ -458,6 +458,6 @@ export const migrationFaqs = [
   ],
   [
     "Can I try it before switching?",
-    "Yes. Import into a new workspace, check everything, and keep selling on your old store until you point your domain at Forma.",
+    "Yes. Import into a new workspace, check everything, and keep selling on your old store until you point your domain at Skynoveau.",
   ],
 ] as const;

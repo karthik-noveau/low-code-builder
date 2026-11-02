@@ -1,6 +1,6 @@
 # Owned domains: local development to live HTTPS
 
-Forma supports two distinct addresses: the platform itself (the branded product pages, dashboard and editor), and each published website. Both support a hostname you already own. No registrar purchase, nameserver migration or new paid hosted zone is required by this implementation. Keep existing email/MX records intact.
+Skynoveau supports two distinct addresses: the platform itself (the branded product pages, dashboard and editor), and each published website. Both support a hostname you already own. No registrar purchase, nameserver migration or new paid hosted zone is required by this implementation. Keep existing email/MX records intact.
 
 ## Try the entire flow locally
 
@@ -12,7 +12,7 @@ Forma supports two distinct addresses: the platform itself (the branded product 
 
 Local mode persists simulated DNS in DynamoDB Local. It does not request public certificates, run CloudFormation, or alter real DNS. No AWS credentials are needed. Local domain exports are rejected by the real DNS-apply script.
 
-## The Forma platform's own domain
+## The Skynoveau platform's own domain
 
 First complete the [CI bootstrap and initial default-domain deployment](deployment.md). Download its `deployment-…` artifact to `.build/deployment.json`. This provides `EditorDefaultHost` for your actual distribution. Example hostnames below must be replaced with your own.
 
@@ -41,9 +41,9 @@ On the deployed platform:
 2. Add its random `_forma` TXT record and choose **Check connection**. Only verified ownership can claim a hostname across workspaces or start its hosting resources.
 3. Copy the ACM CNAME when it appears. In AWS the API creates a small CloudFormation stack in `us-east-1` containing only a non-exportable public ACM certificate and a standard CloudFront distribution. Checks retrieve its progress; no always-running worker polls DNS. DNS validation/edge deployment can take several minutes.
 4. Add the routing record to the displayed CloudFront target. Use DNS-only/unproxied mode. For a root domain, use Route 53 ALIAS A/AAAA (`Z2FDTNDATAQYW2`) or your provider's apex CNAME flattening. If the provider lacks flattening, connect `www` instead.
-5. Choose **Check connection**. Forma verifies current ownership and a valid HTTPS response identifying the exact website/connection. A resolving IP alone is not accepted. Once connected, select **Make primary** and **Publish website**.
+5. Choose **Check connection**. Skynoveau verifies current ownership and a valid HTTPS response identifying the exact website/connection. A resolving IP alone is not accepted. Once connected, select **Make primary** and **Publish website**.
 
-The primary setting chooses the address shown by Forma; it does not redirect the other connected hostname/default address. Save editor changes before publishing from this page. All addresses use the same active release; a failed build leaves the previous complete release available. Root-relative assets work on every bound hostname without relying on the default distribution.
+The primary setting chooses the address shown by Skynoveau; it does not redirect the other connected hostname/default address. Save editor changes before publishing from this page. All addresses use the same active release; a failed build leaves the previous complete release available. Root-relative assets work on every bound hostname without relying on the default distribution.
 
 Checks are on demand. A missing ownership record discovered by a check disables delivery on that hostname. This is not a continuous DNS monitoring service. Keep TXT and validation CNAME records in place. Wildcards, internal names, IP addresses, provider-owned hostnames, paths and ports are rejected.
 

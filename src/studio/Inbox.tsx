@@ -265,7 +265,7 @@ export function Inbox({ onClose }: { onClose: () => void }) {
         {!siteId ? (
           <div className="inbox-empty">
             <Icon name="mail" size={20} />
-            <strong>Publish with Forma to receive requests</strong>
+            <strong>Publish with Skynoveau to receive requests</strong>
             <p>
               Open My sites, save this site to your account and publish it.
               Visitor actions on item pages then send requests here, with no
@@ -592,7 +592,7 @@ function RefundConfirm({
     ? `Finish the ${formatAmount(pending.amount, payment.currency)} refund to ${who}? ${providerName(pending.provider)} is asked again with the same refund, so it can’t be paid twice.`
     : online
       ? `Refund ${who} through ${providerName(payment.checkout?.provider)}? The money goes back to the card or account they paid with. This can’t be undone.`
-      : `Record that you paid ${who} back? Forma doesn’t move any money for payments you marked paid.`;
+      : `Record that you paid ${who} back? Skynoveau doesn’t move any money for payments you marked paid.`;
   return (
     <div className="inline-confirm refund-confirm" role="group" aria-label="Refund">
       <p>{message}</p>

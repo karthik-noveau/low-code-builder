@@ -1,6 +1,6 @@
 /**
  * Botanical: a plant shop. The catalogue, cart, checkout, customer accounts
- * and order tracking are Forma Store's (src/commerce); this template seeds its
+ * and order tracking are Skynoveau Store's (src/commerce); this template seeds its
  * products (`botanicalProducts`) and turns on the Shop button and catalogue
  * sections, so a published Botanical is a working online store.
  */
@@ -13,7 +13,7 @@ import {
   type SiteParts,
 } from "./kit";
 
-/** A product as Forma Store's POST /sites/:id/commerce/products takes it. Prices in paise. */
+/** A product as Skynoveau Store's POST /sites/:id/commerce/products takes it. Prices in paise. */
 export interface SeedProduct {
   title: string;
   description: string;

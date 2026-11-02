@@ -274,7 +274,11 @@ const MOVES: [string, string, string][] = [
     "Rebuilt from a template",
     "Rebuilt from a template",
   ],
-  ["Apps and plugins", "Rebuilt as Forma apps", "Rebuilt as Forma apps"],
+  [
+    "Apps and plugins",
+    "Rebuilt as Skynoveau apps",
+    "Rebuilt as Skynoveau apps",
+  ],
   ["Past orders", "Kept in your Shopify export", "Kept in your Wix export"],
   [
     "Passwords",

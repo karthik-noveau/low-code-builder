@@ -575,7 +575,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
         throw new Error("Choose a project under 20 MB.");
       const data: unknown = JSON.parse(await file.text());
       if (!validateProject(data))
-        throw new Error("This is not a valid Forma project backup.");
+        throw new Error("This is not a valid Skynoveau project backup.");
       store.importProject(data);
       setPanel("sections");
       notify("Project imported. Use Undo to return to your previous project.");
@@ -846,7 +846,7 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
           <a
             href="/workspace"
             className="forma-brand"
-            aria-label="Forma website builder"
+            aria-label="Skynoveau Builder"
             title="Your websites"
           >
             <Brand />

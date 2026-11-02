@@ -111,7 +111,7 @@ export const apiRoutes = [
     auth: "none",
     throttle: { burst: 5, rate: 2 },
   },
-  // Stripe or Razorpay says a checkout was paid: Forma's platform webhook
+  // Stripe or Razorpay says a checkout was paid: Skynoveau's platform webhook
   // (signed-in accounts) and each site's own (pasted keys). Signed; the API
   // still asks the provider before marking anything paid.
   {
@@ -177,7 +177,7 @@ export const apiRoutes = [
     throttle: { burst: 10, rate: 5 },
   },
 
-  // Forma Store: the owner's store workspace (roles are checked in the API).
+  // Skynoveau Store: the owner's store workspace (roles are checked in the API).
   { id: "CommerceRoute", route: "GET /sites/{id}/commerce", auth: "jwt" },
   {
     id: "CommerceCatalogRoute",
@@ -253,7 +253,7 @@ export const apiRoutes = [
     route: "POST /sites/{id}/commerce/campaigns",
     auth: "jwt",
   },
-  // Forma Store: the storefront, called by shoppers without a token.
+  // Skynoveau Store: the storefront, called by shoppers without a token.
   {
     id: "StoreRoute",
     route: "GET /store/{id}",

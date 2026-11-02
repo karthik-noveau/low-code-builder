@@ -105,7 +105,7 @@ interface Connection {
   hint: string;
   via?: "oauth";
   account?: string;
-  /** Whether Stripe or Razorpay tells Forma about store payments (pasted keys need a webhook). */
+  /** Whether Stripe or Razorpay tells Skynoveau about store payments (pasted keys need a webhook). */
   webhook?: "ready" | "setup";
 }
 interface WebhookSetup {
@@ -152,7 +152,7 @@ function finishSignIn(siteId: string) {
 }
 /**
  * Payments (store orders, requests, app records) are confirmed when the
- * provider tells Forma a checkout was paid, even if the visitor never comes back. Signed-in accounts and Stripe
+ * provider tells Skynoveau a checkout was paid, even if the visitor never comes back. Signed-in accounts and Stripe
  * keys with the permission get that automatically; a Razorpay key needs the
  * owner to add a webhook, and a Stripe key without the permission can retry.
  */
@@ -257,7 +257,7 @@ const accountLabel = (c: Connection) =>
 
 /**
  * Card payments through the owner's own Stripe or Razorpay account: sign in
- * with the provider (when Forma has a platform app for it) or paste API keys.
+ * with the provider (when Skynoveau has a platform app for it) or paste API keys.
  * Keys go straight to the server, which checks and stores them encrypted; the
  * project only remembers which provider is connected.
  */
@@ -355,7 +355,7 @@ function OnlinePayments() {
       });
       if (result.revoked === false && connection)
         setNotice(
-          `Disconnected. Forma may still be listed in your ${PROVIDERS[connection.provider]} account; you can remove it there.`,
+          `Disconnected. Skynoveau may still be listed in your ${PROVIDERS[connection.provider]} account; you can remove it there.`,
         );
       setConnection(result.connection);
       remember(result.connection?.provider ?? "");
@@ -406,7 +406,7 @@ function OnlinePayments() {
       <strong>Card payments</strong>
       {!siteId ? (
         <small>
-          Save this site to your Forma account (My sites) to take card payments
+          Save this site to your Skynoveau account (My sites) to take card payments
           through your own Stripe or Razorpay account.
         </small>
       ) : !loaded ? (
@@ -516,7 +516,7 @@ function OnlinePayments() {
                 maxLength={220}
                 hint={
                   provider === "stripe"
-                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write, Refunds: Write (to refund from Forma) and Webhook Endpoints: Write (so payments confirm even when visitors don’t come back)."
+                    ? "In Stripe → Developers → API keys, create a restricted key with Checkout Sessions: Write, Refunds: Write (to refund from Skynoveau) and Webhook Endpoints: Write (so payments confirm even when visitors don’t come back)."
                     : "In Razorpay → Account & Settings → API keys."
                 }
                 onChange={setSecret}

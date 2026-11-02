@@ -1,6 +1,6 @@
 /**
  * Visitor actions: a collection item can ask visitors to book, order, apply,
- * RSVP or enquire. Requests arrive in the site's Forma inbox, so a salon, an
+ * RSVP or enquire. Requests arrive in the site's Skynoveau inbox, so a salon, an
  * agency or a venue gets bookings without a third-party app. Shared by the
  * editor, the static renderer and the backend so all three agree on fields.
  */
@@ -89,7 +89,7 @@ export const REQUEST_KINDS: Record<RequestKind, RequestKindSpec> = {
 };
 /**
  * Site-wide forms (Contact and Email signup sections) also arrive in the inbox
- * when the site is published through Forma and no outside endpoint is set.
+ * when the site is published through Skynoveau and no outside endpoint is set.
  */
 export type SiteFormKind = "contact" | "newsletter";
 export type InboxKind = RequestKind | SiteFormKind;

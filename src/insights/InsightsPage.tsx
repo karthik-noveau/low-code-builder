@@ -181,7 +181,7 @@ export function InsightsPage({ siteId }: { siteId: string }) {
         {data && !data.tracking && (
           <div className="commerce-notice">
             Visits aren’t being counted yet. Insights start when you publish
-            with Forma insights on (editor → Settings → Tracking).{" "}
+            with Skynoveau insights on (editor → Settings → Tracking).{" "}
             <a
               className="commerce-link"
               href={`/editor?site=${encodeURIComponent(siteId)}`}
@@ -931,7 +931,7 @@ function Funnel({
                 {i === 0
                   ? "Start"
                   : before
-                    ? `${Math.round((value / before) * 100)}% of previous`
+                    ? `${Math.min(100, Math.round((value / before) * 100))}% of previous`
                     : "—"}
               </span>
               <span className="insights-funnel-bar" aria-hidden="true">

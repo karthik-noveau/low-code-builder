@@ -310,7 +310,7 @@
   border-radius: 18px;
 }
 .canvas-first .field :is(input, select, textarea):focus {
-  box-shadow: 0 0 0 3px #086b4f1a;
+  box-shadow: var(--fx-ring);
 }
 .canvas-first .status-bar {
   background: white;

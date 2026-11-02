@@ -23,7 +23,7 @@ import { key, now, read } from "./commerce-data";
 import { db, deleteItem, getItem, putItem } from "./database";
 
 /**
- * Online payments through the owner's own Stripe or Razorpay account. Forma
+ * Online payments through the owner's own Stripe or Razorpay account. Skynoveau
  * creates a checkout for the exact total and asks the provider whether it was
  * paid, so the money never passes through us. Webhooks only say which
  * checkout to ask about (for visitors who never come back from paying):
@@ -49,9 +49,9 @@ interface StoredConnection {
   /** Razorpay sign-in: when the access token runs out (epoch seconds). */
   tokenExpires?: number;
   /**
-   * The site's own webhook, for pasted keys (signed-in accounts use Forma's
+   * The site's own webhook, for pasted keys (signed-in accounts use Skynoveau's
    * platform webhook): Stripe's endpoint id and signing secret, made through
-   * the key; for Razorpay a secret Forma made for the owner to paste.
+   * the key; for Razorpay a secret Skynoveau made for the owner to paste.
    */
   webhook?: { id?: string; secret: string; confirmed?: boolean };
 }
@@ -63,7 +63,7 @@ export interface Connection {
   via?: "oauth";
   account?: string;
   /**
-   * Whether payment notifications reach Forma: "ready", or "setup" when the
+   * Whether payment notifications reach Skynoveau: "ready", or "setup" when the
    * owner still has to add the webhook in Razorpay (or Stripe refused to make
    * one with that key).
    */
@@ -279,7 +279,7 @@ const STRIPE_EVENTS = [
 async function makeStripeWebhook(siteId: string, secret: string) {
   const form = new URLSearchParams({
     url: webhookUrl(siteId, "stripe"),
-    description: "Forma store orders",
+    description: "Skynoveau store orders",
   });
   STRIPE_EVENTS.forEach((e, i) => form.set(`enabled_events[${i}]`, e));
   const made = await stripe<{ id?: string; secret?: string }>(
@@ -375,7 +375,7 @@ async function forget(siteId: string, row: Retired) {
   const k = key(siteId, "PAYRETIRED", row.provider);
   await deleteItem(k.pk, k.sk);
 }
-/** Removes the connection. False when a signed-in account couldn't be told to forget Forma. */
+/** Removes the connection. False when a signed-in account couldn't be told to forget Skynoveau. */
 export async function disconnect(siteId: string) {
   const stored = await read<StoredConnection>(siteId, "PAYCONN");
   if (stored) {
@@ -398,7 +398,7 @@ export async function disconnect(siteId: string) {
   return stored?.via ? release(stored) : true;
 }
 
-/** Forma's own platform credentials; without them owners paste keys instead. */
+/** Skynoveau's own platform credentials; without them owners paste keys instead. */
 function platform(name: ProviderId) {
   const env = process.env;
   const [clientId, secret] =
@@ -612,7 +612,7 @@ export async function finishSignIn(
       await release(stored);
       throw new HttpError(
         422,
-        "Stripe connected, but Forma couldn’t read Checkout Sessions on that account. Connect again.",
+        "Stripe connected, but Skynoveau couldn’t read Checkout Sessions on that account. Connect again.",
       );
     }
     return save(siteId, stored);
@@ -649,7 +649,7 @@ export async function finishSignIn(
     await release(stored);
     throw new HttpError(
       422,
-      "Razorpay connected, but Forma couldn’t read payment links on that account. Connect again.",
+      "Razorpay connected, but Skynoveau couldn’t read payment links on that account. Connect again.",
     );
   }
   return save(siteId, stored);
@@ -702,7 +702,7 @@ async function refreshRazorpay(siteId: string, stored: StoredConnection) {
     insist(
       latest?.via && latest.secret !== stored.secret,
       422,
-      "Razorpay signed Forma out of your account. Connect Razorpay again in Settings → Get paid.",
+      "Razorpay signed Skynoveau out of your account. Connect Razorpay again in Settings → Get paid.",
     );
     return latest;
   }
@@ -727,7 +727,7 @@ async function refreshRazorpay(siteId: string, stored: StoredConnection) {
   }
   return next;
 }
-/** Tells the provider Forma no longer needs a signed-in account. */
+/** Tells the provider Skynoveau no longer needs a signed-in account. */
 async function release(stored: StoredConnection) {
   const app = platform(stored.provider);
   if (!app) return false;
@@ -939,7 +939,7 @@ export async function checkoutPaid(
   amount: number,
   evidence?: PaymentNotice,
 ): Promise<boolean> {
-  // Disconnected, or connected to another account since: Forma can't ask,
+  // Disconnected, or connected to another account since: Skynoveau can't ask,
   // but the provider's own signed notification about this checkout says.
   const signed = () =>
     evidence?.paid !== undefined &&
@@ -995,7 +995,7 @@ export async function cancelCheckout(siteId: string, checkout: Checkout) {
   );
 }
 
-/** A payment notification Forma acts on: which site's checkout to check. */
+/** A payment notification Skynoveau acts on: which site's checkout to check. */
 export interface PaymentNotice {
   provider: ProviderId;
   siteId: string;
@@ -1026,8 +1026,8 @@ function stripeSigned(header: string, body: Buffer, secret: string) {
 }
 /**
  * Checks a webhook's signature and says which checkout it's about; null for
- * events Forma doesn't act on. `siteId` is set for a site's own webhook
- * (pasted keys), absent for Forma's platform webhook (signed-in accounts).
+ * events Skynoveau doesn't act on. `siteId` is set for a site's own webhook
+ * (pasted keys), absent for Skynoveau's platform webhook (signed-in accounts).
  */
 export async function readWebhook(
   name: ProviderId,

@@ -696,7 +696,7 @@ html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
   border-radius: 10px;
   background: var(--fx-accent);
   filter: none;
-  box-shadow: 0 6px 18px -8px rgba(59, 104, 240, 0.55);
+  box-shadow: 0 6px 18px -8px rgba(86, 70, 230, 0.55);
 }
 html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
   background: var(--fx-accent-hover);

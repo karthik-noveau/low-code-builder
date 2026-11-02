@@ -2,7 +2,7 @@
  * The script published sites load as app.js. It turns each "app" section
  * (`.app-form[data-app-api][data-form]`) into a working form or lookup that
  * talks to the public app API. Plain JavaScript in a string: published sites
- * run no framework and allow only scripts Forma itself writes.
+ * run no framework and allow only scripts Skynoveau itself writes.
  *
  * The section's markup (src/apps/AppSection.tsx) already holds every step, so
  * this only switches steps, fills in what the API returns (with textContent,

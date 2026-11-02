@@ -29,7 +29,7 @@ export function Header({
   return (
     <header className="pub-header">
       <div className="pub-container pub-header-inner">
-        <a className="pub-logo" href="/" aria-label="Forma home">
+        <a className="pub-logo" href="/" aria-label="Skynoveau Builder home">
           <Brand />
         </a>
         <nav
@@ -81,7 +81,7 @@ export function Footer() {
     <footer className="pub-footer">
       <div className="pub-container pub-footer-top">
         <div className="pub-footer-intro">
-          <a href="/" aria-label="Forma home">
+          <a href="/" aria-label="Skynoveau Builder home">
             <Brand />
           </a>
           <p>
@@ -112,7 +112,7 @@ export function Footer() {
         </div>
       </div>
       <div className="pub-container pub-footer-bottom">
-        <span>© {new Date().getFullYear()} Forma</span>
+        <span>© {new Date().getFullYear()} Skynoveau</span>
         <a href="#main">Back to top ↑</a>
       </div>
     </footer>

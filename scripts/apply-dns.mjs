@@ -10,7 +10,7 @@ export function validateRecords(input) {
     !Array.isArray(input.records) ||
     input.records.length > 6
   )
-    throw new Error("Invalid Forma DNS export.");
+    throw new Error("Invalid Skynoveau DNS export.");
   const hostname = normalized(input.hostname);
   return input.records.map((record) => {
     if (
@@ -39,7 +39,7 @@ export function validateRecords(input) {
             : false;
     if (!allowed)
       throw new Error(
-        `Unsupported ${record.purpose || ""} record. Only real Forma ownership, ACM validation, and CloudFront routing records can be applied.`,
+        `Unsupported ${record.purpose || ""} record. Only real Skynoveau ownership, ACM validation, and CloudFront routing records can be applied.`,
       );
     return { ...record, name };
   });
@@ -174,7 +174,7 @@ export async function main() {
     await writeFile(
       ".build/route53-changes.json",
       JSON.stringify(
-        { Comment: "Forma verified domain connection", Changes: changes },
+        { Comment: "Skynoveau verified domain connection", Changes: changes },
         null,
         2,
       ),
@@ -188,7 +188,7 @@ export async function main() {
       "file://.build/route53-changes.json",
     );
     console.log(
-      `DNS change submitted: ${result.ChangeInfo.Id}. Check connection in Forma after propagation.`,
+      `DNS change submitted: ${result.ChangeInfo.Id}. Check connection in Skynoveau after propagation.`,
     );
   } else {
     const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -258,7 +258,7 @@ export async function main() {
         body: JSON.stringify(record),
       });
     console.log(
-      `Created ${pending.length} missing DNS records. Check connection in Forma after propagation.`,
+      `Created ${pending.length} missing DNS records. Check connection in Skynoveau after propagation.`,
     );
   }
 }

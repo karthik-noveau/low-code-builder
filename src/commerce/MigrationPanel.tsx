@@ -51,7 +51,7 @@ const GUIDES: Record<
     customers: [
       "Any CSV with an email column works. Name, first and last name, phone, “accepts marketing”, total orders and total spent are read when present.",
     ],
-    more: "WooCommerce, Squarespace, BigCommerce and most store tools export customers this way. For their products, use the Forma template.",
+    more: "WooCommerce, Squarespace, BigCommerce and most store tools export customers this way. For their products, use the Skynoveau template.",
   },
 };
 
@@ -189,7 +189,7 @@ export function MigrationPanel({
     <div className="migrate">
       <section className="commerce-panel migrate-hero">
         <div>
-          <span className="migrate-kicker">Move to Forma</span>
+          <span className="migrate-kicker">Move to Skynoveau</span>
           <h2>Bring your store over from Shopify, Wix or a spreadsheet</h2>
           <p className="commerce-muted">
             Products, customers and old links come with you. Files are read in
@@ -276,7 +276,7 @@ export function MigrationPanel({
             <Icon name="upload" size={22} />
             <strong>Drop a products or customers CSV</strong>
             <span className="commerce-muted">
-              Forma recognises Shopify, Wix and its own exports by their
+              Skynoveau recognises Shopify, Wix and its own exports by their
               columns.
             </span>
             <button
@@ -406,7 +406,7 @@ export function MigrationPanel({
               >
                 Point your domain
               </a>{" "}
-              at Forma when you’re ready to switch.
+              at Skynoveau when you’re ready to switch.
             </li>
           </ol>
           <button

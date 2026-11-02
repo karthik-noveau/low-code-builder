@@ -69,7 +69,7 @@ describe("redirects", () => {
       { from: "c", to: "/" },
     ]);
   });
-  it("points an imported store's old product and collection links at the Forma store", () => {
+  it("points an imported store's old product and collection links at the Skynoveau store", () => {
     const moved = movedPaths("https://forma.example.com/store?site=s1", [
       {
         handle: "linen-shirt",

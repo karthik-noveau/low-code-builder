@@ -1,5 +1,5 @@
 /**
- * Old addresses that keep working after a site moves to Forma, so links,
+ * Old addresses that keep working after a site moves to Skynoveau, so links,
  * bookmarks and search results from Shopify or Wix still land somewhere.
  * Each one is published as a tiny page at the old path that sends visitors
  * (and search engines) on at once; the site router serves `/old/path` from
@@ -111,7 +111,7 @@ export const slugify = (value: string) =>
     .slice(0, 100);
 /**
  * The addresses a store's products and collections had on Shopify and Wix,
- * pointed at the same product or collection in the Forma store.
+ * pointed at the same product or collection in the Skynoveau store.
  */
 export function movedPaths(
   shopUrl: string,

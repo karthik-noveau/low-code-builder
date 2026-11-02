@@ -32,7 +32,7 @@ export interface Business {
   country: string;
 }
 export interface SiteSeo {
-  /** The site's main address; "" uses its primary domain, or its Forma address. */
+  /** The site's main address; "" uses its primary domain, or its Skynoveau address. */
   siteUrl: string;
   /** The pages' language (lang attribute), e.g. "en", "en-IN", "hi". */
   language: string;
@@ -46,7 +46,7 @@ export interface SiteSeo {
   /** Google Search Console and Bing Webmaster verification codes. */
   google: string;
   bing: string;
-  /** Forma's own cookieless visitor counts (on unless false). */
+  /** Skynoveau's own cookieless visitor counts (on unless false). */
   analytics: boolean;
   /** Google Analytics 4 measurement ID (G-…). */
   ga4: string;

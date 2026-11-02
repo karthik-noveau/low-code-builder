@@ -30,7 +30,7 @@
   --ui-accent: var(--fx-accent);
   --ui-accent-hover: var(--fx-accent-hover);
   --ui-accent-soft: var(--fx-accent-soft);
-  --ui-accent-border: rgba(79, 124, 255, 0.4);
+  --ui-accent-border: rgba(124, 108, 255, 0.4);
   --ui-accent-panel: var(--fx-surface-2);
   --ui-accent-panel-border: var(--fx-border-strong);
   --ui-highlight: var(--fx-accent-soft);

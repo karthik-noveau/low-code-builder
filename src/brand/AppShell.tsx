@@ -184,7 +184,7 @@ export function AppShell({
         >
           <Icon name={navOpen ? "x" : "menu"} size={18} />
         </button>
-        <a href="/" className="admin-logo" aria-label="Forma home">
+        <a href="/" className="admin-logo" aria-label="Skynoveau Builder home">
           <Brand />
         </a>
         <nav className="dashboard-crumbs" aria-label="Breadcrumb">

@@ -8,7 +8,7 @@
  *   item:link    the item's own page (or its call-to-action link)
  *   item:index   its place in the list, 1, 2, 3… (leaderboards)
  *   item:price, item:image, item:description, item:category
- *                a Forma Store product's (store.ts)
+ *                a Skynoveau Store product's (store.ts)
  *
  * Collections are resolved here at render time (static HTML on publish).
  * App views are filled in the visitor's browser: the published page carries

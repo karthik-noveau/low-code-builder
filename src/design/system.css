@@ -1,5 +1,5 @@
 /*
- * Forma design system: one source for the app's look (workspace, store admin,
+ * Skynoveau design system: one source for the app's look (workspace, store admin,
  * editor, public pages), in the spirit of Framer and Webflow: hairline borders,
  * a 14px base, one vivid accent and soft glows. Light is the default; the dark
  * set applies under [data-theme="dark"] (see src/design/theme.ts). Storefronts
@@ -28,7 +28,7 @@
   --fx-border: rgba(17, 17, 20, 0.09);
   --fx-border-strong: rgba(17, 17, 20, 0.16);
   --fx-border-hover: rgba(17, 17, 20, 0.28);
-  --fx-border-focus: rgba(59, 104, 240, 0.7);
+  --fx-border-focus: rgba(86, 70, 230, 0.7);
 
   --fx-text: #111114;
   --fx-text-2: #3f3f48;
@@ -38,19 +38,19 @@
   --fx-contrast: #111114;
   --fx-on-contrast: #ffffff;
 
-  --fx-accent: #3b68f0;
-  --fx-accent-hover: #2f5ae0;
-  --fx-accent-press: #2549c4;
-  --fx-accent-soft: rgba(59, 104, 240, 0.1);
-  --fx-accent-text: #2f5ae0;
+  --fx-accent: #5646e6;
+  --fx-accent-hover: #4836d6;
+  --fx-accent-press: #3a2bbf;
+  --fx-accent-soft: rgba(86, 70, 230, 0.1);
+  --fx-accent-text: #4836d6;
   /* Filled buttons with white labels (4.5:1 in both themes). */
-  --fx-accent-fill: #3b68f0;
-  --fx-accent-fill-hover: #2f5ae0;
-  --fx-violet: #8b5cf6;
-  --fx-gradient: linear-gradient(135deg, #3b68f0 0%, #8b5cf6 100%);
+  --fx-accent-fill: #5646e6;
+  --fx-accent-fill-hover: #4836d6;
+  --fx-violet: #a855f7;
+  --fx-gradient: linear-gradient(135deg, #38bdf8 0%, #5646e6 55%, #a855f7 100%);
   --fx-glow: radial-gradient(
     60% 50% at 50% 0%,
-    rgba(59, 104, 240, 0.09),
+    rgba(86, 70, 230, 0.09),
     transparent 70%
   );
 
@@ -72,7 +72,7 @@
     0 0 0 1px var(--fx-border-strong), 0 12px 32px -14px rgba(17, 17, 20, 0.2);
   --fx-shadow-pop:
     0 0 0 1px var(--fx-border), 0 24px 56px -16px rgba(17, 17, 20, 0.25);
-  --fx-ring: 0 0 0 3px rgba(59, 104, 240, 0.25);
+  --fx-ring: 0 0 0 3px rgba(86, 70, 230, 0.25);
 
   /* Shape and depth. */
   --fx-radius-sm: 8px;
@@ -131,7 +131,7 @@
   --fx-border: rgba(255, 255, 255, 0.08);
   --fx-border-strong: rgba(255, 255, 255, 0.14);
   --fx-border-hover: rgba(255, 255, 255, 0.24);
-  --fx-border-focus: rgba(109, 141, 255, 0.7);
+  --fx-border-focus: rgba(148, 136, 255, 0.7);
 
   --fx-text: #ededf0;
   --fx-text-2: #b4b4bd;
@@ -140,18 +140,18 @@
   --fx-contrast: #ffffff;
   --fx-on-contrast: #0b0b0d;
 
-  --fx-accent: #4f7cff;
-  --fx-accent-hover: #6b91ff;
-  --fx-accent-press: #3d68ea;
-  --fx-accent-soft: rgba(79, 124, 255, 0.14);
-  --fx-accent-text: #8fadff;
-  --fx-accent-fill: #3d68ea;
-  --fx-accent-fill-hover: #3358d6;
-  --fx-violet: #9b6bff;
-  --fx-gradient: linear-gradient(135deg, #4f7cff 0%, #9b6bff 100%);
+  --fx-accent: #7c6cff;
+  --fx-accent-hover: #9488ff;
+  --fx-accent-press: #5d4cf0;
+  --fx-accent-soft: rgba(124, 108, 255, 0.14);
+  --fx-accent-text: #a89dff;
+  --fx-accent-fill: #5d4cf0;
+  --fx-accent-fill-hover: #4f3ee0;
+  --fx-violet: #b77bff;
+  --fx-gradient: linear-gradient(135deg, #4cc9fb 0%, #7c6cff 55%, #b77bff 100%);
   --fx-glow: radial-gradient(
     60% 50% at 50% 0%,
-    rgba(79, 124, 255, 0.16),
+    rgba(124, 108, 255, 0.16),
     transparent 70%
   );
 
@@ -173,7 +173,7 @@
     0 0 0 1px var(--fx-border-strong), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
   --fx-shadow-pop:
     0 0 0 1px var(--fx-border-strong), 0 24px 64px -16px rgba(0, 0, 0, 0.8);
-  --fx-ring: 0 0 0 3px rgba(79, 124, 255, 0.35);
+  --fx-ring: 0 0 0 3px rgba(124, 108, 255, 0.35);
 }
 
 /* Pages showing the app's chrome match the theme in scrollbars and overscroll. */

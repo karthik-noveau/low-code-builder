@@ -64,7 +64,7 @@ export function AuthPage({
   return (
     <div ref={motionRef} className="brand-app brand-public pub-auth">
       <aside className="pub-auth-story">
-        <a href="/" aria-label="Forma home">
+        <a href="/" aria-label="Skynoveau Builder home">
           <Brand />
         </a>
         <div className="pub-auth-copy">
@@ -98,15 +98,19 @@ export function AuthPage({
       </aside>
       <main className="pub-auth-main" id="main">
         <div className="pub-auth-top">
-          <a className="pub-auth-mobile-brand" href="/" aria-label="Forma home">
+          <a
+            className="pub-auth-mobile-brand"
+            href="/"
+            aria-label="Skynoveau Builder home"
+          >
             <Brand />
           </a>
-          <a href="/">← Back to Forma</a>
+          <a href="/">← Back to Skynoveau</a>
         </div>
         <div className="pub-auth-card">
           <h2>
             {callback
-              ? "Welcome to Forma"
+              ? "Welcome to Skynoveau Builder"
               : signup
                 ? "Create your workspace"
                 : "Log in to your workspace"}
@@ -235,7 +239,9 @@ export function AuthPage({
                 <Arrow />
               </button>
               <p className="pub-auth-switch">
-                {signup ? "Already have a workspace?" : "New to Forma?"}{" "}
+                {signup
+                  ? "Already have a workspace?"
+                  : "New to Skynoveau Builder?"}{" "}
                 <a
                   href={`${signup ? "/login" : "/signup"}?next=${encodeURIComponent(next)}`}
                 >
@@ -249,7 +255,7 @@ export function AuthPage({
           </div>
         </div>
         <footer>
-          <span>© {new Date().getFullYear()} Forma</span>
+          <span>© {new Date().getFullYear()} Skynoveau</span>
           <a href="/help">Need a hand?</a>
         </footer>
       </main>

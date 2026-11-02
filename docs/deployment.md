@@ -4,7 +4,7 @@ For a step-by-step list of everything the first deploy needs, see [the deploy ch
 
 The application is implemented and exercised locally. No AWS account is required, and no cloud resources are created by local setup, development, tests, builds, or CI. The AWS template and deployment workflow are prepared separately; they still need an account-specific IAM/bootstrap review and a real staging deployment before being treated as production-verified.
 
-The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Forma Store ([below](#forma-store-on-aws)), including checkout through the owner's provider, customer accounts (with an SES sender) and team invitations, but none of it has been verified on a real deployment.
+The new local commerce/account work also introduces a mandatory release gate in `release-readiness.json`. Both direct deployment and the GitHub deployment workflow stop while any requirement is unverified. Use `npm run release:readiness` to inspect it. The template routes Skynoveau Store ([below](#forma-store-on-aws)), including checkout through the owner's provider, customer accounts (with an SES sender) and team invitations, but none of it has been verified on a real deployment.
 
 ## Development to a published preview
 
@@ -101,7 +101,7 @@ The deployment script requires AWS CLI v2, verifies the target account, packages
 
 ### Optional: connect Stripe or Razorpay by signing in
 
-Owners can always paste their own Stripe or Razorpay keys. To also offer **Connect with Stripe** / **Connect with Razorpay**, create Forma's own platform apps and give the deployment their credentials. Leave them empty and the buttons stay hidden.
+Owners can always paste their own Stripe or Razorpay keys. To also offer **Connect with Stripe** / **Connect with Razorpay**, create Skynoveau's own platform apps and give the deployment their credentials. Leave them empty and the buttons stay hidden.
 
 | GitHub environment value                           | Kind     | Stack parameter → Lambda variable                                         |
 | -------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
@@ -131,7 +131,7 @@ The initial Cognito pool is invitation-only. Create invited users in the output 
 
 Never rename a deployed route's `id`: CloudFormation would create the new route before deleting the old one, and two routes can't share a key. The stage depends on every throttled route, because its route settings must name existing routes.
 
-### Forma Store on AWS
+### Skynoveau Store on AWS
 
 - **Routes:** the store workspace (`/sites/{id}/commerce…`, JWT; roles are checked in the API), the storefront (`/store/{id}`, cart, cart read, events, forms, unsubscribe, checkout, receipts, returns: public, throttled), and the customer account (`/store/{id}/account…`, public: shoppers sign in with an emailed code and send a store token; 503 without `MAIL_FROM`).
 - **IAM:** the API and publisher roles also have `dynamodb:ConditionCheckItem` on the table. Store, inbox and app-record writes are DynamoDB transactions that guard on the site's lifecycle row with a `ConditionCheck`; without it those transactions are denied (this also affected the Inbox and business apps already on AWS). There are still no scans, batch writes or wildcards.

@@ -121,12 +121,12 @@ describe("App form sections on the canvas and published site", () => {
     expect(html).not.toContain("data-app-api");
     expect(html).toMatch(/<input(?=[^>]*name="identity")(?=[^>]*disabled)/);
   });
-  it("says it needs Forma in a ZIP export, and works when published", () => {
+  it("says it needs Skynoveau in a ZIP export, and works when published", () => {
     const { p, page } = setup();
     const zip = renderToStaticMarkup(
       <Website project={p} page={page} exporting preview />,
     );
-    expect(zip).toContain("Works when published with Forma.");
+    expect(zip).toContain("Works when published with Skynoveau.");
     const live = renderToStaticMarkup(
       <Website
         project={p}

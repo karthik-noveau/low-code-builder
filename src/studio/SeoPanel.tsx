@@ -404,7 +404,7 @@ export function SeoPanel() {
   );
 }
 
-/** Settings → Tracking: Forma's own insights, Google Analytics and the Meta Pixel. */
+/** Settings → Tracking: Skynoveau's own insights, Google Analytics and the Meta Pixel. */
 export function TrackingPanel({ siteId }: { siteId?: string }) {
   const project = useStudio((s) => s.project);
   const commit = useStudio((s) => s.commit);
@@ -419,7 +419,7 @@ export function TrackingPanel({ siteId }: { siteId?: string }) {
   return (
     <div className="seo-panel">
       <Toggle
-        label="Forma insights"
+        label="Skynoveau insights"
         hint="Visitors, pages, sources, campaigns and sales. No cookies, so no banner needed."
         checked={seo.analytics}
         onChange={(analytics) => save({ analytics }, "analytics")}

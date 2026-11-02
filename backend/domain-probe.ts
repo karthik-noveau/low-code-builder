@@ -43,7 +43,7 @@ export async function probeDomain(
           method: "GET",
           headers: {
             Host: domain.hostname,
-            "User-Agent": "Forma-Domain-Check/1.0",
+            "User-Agent": "Skynoveau-Domain-Check/1.0",
           },
           timeout: 5000,
           rejectUnauthorized: true,

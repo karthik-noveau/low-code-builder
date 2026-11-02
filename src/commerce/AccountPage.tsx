@@ -100,8 +100,8 @@ export function AccountPage() {
         >
           <p className="commerce-muted">
             We’ll create a link to reset your password. On this computer no
-            email is sent: the link is saved privately in Forma’s mail folder
-            (.local/data/mail) for you to open.
+            email is sent: the link is saved privately in Skynoveau’s mail
+            folder (.local/data/mail) for you to open.
           </p>
           <label className="commerce-field">
             Account email
@@ -275,7 +275,7 @@ export function AccountPage() {
     <div className="brand-app brand-public pub-recovery">
       <main className="pub-auth-main" id="main">
         <div className="pub-auth-top">
-          <a href="/workspace" aria-label="Forma workspace">
+          <a href="/workspace" aria-label="Skynoveau workspace">
             <Brand />
           </a>
           <a href="/workspace">← Back to workspace</a>
@@ -291,7 +291,7 @@ export function AccountPage() {
           {content}
         </div>
         <footer>
-          <span>© {new Date().getFullYear()} Forma</span>
+          <span>© {new Date().getFullYear()} Skynoveau</span>
           <a href="/help">Need a hand?</a>
         </footer>
       </main>

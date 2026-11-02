@@ -772,7 +772,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
     try {
       if (file.size > 15 * 1024 * 1024)
         throw new Error("CSV files must be under 15 MB.");
-      // Forma's template, or a Shopify or Wix export as it comes.
+      // Skynoveau's template, or a Shopify or Wix export as it comes.
       const parsed = parseExport(parseCsv(await file.text()));
       if (parsed.kind !== "products")
         throw new Error(
@@ -946,7 +946,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <label
             className="commerce-button secondary commerce-import"
             aria-disabled={busy || undefined}
-            title={`Shopify or Wix product exports work as they are. Forma's own columns: ${PRODUCT_COLUMNS.join(", ")} (one row per variant).`}
+            title={`Shopify or Wix product exports work as they are. Skynoveau's own columns: ${PRODUCT_COLUMNS.join(", ")} (one row per variant).`}
           >
             <Icon name="upload" size={14} />
             {busy ? "Importing…" : "Import"}
@@ -1884,7 +1884,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           <div className="commerce-notice">
             Integrations let another tool you run, like an inventory app,
             receive a signed record of orders and product changes. Your tool
-            reads them from the integration’s event feed; Forma doesn’t push
+            reads them from the integration’s event feed; Skynoveau doesn’t push
             them to it.
           </div>
           {data.role === "owner" && (

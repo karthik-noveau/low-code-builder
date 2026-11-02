@@ -761,7 +761,7 @@ export const BLOCKS: Record<NodeType, BlockDef> = {
     label: "Products",
     icon: "store",
     category: "data",
-    description: "Your Forma Store products as cards you lay out",
+    description: "Your Skynoveau Store products as cards you lay out",
     container: true,
     accepts: ["box"],
     fields: [],

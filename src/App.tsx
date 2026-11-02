@@ -173,7 +173,7 @@ export default function App() {
     <Suspense
       fallback={
         <div className="brand-app brand-route-loading" role="status">
-          Opening Forma…
+          Opening Skynoveau…
         </div>
       }
     >

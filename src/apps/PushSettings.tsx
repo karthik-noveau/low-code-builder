@@ -1,7 +1,7 @@
 /**
  * Phone and computer notifications for the owner. Turning them on asks the
  * browser's permission (only ever from the button press), registers the small
- * Forma service worker, subscribes with the server's key and saves the device.
+ * Skynoveau service worker, subscribes with the server's key and saves the device.
  */
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "../studio/Icon";
@@ -132,14 +132,14 @@ export function PushSettings({ siteId, app }: { siteId: string; app: App }) {
         {!permission ? (
           <p className="app-push-state">
             This browser can't show notifications. Try Chrome, Edge or Firefox
-            on a computer or Android phone. On iPhone and iPad, add Forma to
+            on a computer or Android phone. On iPhone and iPad, add Skynoveau to
             your home screen first, then open it from there.
           </p>
         ) : permission === "denied" ? (
           <p className="app-push-state">
-            Notifications are blocked for Forma in this browser. Open the site
-            settings (the icon next to the address), allow notifications, then
-            come back and turn them on.
+            Notifications are blocked for Skynoveau in this browser. Open the
+            site settings (the icon next to the address), allow notifications,
+            then come back and turn them on.
           </p>
         ) : (
           <div className="commerce-actions">

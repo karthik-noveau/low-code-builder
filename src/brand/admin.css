@@ -40,7 +40,7 @@
   --ui-accent: var(--fx-accent);
   --ui-accent-hover: var(--fx-accent-hover);
   --ui-accent-soft: var(--fx-accent-soft);
-  --ui-accent-border: rgba(79, 124, 255, 0.4);
+  --ui-accent-border: rgba(124, 108, 255, 0.4);
   --ui-accent-panel: var(--fx-surface-2);
   --ui-accent-panel-border: var(--fx-border-strong);
   --ui-highlight: var(--fx-accent-soft);
@@ -963,7 +963,7 @@ html body .admin-ui .commerce-notice {
   border: 0;
   border-radius: var(--a-radius);
   background: var(--fx-accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(124, 108, 255, 0.35);
   color: var(--fx-text);
   font-size: 14px;
 }
@@ -1972,7 +1972,7 @@ html body .admin-ui .domain-local-banner {
   border: 0;
   border-radius: var(--a-radius);
   background: var(--fx-accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(124, 108, 255, 0.35);
   color: var(--fx-text);
   font-size: 14px;
 }
@@ -2141,7 +2141,7 @@ html body .admin-ui .admin-account .dashboard-avatar {
   background: var(--fx-gradient);
 }
 html body .admin-ui ::selection {
-  background: rgba(79, 124, 255, 0.4);
+  background: rgba(124, 108, 255, 0.4);
 }
 html body .admin-ui a:not(.website *) {
   color: inherit;
@@ -2542,7 +2542,7 @@ html body .admin-ui .brand-button.ns-create {
   background: var(--fx-gradient);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 8px 24px -10px rgba(59, 104, 240, 0.6);
+    0 8px 24px -10px rgba(86, 70, 230, 0.6);
 }
 html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
   background: var(--fx-gradient);

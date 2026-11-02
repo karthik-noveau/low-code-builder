@@ -1,5 +1,5 @@
 /**
- * Dhanlaxmi Electricals: the Dhanlaxmi Rewards app rebuilt in Forma. Customers
+ * Dhanlaxmi Electricals: the Dhanlaxmi Rewards app rebuilt in Skynoveau. Customers
  * record purchases with the phone number the shop registered them with; the
  * owner approves each with a reward (never more than the purchase) or rejects
  * it with a reason; customers check their total. Only the owner adds

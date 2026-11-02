@@ -190,7 +190,7 @@ export async function localRecovery(
         JSON.stringify(
           {
             to: email,
-            subject: "Reset your Forma password",
+            subject: "Reset your Skynoveau password",
             url: `${config.editorOrigin}/account?reset=${token}`,
             localOnly: true,
           },

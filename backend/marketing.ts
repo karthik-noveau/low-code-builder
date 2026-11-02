@@ -121,7 +121,7 @@ const slug = (value: string) =>
     .slice(0, 60) || "campaign";
 const storeLink = (siteId: string) =>
   `${config.editorOrigin}/store?site=${siteId}`;
-/** Hosts whose links get campaign tags: the store, the site's Forma address and its domain. */
+/** Hosts whose links get campaign tags: the store, the site's Skynoveau address and its domain. */
 const hostsOf = (domainUrl?: string) =>
   [config.editorOrigin, config.siteOrigin, domainUrl]
     .filter((u): u is string => !!u)

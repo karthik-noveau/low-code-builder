@@ -69,7 +69,7 @@ const distribution = (bucketId, sites = false) =>
     DistributionConfig: {
       Enabled: true,
       Comment: sub(
-        `Forma ${sites ? "published sites" : "editor"} — ${"${AWS::StackName}"}`,
+        `Skynoveau ${sites ? "published sites" : "editor"} — ${"${AWS::StackName}"}`,
       ),
       PriceClass: "PriceClass_100",
       HttpVersion: "http2and3",
@@ -283,7 +283,7 @@ export function template() {
             ? {
                 ContentSecurityPolicy: {
                   Override: true,
-                  // Same as the local site server: only Forma's own scripts run (plus Google
+                  // Same as the local site server: only Skynoveau's own scripts run (plus Google
                   // Analytics and the Meta Pixel when an owner turns them on, insights.js),
                   // talking to the API and (for the offline cache) the site itself.
                   ContentSecurityPolicy: sub(
@@ -641,7 +641,7 @@ export function template() {
     PAYMENT_ENCRYPTION_KEY: sub(
       "{{resolve:secretsmanager:${PaymentKey}:SecretString}}",
     ),
-    // Forma's own Stripe Connect / Razorpay partner apps. Empty: owners paste keys.
+    // Skynoveau's own Stripe Connect / Razorpay partner apps. Empty: owners paste keys.
     STRIPE_CONNECT_CLIENT_ID: ref("StripeConnectClientId"),
     STRIPE_PLATFORM_SECRET: ref("StripePlatformSecret"),
     RAZORPAY_PARTNER_CLIENT_ID: ref("RazorpayPartnerClientId"),
@@ -823,7 +823,7 @@ export function template() {
   return {
     AWSTemplateFormatVersion: "2010-09-09",
     Description:
-      "Forma usage-based website builder: no fixed compute, private drafts, static releases.",
+      "Skynoveau usage-based website builder: no fixed compute, private drafts, static releases.",
     Parameters: {
       ArtifactBucket: { Type: "String" },
       ArtifactKey: { Type: "String" },

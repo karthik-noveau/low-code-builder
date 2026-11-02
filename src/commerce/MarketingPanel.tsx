@@ -160,7 +160,7 @@ export function MarketingPanel({
       setNotice(
         live
           ? `A test is on its way to ${r.sentTo}.`
-          : `Test saved to your Inbox’s email previews (${r.sentTo}). Emails send once Forma has an email sender.`,
+          : `Test saved to your Inbox’s email previews (${r.sentTo}). Emails send once Skynoveau has an email sender.`,
       );
       await onChanged();
     });
@@ -219,7 +219,7 @@ export function MarketingPanel({
     <div className="marketing">
       {!live && (
         <div className="commerce-notice">
-          Emails are kept as previews in your Inbox until Forma has an email
+          Emails are kept as previews in your Inbox until Skynoveau has an email
           sender (SES). Everything else works the same, so you can prepare
           campaigns now.
         </div>

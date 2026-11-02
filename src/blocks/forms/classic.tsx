@@ -9,7 +9,7 @@
  *   the buttons' labels and the steps' headings and notes. Blocks the owner
  *   adds inside are drawn in their step. Choosing the "Blocks" look lays the
  *   same blocks out freely instead (FormBlocks.tsx).
- * - `target: "inbox"`: a Contact or Email signup form posting to the Forma
+ * - `target: "inbox"`: a Contact or Email signup form posting to the Skynoveau
  *   inbox (or the owner's own endpoint) with the classic markup: a hidden
  *   `form` kind, the honeypot, and boxes named name, email and message.
  */

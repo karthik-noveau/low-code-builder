@@ -89,7 +89,7 @@ export function useTableData(table: string | undefined, enabled = true) {
 }
 
 /**
- * The site's Forma Store as its website shows it: whether there is an open
+ * The site's Skynoveau Store as its website shows it: whether there is an open
  * store, whether it puts its catalogue on the website, and the products the
  * publisher would draw (GET /sites/:id/commerce/catalog, owner API). Read
  * once per editor session, again on refresh.

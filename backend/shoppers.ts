@@ -2,7 +2,7 @@
  * Shopper accounts, per store: a shopper signs in with a six-digit code
  * emailed to them (mail.ts sends it through SES; locally, without a sender,
  * the code is shown on the page). The session is a random token the browser
- * keeps for this store only, so shoppers never need a Forma account and
+ * keeps for this store only, so shoppers never need a Skynoveau account and
  * hosted stores need no identity provider of their own.
  */
 import {

@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 export const editorCertificateTemplate = (hostname) => ({
   AWSTemplateFormatVersion: "2010-09-09",
   Description:
-    "Forma editor HTTPS certificate; existing DNS stays with its provider.",
+    "Skynoveau editor HTTPS certificate; existing DNS stays with its provider.",
   Resources: {
     Certificate: {
       Type: "AWS::CertificateManager::Certificate",

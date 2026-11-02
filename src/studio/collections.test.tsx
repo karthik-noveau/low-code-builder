@@ -321,7 +321,7 @@ describe("visitor actions", () => {
     render(<Studio />);
     fireEvent.click(screen.getByRole("button", { name: /^Inbox/ }));
     expect(
-      screen.getByText("Publish with Forma to receive requests"),
+      screen.getByText("Publish with Skynoveau to receive requests"),
     ).toBeTruthy();
   });
 });

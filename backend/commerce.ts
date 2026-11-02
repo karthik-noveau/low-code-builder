@@ -1126,7 +1126,7 @@ async function refundOrder(
   insist(
     order.checkout || local,
     503,
-    "This order wasn’t paid online, so Forma can’t refund it.",
+    "This order wasn’t paid online, so Skynoveau can’t refund it.",
   );
   const refunded = (order.refunds ?? []).reduce((t, r) => t + r.amount, 0);
   const remaining = order.total - refunded;

@@ -367,7 +367,7 @@ function NotificationSettings() {
   );
 }
 
-/** Forma accounts own the sign-in; the password is changed on the account page. */
+/** Skynoveau accounts own the sign-in; the password is changed on the account page. */
 function AccountSettings() {
   const ctx = useOwner();
   return (
@@ -400,8 +400,8 @@ function AccountSettings() {
             </Field>
           </div>
           <p className="ow-fieldHint">
-            You sign in to this shop with your Forma account. Your name comes
-            from your email address.
+            You sign in to this shop with your Skynoveau account. Your name
+            comes from your email address.
           </p>
         </div>
       </CardBody>
@@ -638,7 +638,7 @@ function AboutCard() {
         className="ow-link ow-subtle"
         href={`/editor?site=${encodeURIComponent(ctx.siteId)}`}
       >
-        Edit the website in Forma <Icon name="externalLink" size={12} />
+        Edit the website in Skynoveau <Icon name="externalLink" size={12} />
       </a>
       <Button variant="dangerQuiet" block icon="logOut" onClick={ctx.signOut}>
         Sign out

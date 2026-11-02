@@ -1,5 +1,5 @@
 /**
- * A repeat over Forma Store's products (`store:products`, look "products")
+ * A repeat over Skynoveau Store's products (`store:products`, look "products")
  * with the classic products block's card (legacy.ts itemCard): the photo (or
  * a placeholder tile) linking to the product's page, the name and price in a
  * row, and the description. Its "When there are no products" box holds what

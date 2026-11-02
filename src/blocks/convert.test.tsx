@@ -49,7 +49,7 @@ const shown = (html: string) =>
   body(html)
     .replace(/ (class|aria-label|inert)="[^"]*"/g, "")
     .replace(/<\/?(div|ul|li)>/g, "");
-/** Forma Store's catalogue as the publisher gives it (commerce-publishing.ts). */
+/** Skynoveau Store's catalogue as the publisher gives it (commerce-publishing.ts). */
 const catalogue: StoreProduct[] = [
   ["Aloe", "₹299.00", "/images/plant-1.jpg", "Plants"],
   ["Basket", "₹499.00", "", "Pots"],

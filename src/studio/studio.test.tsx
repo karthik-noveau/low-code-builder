@@ -157,7 +157,7 @@ describe("portable websites", () => {
           .replace(/ (href|action)="[^"]*"/g, "")
           .replace(/<input type="hidden" name="form"[^>]*\/>/g, "")
           .replace(/<label class="site-request-trap"[\s\S]*?<\/label>/g, "")
-          // App forms say where they work ("…published site" vs "…with Forma").
+          // App forms say where they work ("…published site" vs "…with Skynoveau").
           .replace(/<p class="app-preview-note">[\s\S]*?<\/p>/g, "")
           .replace(/(class="app-form is-preview"[^>]*?) inert=""/g, "$1");
       for (const pg of p.pages) {
@@ -209,7 +209,7 @@ describe("portable websites", () => {
         const html = renderPage(p, pg);
         expect(html).toContain("<!doctype html>");
         expect(html).toContain("styles.css");
-        // Only app forms, which are inert until published with Forma.
+        // Only app forms, which are inert until published with Skynoveau.
         expect(
           html.replace(/class="app-form is-preview"[^>]*inert=""/g, ""),
         ).not.toContain('inert=""');

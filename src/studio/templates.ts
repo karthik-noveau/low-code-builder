@@ -4,7 +4,7 @@
  * and the business app that takes their orders, bookings and sign-ups. The
  * apps come from src/apps/templates.ts, so a restaurant site and the "Orders &
  * delivery" app template share one definition. Botanical is an online store
- * run by Forma Store; its products are seeded after the site is saved.
+ * run by Skynoveau Store; its products are seeded after the site is saved.
  */
 import { type Project, type TemplateId } from "./model";
 import { upgradeProject } from "../blocks/legacy";
@@ -243,7 +243,7 @@ export function classicProject(
 }
 
 /**
- * Products to add to Forma Store when a site starts from this template, and
+ * Products to add to Skynoveau Store when a site starts from this template, and
  * the store settings that put them on the website. Undefined for templates
  * that don't sell through the store.
  */

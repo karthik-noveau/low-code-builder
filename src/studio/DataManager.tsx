@@ -620,7 +620,7 @@ function SettingsTab({
           <>
             <small>
               {REQUEST_KINDS[c.request.kind].description} Requests arrive in
-              your Inbox once the site is published with Forma.
+              your Inbox once the site is published with Skynoveau.
               {!c.itemPages && " Turn on item pages to show the form."}
             </small>
             <Field

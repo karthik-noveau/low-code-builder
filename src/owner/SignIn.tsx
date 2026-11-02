@@ -31,7 +31,7 @@ export function SignIn({
   );
   const [formError, setFormError] = useState<{ title: string; text: string }>();
   const [busy, setBusy] = useState(false);
-  // Hosted sign-in (AWS) can't take a password here: it goes to Forma's page.
+  // Hosted sign-in (AWS) can't take a password here: it goes to Skynoveau's page.
   const hosted = config.mode === "aws";
 
   const submit = async (event: FormEvent) => {
@@ -151,7 +151,7 @@ export function SignIn({
         </div>
 
         <InlineAlert tone="info" icon="shield">
-          Use the Forma account that manages this shop. There is no
+          Use the Skynoveau account that manages this shop. There is no
           self-registration. Need access? Ask the shop’s owner to add you to the
           website’s team.
         </InlineAlert>

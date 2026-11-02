@@ -204,7 +204,7 @@ function Home() {
               "/enterprise",
               "Built around your requirements",
               "Stores, portals and business apps shaped to how your team works, on your own cloud.",
-              "Forma for enterprises",
+              "Skynoveau for enterprises",
             ],
           ].map(([href, title, text, cta]) => (
             <a className="pub-usecase" href={href} key={href} data-reveal>
@@ -643,7 +643,7 @@ function Pricing() {
               "Portable website files",
               "Your own infrastructure account",
               "Usage-based AWS services",
-              "No required Forma hosting subscription",
+              "No required Skynoveau hosting subscription",
             ].map((item) => (
               <li key={item}>
                 <Icon name="check" size={15} />
@@ -669,7 +669,7 @@ function Pricing() {
             {[
               [
                 "What is available today?",
-                "Forma is a website builder with a connected workspace and a store that uses test payments. There is no paid Forma plan or managed hosting service in this version.",
+                "Skynoveau is a website builder with a connected workspace and a store that uses test payments. There is no paid Skynoveau plan or managed hosting service in this version.",
               ],
               [
                 "What does usage-based mean?",
@@ -702,7 +702,7 @@ function About() {
       <section className="pub-intro">
         <div className="pub-container">
           <span className="pub-eyebrow">
-            <i /> A little about Forma
+            <i /> A little about Skynoveau
           </span>
           <h1>
             The internet could use
@@ -735,10 +735,10 @@ function About() {
               you to become someone else before you can begin.
             </p>
             <p>
-              Forma is built around a simple idea: give people a strong starting
-              point and the room to change it. Thoughtful templates. Tools that
-              stay close to the work. A clear way to move from a draft to
-              something you can share.
+              Skynoveau is built around a simple idea: give people a strong
+              starting point and the room to change it. Thoughtful templates.
+              Tools that stay close to the work. A clear way to move from a
+              draft to something you can share.
             </p>
             <p>
               We care about the small things—the spacing between words, a useful
@@ -943,7 +943,7 @@ function Privacy() {
             <span className="pub-gradient-text">Your data.</span>
           </h1>
           <p className="pub-intro-lead">
-            A practical guide to how this version of Forma handles your
+            A practical guide to how this version of Skynoveau handles your
             information.
           </p>
         </div>
@@ -999,7 +999,7 @@ export function NotFound() {
       <p>The address may have changed. Let's get you somewhere good.</p>
       <div className="pub-hero-actions">
         <a className="pub-btn pub-btn-primary" href="/">
-          Back to Forma <Arrow />
+          Back to Skynoveau <Arrow />
         </a>
         <a className="pub-btn pub-btn-ghost" href="/workspace">
           Your workspace

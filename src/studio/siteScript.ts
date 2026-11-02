@@ -5,7 +5,7 @@ import { hasOrbits } from "../blocks/project";
  * The few things a published page does that CSS can't: remember a visitor's
  * light/dark choice, and pause the moving "orbits" background while it's
  * offscreen or the tab is hidden. Served as part of app.js (published sites
- * only run scripts Forma writes), so it must stand alone and never throw.
+ * only run scripts Skynoveau writes), so it must stand alone and never throw.
  */
 export const SITE_SCRIPT = `;(function () {
   var root = document.querySelector(".website");

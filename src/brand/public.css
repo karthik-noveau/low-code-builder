@@ -1,5 +1,5 @@
 /*
- * Public pages (marketing, help, auth, template preview chrome) on the Forma
+ * Public pages (marketing, help, auth, template preview chrome) on the Skynoveau
  * design system (src/design/system.css): near-black surfaces, big display
  * type, hairline borders, one accent with soft glows. Everything is scoped to
  * `.brand-public` with new `pub-*` classes, so older brand styles don't apply.
@@ -15,7 +15,7 @@ html body .brand-app.brand-public {
   -moz-osx-font-smoothing: grayscale;
 }
 html body .brand-public ::selection {
-  background: rgba(79, 124, 255, 0.4);
+  background: rgba(124, 108, 255, 0.4);
   color: #fff;
 }
 html
@@ -111,7 +111,7 @@ html body .brand-public .pub-btn-accent {
   color: #fff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 8px 24px -8px rgba(79, 124, 255, 0.7);
+    0 8px 24px -8px rgba(124, 108, 255, 0.7);
 }
 html body .brand-public .pub-btn-accent:hover {
   background: var(--fx-accent-hover);
@@ -168,7 +168,7 @@ html body .brand-public .pub-eyebrow > i {
   height: 7px;
   border-radius: 50%;
   background: var(--fx-accent);
-  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.25);
 }
 html body .brand-public .pub-label {
   display: block;
@@ -179,7 +179,7 @@ html body .brand-public .pub-label {
   letter-spacing: -0.005em;
 }
 html body .brand-public .pub-gradient-text {
-  background: linear-gradient(100deg, #2f5ae0 0%, #6b4fe0 60%, #9b5cf6 100%);
+  background: linear-gradient(100deg, #4836d6 0%, #6b4fe0 60%, #9b5cf6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -304,7 +304,7 @@ html body .brand-public .pub-hero::before {
   background:
     radial-gradient(
       50% 60% at 50% 0%,
-      rgba(79, 124, 255, 0.22),
+      rgba(124, 108, 255, 0.22),
       transparent 70%
     ),
     radial-gradient(
@@ -591,7 +591,7 @@ html body .brand-public .pub-capability-icon {
   border-radius: 12px;
   background: var(--fx-accent-soft);
   color: var(--fx-accent-text);
-  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(124, 108, 255, 0.25);
 }
 html body .brand-public .pub-capability h2,
 html body .brand-public .pub-capability h3 {
@@ -810,7 +810,7 @@ html body .brand-public .pub-cta {
   background:
     radial-gradient(
       60% 80% at 50% 0%,
-      rgba(79, 124, 255, 0.28),
+      rgba(124, 108, 255, 0.28),
       transparent 70%
     ),
     var(--fx-surface);
@@ -912,7 +912,7 @@ html body .brand-public .pub-intro::before {
   z-index: -1;
   background: radial-gradient(
     45% 60% at 30% 0%,
-    rgba(79, 124, 255, 0.16),
+    rgba(124, 108, 255, 0.16),
     transparent 70%
   );
   pointer-events: none;
@@ -1093,7 +1093,7 @@ html body .brand-public .pub-demo {
   background:
     radial-gradient(
       70% 60% at 100% 0%,
-      rgba(79, 124, 255, 0.14),
+      rgba(124, 108, 255, 0.14),
       transparent 70%
     ),
     var(--fx-surface);
@@ -1173,7 +1173,7 @@ html body .brand-public .pub-outline b {
 }
 html body .brand-public .pub-outline b:first-of-type {
   background: var(--fx-accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(124, 108, 255, 0.3);
 }
 html body .brand-public .pub-outline b em {
   color: var(--fx-muted);
@@ -1276,11 +1276,11 @@ html body .brand-public .pub-price.is-featured {
   background:
     radial-gradient(
       80% 60% at 50% 0%,
-      rgba(79, 124, 255, 0.2),
+      rgba(124, 108, 255, 0.2),
       transparent 70%
     ),
     var(--fx-surface);
-  box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(124, 108, 255, 0.45);
 }
 html body .brand-public .pub-price h2 {
   font-size: 22px;
@@ -1585,7 +1585,7 @@ html body .brand-public .pub-article-cta {
   background:
     radial-gradient(
       60% 100% at 100% 0%,
-      rgba(79, 124, 255, 0.2),
+      rgba(124, 108, 255, 0.2),
       transparent 70%
     ),
     var(--fx-surface);
@@ -1660,7 +1660,7 @@ html body .brand-public .pub-auth-story {
   background:
     radial-gradient(
       70% 50% at 20% 0%,
-      rgba(79, 124, 255, 0.24),
+      rgba(124, 108, 255, 0.24),
       transparent 70%
     ),
     radial-gradient(

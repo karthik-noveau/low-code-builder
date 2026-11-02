@@ -173,7 +173,7 @@ describe("customers", () => {
   });
 });
 
-it("still reads Forma's own product template", () => {
+it("still reads Skynoveau's own product template", () => {
   const parsed = parseExport(
     csv([
       "title,description,collection,image,status,variant,sku,price,stock",
