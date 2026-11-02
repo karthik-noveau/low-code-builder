@@ -295,14 +295,13 @@ export function AppShell({
           )}
           {link("templates", "/workspace/templates", "panel", "Templates")}
           {link(null, "/editor", "edit", "Browser draft")}
-          <p className="dashboard-nav-label">Growth</p>
+          <p className="dashboard-nav-label">This website</p>
           {link(
             "insights",
             `/insights${current ? `?site=${encodeURIComponent(current)}` : ""}`,
             "chart",
             "Insights",
           )}
-          <p className="dashboard-nav-label">App</p>
           {appNav
             ? appNav.items.map((item) => (
                 <a

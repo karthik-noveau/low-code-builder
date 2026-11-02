@@ -121,11 +121,14 @@ function SearchRow({
   placeholder,
   value,
   onChange,
+  children,
 }: {
   label: string;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
+  /** The list's own actions, on the right of the search. */
+  children?: ReactNode;
 }) {
   return (
     <div className="commerce-index-search">
@@ -136,6 +139,7 @@ function SearchRow({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
+      {children && <div className="commerce-index-actions">{children}</div>}
     </div>
   );
 }
@@ -928,6 +932,47 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           )}
         </>
       );
+    // Export, import and add: on the catalog's search row, or alone when it's empty.
+    const productActions = (
+      <>
+        <button
+          className="commerce-button secondary"
+          onClick={() => exportProducts()}
+        >
+          <Icon name="download" size={14} />
+          Export
+        </button>
+        {canEdit && (
+          <label
+            className="commerce-button secondary commerce-import"
+            aria-disabled={busy || undefined}
+            title={`Shopify or Wix product exports work as they are. Forma's own columns: ${PRODUCT_COLUMNS.join(", ")} (one row per variant).`}
+          >
+            <Icon name="upload" size={14} />
+            {busy ? "Importing…" : "Import"}
+            <input
+              aria-label="Import products CSV"
+              type="file"
+              accept=".csv,text/csv"
+              disabled={busy}
+              onChange={(e) => {
+                void importProducts(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+        {canEdit && (
+          <button
+            className="commerce-button"
+            onClick={() => setEditingProduct("new")}
+          >
+            <Icon name="plus" size={14} />
+            Add product
+          </button>
+        )}
+      </>
+    );
     if (section === "Products")
       return editingProduct ? (
         <ProductEditor
@@ -943,55 +988,8 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         />
       ) : (
         <>
-          <div className="commerce-toolbar is-actions">
-            <div className="commerce-actions">
-              <button
-                className="commerce-button secondary"
-                onClick={() => exportProducts()}
-              >
-                Export CSV
-              </button>
-              {canEdit && (
-                <label
-                  className="commerce-button secondary commerce-import"
-                  aria-disabled={busy || undefined}
-                >
-                  {busy ? "Importing…" : "Import CSV"}
-                  <input
-                    aria-label="Import products CSV"
-                    type="file"
-                    accept=".csv,text/csv"
-                    disabled={busy}
-                    onChange={(e) => {
-                      void importProducts(e.target.files?.[0]);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              )}
-              {canEdit && (
-                <button
-                  className="commerce-button"
-                  onClick={() => setEditingProduct("new")}
-                >
-                  + Add product
-                </button>
-              )}
-            </div>
-          </div>
-          {canEdit && (
-            <p className="commerce-hint commerce-import-hint">
-              Import a Shopify or Wix product export as it is, or Forma’s
-              columns: {PRODUCT_COLUMNS.join(", ")} (one row per variant).
-              Moving a whole store?{" "}
-              <button
-                className="commerce-link"
-                onClick={() => go("Import & migrate")}
-              >
-                Use Import &amp; migrate
-              </button>
-              .
-            </p>
+          {!data.products.length && canEdit && (
+            <div className="commerce-toolbar is-actions">{productActions}</div>
           )}
           {!data.products.length ? (
             <Empty icon="store" title="Your catalog starts here">
@@ -1001,10 +999,10 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </p>
               {canEdit && (
                 <button
-                  className="commerce-button"
-                  onClick={() => setEditingProduct("new")}
+                  className="commerce-button secondary"
+                  onClick={() => go("Import & migrate")}
                 >
-                  Add product
+                  Move from Shopify or Wix
                 </button>
               )}
             </Empty>
@@ -1015,7 +1013,9 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 placeholder="Search products, collections, or SKUs"
                 value={search}
                 onChange={setSearch}
-              />
+              >
+                {productActions}
+              </SearchRow>
               {!filteredProducts.length && (
                 <p className="commerce-index-empty">
                   No products match “{search}”.
@@ -1352,16 +1352,6 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         </>
       ) : (
         <>
-          {!!data.orders.length && (
-            <div className="commerce-toolbar is-actions">
-              <button
-                className="commerce-button secondary"
-                onClick={() => exportOrders(data.orders)}
-              >
-                Export orders
-              </button>
-            </div>
-          )}
           {!data.orders.length ? (
             <Empty icon="checklist" title="Ready for your first order">
               <p>
@@ -1384,7 +1374,15 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
                 placeholder="Search order or customer"
                 value={search}
                 onChange={setSearch}
-              />
+              >
+                <button
+                  className="commerce-button secondary"
+                  onClick={() => exportOrders(data.orders)}
+                >
+                  <Icon name="download" size={14} />
+                  Export
+                </button>
+              </SearchRow>
               <div
                 className="commerce-chips"
                 role="group"

@@ -149,10 +149,29 @@ export function InsightsPage({ siteId }: { siteId: string }) {
             </div>
           }
         />
-        {!siteId && (
-          <div className="commerce-notice">
-            Open Insights from one of your websites.
-          </div>
+        {!session.loading && !session.account && (
+          <section className="commerce-panel commerce-empty insights-gate">
+            <span className="insights-gate-icon">
+              <Icon name="chart" size={20} />
+            </span>
+            <h2>Sign in to see your insights</h2>
+            <p>Visits, sources and sales are private to your workspace.</p>
+            <a className="commerce-button" href="/login">
+              Sign in
+            </a>
+          </section>
+        )}
+        {session.account && !siteId && (
+          <section className="commerce-panel commerce-empty insights-gate">
+            <span className="insights-gate-icon">
+              <Icon name="chart" size={20} />
+            </span>
+            <h2>Pick a website</h2>
+            <p>Each website has its own visitors, sources and sales.</p>
+            <a className="commerce-button" href="/workspace">
+              Your websites
+            </a>
+          </section>
         )}
         {error && (
           <div className="commerce-notice error" role="alert">
@@ -375,8 +394,16 @@ export function InsightsPage({ siteId }: { siteId: string }) {
             <LinkBuilder siteId={siteId} />
           </div>
         )}
-        {loading && !data && !error && (
-          <p className="commerce-muted">Loading insights…</p>
+        {loading && !data && !error && session.account && siteId && (
+          <div className="insights-skeleton" role="status">
+            <span className="sr-only">Loading insights…</span>
+            <i className="is-strip" />
+            <div>
+              <i />
+              <i />
+            </div>
+            <i className="is-wide" />
+          </div>
         )}
       </div>
     </AppShell>
@@ -478,7 +505,9 @@ function Kpi({
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{note}</small>
-      {trend && trend.length > 1 && <Sparkline values={trend} />}
+      {trend && trend.filter(Boolean).length > 1 && (
+        <Sparkline values={trend} />
+      )}
     </div>
   );
 }

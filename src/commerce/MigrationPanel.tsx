@@ -44,7 +44,7 @@ const GUIDES: Record<
   csv: {
     name: "Spreadsheet",
     products: [
-      "Export a product template from Products → Export CSV.",
+      "Export a product template from Products → Export.",
       "Fill one row per variant: title, description, collection, image, status, variant, sku, price, stock.",
       "Drop the file here.",
     ],

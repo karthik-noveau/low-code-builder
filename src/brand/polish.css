@@ -701,3 +701,106 @@ html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
 html body .admin-ui .brand-button.ns-create:hover:not(:disabled) {
   background: var(--fx-accent-hover);
 }
+
+/* ---------- Rhythm: one spacing scale for the shell and lists ---------- */
+/* Sidebar groups: equal space above every label, rows on a 32px beat. */
+html body .admin-ui .dashboard-sidebar > nav {
+  gap: 1px;
+}
+html body .admin-ui .dashboard-nav-label {
+  margin: 16px 10px 6px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--fx-faint);
+}
+html body .admin-ui .dashboard-nav-label:first-child {
+  margin-top: 4px;
+}
+html body .admin-ui .dashboard-sidebar-bottom {
+  padding-top: 12px;
+  border-top: 1px solid var(--fx-border);
+  margin-top: auto;
+}
+html body .admin-ui .dashboard-sidebar > nav {
+  padding-bottom: 12px;
+}
+
+/* Heading actions sit level with the title block, not its last line
+   (phones stack the heading on the left edge instead). */
+@media (min-width: 561px) {
+  html body .admin-ui .dashboard-heading {
+    align-items: center;
+  }
+}
+html body .admin-ui .dashboard-heading-actions .commerce-badge {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--fx-surface-2);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  color: var(--fx-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* A list's actions share its search row instead of floating above it. */
+html body .admin-ui .commerce-index-search {
+  gap: 12px;
+}
+html body .admin-ui .commerce-index-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+html body .admin-ui .commerce-index-actions .commerce-button {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  border-radius: 8px;
+}
+@media (max-width: 720px) {
+  html body .admin-ui .commerce-index-search {
+    flex-wrap: wrap;
+  }
+  html body .admin-ui .commerce-index-search > input {
+    max-width: none;
+  }
+  html body .admin-ui .commerce-index-search > svg {
+    top: 20px;
+  }
+  html body .admin-ui .commerce-index-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  html body .admin-ui .commerce-index-actions > * {
+    flex: 1;
+  }
+}
+
+/* Row actions (Edit, View) line up on the table's right edge. */
+html
+  body
+  .admin-ui
+  .commerce-table
+  td:last-child:has(> .commerce-link:only-child),
+html
+  body
+  .admin-ui
+  .commerce-table
+  td:last-child:has(> .commerce-button:only-child) {
+  text-align: right;
+}
+
+/* Checklist rows: the check, the title and "Open" share one centre line. */
+html body .admin-ui .admin-setup li:not(.is-next) {
+  align-items: center;
+}
+html body .admin-ui .admin-setup li:not(.is-next) .admin-setup-check {
+  margin-top: 0;
+}
+html body .admin-ui .admin-setup li > .commerce-link {
+  padding: 4px 0;
+}
