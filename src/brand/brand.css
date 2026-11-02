@@ -1,3 +1,5 @@
+@import "@fontsource-variable/inter-tight/wght.css";
+
 .brand-app {
   --brand-ink: var(--ui-ink);
   --brand-paper: var(--ui-canvas);
@@ -70,11 +72,57 @@
   line-height: 0.85;
   white-space: nowrap;
 }
-/* "Builder" names the product beside the company wordmark: lighter, same ink. */
-.brand-wordmark-product {
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  opacity: 0.62;
+/* The company S takes the text colour, like the Skynoveau site's logo. */
+html body .brand-mark-s {
+  fill: currentColor;
+}
+/* The name rolls like a cube between "Skynoveau" and "Builder", forever. Inter Tight 540 with
+   -1.2% tracking is the company wordmark's own setting. */
+.brand-flip {
+  display: inline-grid;
+  perspective: 20em;
+}
+html body .brand-lockup .brand-flip-face {
+  grid-area: 1 / 1;
+  font-family: "Inter Tight Variable", "Inter Variable", sans-serif;
+  font-weight: 540;
+  letter-spacing: -0.012em;
+  line-height: 1.15;
+  backface-visibility: hidden;
+  transform-origin: 50% 50% -0.55em;
+  animation: brand-flip 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+html body .brand-lockup .brand-flip-face + .brand-flip-face {
+  animation-delay: -3s;
+}
+@keyframes brand-flip {
+  0%,
+  42% {
+    opacity: 1;
+    transform: rotateX(0);
+  }
+  50% {
+    opacity: 0;
+    transform: rotateX(90deg);
+  }
+  50.01%,
+  92% {
+    opacity: 0;
+    transform: rotateX(-90deg);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-flip {
+    display: inline-flex;
+    gap: 0.25em;
+  }
+  html body .brand-lockup .brand-flip-face {
+    animation: none;
+  }
 }
 .brand-period {
   color: inherit;
