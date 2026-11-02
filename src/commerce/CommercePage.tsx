@@ -1605,12 +1605,30 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
           onSave={(input) => perform("content", input, "Article saved.")}
           onCancel={() => setEditingContent(undefined)}
         />
+      ) : !data.content.length ? (
+        <Empty icon="edit" title="No articles yet">
+          <p>
+            Share your first story with customers. Published articles appear in
+            your storefront journal.
+          </p>
+          {canEdit && (
+            <button
+              className="commerce-button"
+              onClick={() => setEditingContent("new")}
+            >
+              + Write an article
+            </button>
+          )}
+        </Empty>
       ) : (
-        <>
-          <div className="commerce-toolbar">
-            <p className="commerce-muted">
-              Published articles appear in your storefront journal.
-            </p>
+        <div className="commerce-panel">
+          <div className="commerce-toolbar commerce-card-head">
+            <div>
+              <h2>Articles</h2>
+              <p className="commerce-muted">
+                Published articles appear in your storefront journal.
+              </p>
+            </div>
             {canEdit && (
               <button
                 className="commerce-button"
@@ -1620,53 +1638,48 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
               </button>
             )}
           </div>
-          <div className="commerce-panel">
-            <Table headings={["Article", "Link", "Status", ""]}>
-              {data.content.map((entry) => (
-                <tr key={entry.id}>
-                  <td>
-                    <strong>{entry.title}</strong>
-                    <small>{date(entry.updatedAt)}</small>
-                  </td>
-                  <td>
-                    {entry.status === "published" ? (
-                      <a
-                        className="commerce-link"
-                        href={`/store?site=${siteId}&story=${entry.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {entry.slug}
-                      </a>
-                    ) : (
-                      entry.slug
-                    )}
-                  </td>
-                  <td>
-                    <span className="commerce-badge">
-                      {statusLabel(entry.status)}
-                    </span>
-                  </td>
-                  <td>
-                    {canEdit && (
-                      <button
-                        className="commerce-link"
-                        onClick={() => setEditingContent(entry)}
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </Table>
-            {!data.content.length && (
-              <p className="commerce-muted">
-                Share your first story with customers.
-              </p>
-            )}
-          </div>
-        </>
+          <Table headings={["Article", "Link", "Status", ""]}>
+            {data.content.map((entry) => (
+              <tr key={entry.id}>
+                <td>
+                  <strong>{entry.title}</strong>
+                  <small>{date(entry.updatedAt)}</small>
+                </td>
+                <td>
+                  {entry.status === "published" ? (
+                    <a
+                      className="commerce-link"
+                      href={`/store?site=${siteId}&story=${entry.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {entry.slug}
+                    </a>
+                  ) : (
+                    entry.slug
+                  )}
+                </td>
+                <td>
+                  <span
+                    className={`commerce-badge ${entry.status === "published" ? "" : "neutral"}`}
+                  >
+                    {statusLabel(entry.status)}
+                  </span>
+                </td>
+                <td>
+                  {canEdit && (
+                    <button
+                      className="commerce-link"
+                      onClick={() => setEditingContent(entry)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        </div>
       );
     if (section === "Inbox")
       return (
@@ -2247,7 +2260,7 @@ export function CommercePage({ initialSiteId }: { initialSiteId: string }) {
         if (match) go(match);
       }}
     >
-      <div className="commerce-app commerce-embedded">
+      <div className="commerce-app commerce-embedded" data-section={section}>
         <nav className="commerce-tabs" aria-label="Store sections">
           {sectionButtons(true)}
         </nav>

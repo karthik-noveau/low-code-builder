@@ -847,6 +847,7 @@
 }
 .ow-cardActions {
   display: flex;
+  margin-left: auto;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
@@ -1059,15 +1060,10 @@
   appearance: none;
   padding-right: var(--space-8);
   cursor: pointer;
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    right 18px center,
-    right 13px center;
-  background-size:
-    5px 5px,
-    5px 5px;
+  /* A thin chevron in a mid grey that reads on both themes. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238b8f98' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 4.5 3 3 3-3'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-size: 12px 12px;
   background-repeat: no-repeat;
 }
 .ow-selectCompact {
@@ -1157,6 +1153,14 @@
 }
 .ow-searchBox .ow-input {
   padding-left: var(--space-8);
+}
+.ow-cardActions .ow-searchBox {
+  min-width: 300px;
+}
+/* Page actions share one height, whatever size the page asked for. */
+.ow-pageHeader .ow-btn-sm {
+  height: var(--control-height);
+  padding: 0 var(--space-4);
 }
 .ow-switch {
   display: flex;
@@ -2250,8 +2254,38 @@
     justify-content: flex-start;
     flex-wrap: wrap;
   }
+  /* Row actions get the card's full width instead of a squeezed column. */
+  .ow-tableStack td:has(> .ow-rowActions)::before {
+    display: none;
+  }
+  .ow-tableStack td > .ow-rowActions {
+    flex: 1;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+  .ow-tableStack
+    td
+    > .ow-rowActions
+    > .ow-btn:not(.ow-btn-icon, .ow-btn-iconSm) {
+    flex: 1;
+  }
   .ow-searchBox {
     max-width: none;
+  }
+  .ow-toolbar > .ow-searchBox,
+  .ow-cardActions:has(.ow-searchBox),
+  .ow-cardActions .ow-searchBox {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .ow-toolbar > .ow-select,
+  .ow-cardActions > .ow-select {
+    flex: 1 1 100%;
+    width: 100%;
+    text-align: left;
+  }
+  .ow-toolbar > .ow-spacer {
+    display: none;
   }
 }
 @media (max-width: 640px) {
@@ -2263,6 +2297,36 @@
   }
   .ow-statValue {
     font-size: var(--text-2xl);
+  }
+  /* Header text gets the full row; the actions sit under it. */
+  .ow-pageHeaderText {
+    flex-basis: 100%;
+  }
+  .ow-pageHeader > .ow-btnGroup {
+    width: 100%;
+  }
+  .ow-pageHeader > .ow-btnGroup > .ow-btn {
+    flex: 1;
+  }
+  /* Two figures per row on a phone, so the dashboard isn't four screens of cards. */
+  .ow-statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .ow-statGrid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .ow-stat {
+    padding: var(--space-4);
+  }
+  .ow-statIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+  }
+  .ow-statTop {
+    align-items: flex-start;
+    margin-bottom: var(--space-2);
   }
   .ow-drawer {
     width: 100%;

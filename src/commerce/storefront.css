@@ -38,6 +38,7 @@
 }
 .storefront .store-sandbox {
   padding: 8px 16px;
+  border: 0;
   background: var(--s-text);
   color: #fff;
   font-size: var(--fx-text-xs);
@@ -54,10 +55,20 @@
   gap: var(--fx-4);
   margin: 0 calc(-1 * clamp(16px, 4vw, 48px));
   padding: 18px clamp(16px, 4vw, 48px);
-  border-bottom: 1px solid var(--s-border);
+  border-bottom: 0;
   /* Nearly solid, so the links stay readable over photos scrolling under. */
   background: color-mix(in srgb, var(--s-bg) 95%, transparent);
   backdrop-filter: saturate(1.6) blur(14px);
+}
+/* The rule lines up with the content edges, like the footer's. */
+.storefront .store-header::after {
+  content: "";
+  position: absolute;
+  right: clamp(16px, 4vw, 48px);
+  bottom: 0;
+  left: clamp(16px, 4vw, 48px);
+  height: 1px;
+  background: var(--s-border);
 }
 .storefront .store-logo {
   font-size: 20px;
@@ -86,7 +97,7 @@
   color: var(--s-text);
   background: var(--s-surface);
 }
-.storefront .store-cart-button {
+.storefront .store-nav > .store-cart-button {
   margin-left: var(--fx-2);
   height: 38px;
   padding: 0 16px;
@@ -100,7 +111,7 @@
   cursor: pointer;
   transition: opacity 150ms ease;
 }
-.storefront .store-cart-button:hover {
+.storefront .store-nav > .store-cart-button:hover {
   opacity: 0.86;
 }
 
@@ -274,7 +285,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--fx-8);
-  padding: clamp(48px, 9vw, 112px) 0 clamp(32px, 5vw, 56px);
+  padding: clamp(40px, 7vw, 88px) 0 clamp(32px, 4vw, 48px);
   border: 0;
 }
 .storefront .store-hero h1 {
@@ -417,7 +428,9 @@
   font-size: 72px;
 }
 .storefront .store-product-body {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 6px;
   padding: 0;
 }
@@ -455,14 +468,17 @@
 }
 .storefront .store-add {
   width: 100%;
-  margin-top: var(--fx-2);
+  margin-top: auto;
   min-height: 44px;
+}
+.storefront .store-product-body > :nth-last-child(2) {
+  margin-bottom: var(--fx-2);
 }
 
 /* Inner pages (cart, checkout, receipt, journal, contact, account). */
 .storefront .store-cart {
-  max-width: 1080px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: clamp(32px, 6vw, 72px) 0 var(--fx-16);
 }
 .storefront .store-cart > h1 {
@@ -695,6 +711,7 @@
 /* Account. */
 .storefront .store-account {
   max-width: 760px;
+  margin: 0 auto;
   display: grid;
   gap: var(--fx-5);
 }
@@ -752,6 +769,7 @@
   display: block;
   overflow: hidden;
   border-radius: var(--s-radius);
+  text-decoration: none;
 }
 .storefront .store-product-title h2 a {
   color: inherit;

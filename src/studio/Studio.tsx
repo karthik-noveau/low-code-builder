@@ -1542,7 +1542,6 @@ export function Studio({ initialSiteId }: { initialSiteId?: string } = {}) {
                 placeholder="Search saved sections…"
                 aria-label="Search saved sections"
               />
-              <kbd>⌕</kbd>
             </label>
             {/* New sections come from the Add panel (prebuilt blocks sections). */}
             <button

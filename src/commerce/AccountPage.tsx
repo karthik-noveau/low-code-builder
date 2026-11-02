@@ -4,6 +4,7 @@ import { request } from "../cloud/client";
 import { Brand } from "../brand/Brand";
 import { AppShell, PageHeading } from "../brand/AppShell";
 import "./commerce.css";
+import "../brand/public.css";
 
 export function AccountPage() {
   const session = useSession();
@@ -269,26 +270,31 @@ export function AccountPage() {
         </div>
       </AppShell>
     );
+  // Signed out (reset and recovery), it wears the login page's frame.
   return (
-    <div className="commerce-app">
-      <div className="store-shell">
-        <header className="store-header">
+    <div className="brand-app brand-public pub-recovery">
+      <main className="pub-auth-main" id="main">
+        <div className="pub-auth-top">
           <a href="/workspace" aria-label="Forma workspace">
             <Brand />
           </a>
-          <a href="/workspace">Back to workspace</a>
-        </header>
-        <main className="store-cart">
-          <h1>
+          <a href="/workspace">← Back to workspace</a>
+        </div>
+        <div className="pub-auth-card commerce-app commerce-embedded">
+          <h2>
             {reset
               ? "Reset your password"
               : forgot
                 ? "Forgot your password?"
                 : "Account settings"}
-          </h1>
+          </h2>
           {content}
-        </main>
-      </div>
+        </div>
+        <footer>
+          <span>© {new Date().getFullYear()} Forma</span>
+          <a href="/help">Need a hand?</a>
+        </footer>
+      </main>
     </div>
   );
 }

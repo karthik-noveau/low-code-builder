@@ -530,7 +530,7 @@ export function AppPage({ siteId: initialSiteId }: { siteId: string }) {
     if (table)
       return adding ? (
         <section
-          className="commerce-panel"
+          className="commerce-panel app-panel-form"
           aria-label={`Add ${table.singular.toLowerCase()}`}
         >
           <h2>Add {table.singular.toLowerCase()}</h2>

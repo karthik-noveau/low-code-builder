@@ -1,9 +1,15 @@
 /* App builder (editor only). Shares the Data window's layout: see data.css. */
+/* The modal leaves padding to its content; line up with its header. */
 .app-builder {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 14px;
+  min-height: 0;
+  padding: 16px 24px 24px;
+}
+.studio-modal > .app-gallery {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
 }
 .app-builder-bar {
   display: flex;
@@ -143,10 +149,20 @@
 .app-field-row input,
 .app-status-row input {
   flex: 1;
-  min-width: 140px;
+  min-width: 120px;
 }
 .app-field-row select {
-  width: 150px;
+  width: 140px;
+}
+/* The studio's own field sizes would make the selects taller than the names. */
+.studio
+  .studio-modal
+  .app-builder
+  :is(.app-field-row, .app-status-row, .app-limit, .app-place)
+  :is(input, select) {
+  height: 34px;
+  min-height: 34px;
+  padding-block: 0;
 }
 .app-field-badges {
   display: flex;

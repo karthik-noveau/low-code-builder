@@ -107,11 +107,17 @@
   flex: 1;
   margin: 0;
 }
-.domain-add input {
+/* The field and its button share one height. */
+html body .admin-ui .domain-add input {
   min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 12px;
 }
-.domain-add .brand-button {
-  min-height: 48px;
+html body .admin-ui .domain-add .brand-button {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
 }
 .domain-small,
 .domain-panel > .domain-small {
@@ -585,5 +591,24 @@
   }
   .brand-page-domains .domain-publishing {
     display: block;
+  }
+}
+
+/* Phones: the five steps as a two-column checklist; connector lines only
+   make sense on one row. */
+@media (max-width: 600px) {
+  html body .admin-ui ol.domain-steps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 14px 16px;
+    overflow: visible;
+  }
+  html body .admin-ui ol.domain-steps li {
+    min-width: 0;
+    white-space: normal;
+  }
+  html body .admin-ui ol.domain-steps li:not(:last-child)::after {
+    content: none;
   }
 }

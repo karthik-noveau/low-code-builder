@@ -79,6 +79,7 @@ export function MarketsEditor({
         <label className="commerce-check">
           <input
             type="checkbox"
+            role="switch"
             checked={draft.enabled}
             onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
           />{" "}
@@ -87,6 +88,7 @@ export function MarketsEditor({
         <label className="commerce-check wide">
           <input
             type="checkbox"
+            role="switch"
             checked={draft.linkFromWebsite || false}
             onChange={(e) =>
               setDraft({ ...draft, linkFromWebsite: e.target.checked })
@@ -97,6 +99,7 @@ export function MarketsEditor({
         <label className="commerce-check wide">
           <input
             type="checkbox"
+            role="switch"
             checked={draft.useCatalogOnWebsite || false}
             onChange={(e) =>
               setDraft({ ...draft, useCatalogOnWebsite: e.target.checked })

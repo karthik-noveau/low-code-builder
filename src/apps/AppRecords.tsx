@@ -397,7 +397,16 @@ export function AppRecords({
                     "Name"}
                 </th>
                 {columns.map((f) => (
-                  <th key={f.id}>{f.name}</th>
+                  <th
+                    key={f.id}
+                    className={
+                      f.type === "money" || f.type === "number"
+                        ? "app-num"
+                        : undefined
+                    }
+                  >
+                    {f.name}
+                  </th>
                 ))}
                 {totals.map((t) => (
                   <th key={t.id} className="app-num">

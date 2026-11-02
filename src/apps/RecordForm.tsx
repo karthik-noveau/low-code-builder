@@ -117,6 +117,7 @@ export function FieldInput({
         <label className="commerce-check">
           <input
             type="checkbox"
+            role="switch"
             {...common}
             checked={value === true}
             onChange={(e) => onChange(e.target.checked)}

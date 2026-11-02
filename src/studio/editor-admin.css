@@ -286,3 +286,428 @@ html body .studio.canvas-first,
 html body .studio.canvas-first * {
   scrollbar-color: var(--fx-surface-3) transparent;
 }
+
+/* ── Finish: one density for every editor panel and dialog ──────────────
+   The right drawer (Settings, Site styles, Media) matches the inspector:
+   16px gutters, 12px labels, 32px fields, 34px buttons, one segmented look. */
+html body .studio.canvas-first .site-navigator .navigator-title {
+  padding: 0 16px;
+}
+
+html body .studio.canvas-first .context-drawer .left-heading {
+  padding: 0 12px 0 16px;
+}
+html body .studio.canvas-first .context-drawer .left-heading h2 {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+html body .studio.canvas-first .context-drawer .panel-content {
+  padding: 16px 16px 24px;
+}
+html body .studio.canvas-first .context-drawer .panel-description {
+  margin: 0 0 16px;
+  color: var(--e-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+html body .studio.canvas-first .context-drawer .eyebrow-label {
+  margin: 0 0 12px;
+  color: var(--e-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+html body .studio.canvas-first .context-drawer .panel-divider {
+  margin: 20px 0;
+  background: var(--fx-border);
+}
+html body .studio.canvas-first .context-drawer .muted-note {
+  color: var(--e-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+html body .studio.canvas-first .context-drawer .field {
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 550;
+}
+html body .studio.canvas-first .context-drawer .field label,
+html body .studio.canvas-first .context-drawer .theme-choice > .field {
+  color: var(--e-text);
+  font-size: 12px;
+  font-weight: 550;
+}
+html
+  body
+  .studio.canvas-first
+  .context-drawer
+  .field
+  :is(
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="range"],
+      [type="color"],
+      [type="file"]
+    ),
+    select
+  ) {
+  min-height: 32px;
+  padding-block: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+html body .studio.canvas-first .context-drawer .field textarea {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+html body .studio.canvas-first .context-drawer .seo-subhead,
+html body .studio.canvas-first .context-drawer .online-payments strong {
+  color: var(--e-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+html body .studio.canvas-first .context-drawer .seo-toggle label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* Secondary buttons: one height, weight and radius everywhere. */
+html
+  body
+  .studio.canvas-first
+  :is(.context-drawer, .studio-modal, .site-navigator)
+  .subtle-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--e-text);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.2;
+  text-decoration: none;
+}
+html
+  body
+  .studio.canvas-first
+  :is(.context-drawer, .studio-modal, .site-navigator)
+  .subtle-button
+  svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+html body .studio.canvas-first .share-image-row .subtle-button {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+html body .studio.canvas-first .share-image-row :is(img, .share-image-empty) {
+  height: 32px;
+  border-color: var(--fx-border-strong);
+  border-radius: 8px;
+}
+
+/* A disabled primary reads as unavailable, not as a faded brand colour. */
+html body .studio.canvas-first .primary-button:disabled {
+  background: var(--fx-surface-2);
+  color: var(--fx-faint);
+  box-shadow: inset 0 0 0 1px var(--fx-border);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Segmented controls: the inspector's track with a raised chip, everywhere. */
+html body .studio.canvas-first .segmented {
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fx-surface-2);
+}
+html body .studio.canvas-first .segmented button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--e-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: none;
+}
+html body .studio.canvas-first .segmented button:hover {
+  color: var(--e-ink);
+}
+html
+  body
+  .studio.canvas-first
+  .segmented
+  :is(
+    button.chosen,
+    button.active,
+    button[aria-checked="true"],
+    button[aria-pressed="true"]
+  ) {
+  background: var(--fx-bg-raised);
+  color: var(--e-ink);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 10%),
+    0 0 0 1px var(--fx-border);
+}
+html body .studio.canvas-first .segmented button:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 1px;
+}
+
+/* Notes: icon beside the text, not stacked above it. */
+html body .studio.canvas-first .info-card {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+  color: var(--e-muted);
+}
+html body .studio.canvas-first .info-card > svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+html body .studio.canvas-first .info-card p {
+  margin: 0;
+  color: var(--e-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Inspector footer: delete on the left, the other actions grouped right. */
+html body .studio.canvas-first .inspector-bottom {
+  gap: 2px;
+  background: var(--e-surface);
+}
+html body .studio.canvas-first .inspector-bottom .danger-text {
+  margin-right: auto;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+/* Wide dialogs whose body had no gutters (Data, App). */
+html body .studio.canvas-first .studio-modal > .data-manager {
+  padding: 20px 24px 24px;
+  min-height: 0;
+}
+html body .studio.canvas-first .data-manager .data-main {
+  padding-right: 0;
+}
+html body .studio.canvas-first .data-main h3,
+html
+  body
+  .studio.canvas-first
+  .studio-modal
+  > :is(.app-gallery, .app-new-form)
+  h3 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+html body .studio.canvas-first .data-blueprints > .data-note {
+  margin: 4px 0 16px;
+  font-size: 13px;
+}
+html body .studio.canvas-first .data-blueprints > .data-import {
+  margin-top: 10px;
+}
+html body .studio.canvas-first .data-blueprint-grid button,
+html body .studio.canvas-first .data-import,
+html body .studio.canvas-first .app-template {
+  border-color: var(--fx-border);
+  border-radius: 12px;
+}
+/* The App gallery was taller than the dialog with no way to scroll. */
+html
+  body
+  .studio.canvas-first
+  .studio-modal
+  > :is(.app-gallery, .app-new-form) {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  gap: 4px;
+}
+html body .studio.canvas-first .studio-modal > .app-gallery > .data-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+/* Publish confirmation: a compact action row instead of a tall empty body. */
+html body .studio.canvas-first .studio-modal:not(.wide) > .cloud-workspace {
+  padding: 16px 24px 20px;
+}
+html
+  body
+  .studio.canvas-first
+  .studio-modal:not(.wide)
+  > .cloud-workspace
+  > .cloud-actions {
+  align-items: center;
+  margin: 0;
+}
+html body .studio.canvas-first .studio-modal .cloud-actions > button {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+html
+  body
+  .studio.canvas-first
+  .studio-modal
+  .cloud-actions
+  > .cloud-text-button {
+  /* A quiet way out on the left; Cancel and Publish now on the right. */
+  margin-right: auto;
+  padding: 0 4px;
+  color: var(--e-muted);
+}
+html
+  body
+  .studio.canvas-first
+  .studio-modal
+  .cloud-actions
+  > .cloud-text-button:hover {
+  background: none;
+  color: var(--e-ink);
+}
+
+/* Empty states: the workspace's icon tile. */
+html body .studio.canvas-first .inbox-empty > svg {
+  box-sizing: content-box;
+  padding: 12px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text, var(--fx-accent));
+}
+html body .studio.canvas-first .data-blueprint-grid span,
+html body .studio.canvas-first .data-import small {
+  font-size: 12.5px;
+}
+html body .studio.canvas-first .app-template :is(button, a.primary-button) {
+  min-height: 32px;
+  padding: 0 14px;
+}
+html body .studio.canvas-first .inbox-empty p {
+  max-width: 400px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Dialogs render inside the header; lift it while one is open so the
+   canvas's floating tools can't paint over the dialog. */
+html body .studio.canvas-first .studio-header:has(.modal-backdrop) {
+  z-index: 200;
+}
+
+/* My sites: every button one size, the draft card on the house radius. */
+html
+  body
+  .studio.canvas-first
+  .studio-modal
+  .cloud-workspace
+  button:not(.cloud-text-button, .icon-button) {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+html body .studio.canvas-first .studio-modal .cloud-current {
+  border-radius: 12px;
+}
+
+/* Page settings drawer (Inspector.tsx): same header and gutters as the rest. */
+html body .studio.canvas-first .context-drawer .inspector-heading {
+  padding: 0 12px 0 16px;
+}
+html body .studio.canvas-first .context-drawer .inspector-type {
+  color: var(--e-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+html body .studio.canvas-first .context-drawer .inspector-intro {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  padding: 16px 16px 4px;
+  text-align: left;
+}
+html body .studio.canvas-first .context-drawer .inspector-intro > svg {
+  grid-row: span 2;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 9px;
+  border-radius: 10px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text, var(--fx-accent));
+}
+html body .studio.canvas-first .context-drawer .inspector-intro h3 {
+  margin: 0;
+  color: var(--e-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+html body .studio.canvas-first .context-drawer .inspector-intro p {
+  margin: 2px 0 0;
+  color: var(--e-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+html
+  body
+  .studio.canvas-first
+  .context-drawer
+  .inspector
+  > .inspector-scroll
+  > .inspector-group {
+  padding: 16px;
+}
+html body .studio.canvas-first .context-drawer .field-label-row > span {
+  color: var(--e-text);
+  font-size: 12px;
+  font-weight: 550;
+}
+html body .studio.canvas-first .share-image + .seo-toggle {
+  margin-top: 14px;
+}
+html body .studio.canvas-first .seo-serp + h4 {
+  margin-top: 20px;
+}
+/* The search preview mimics Google's results, so dark mode gets Google's
+   dark palette rather than light-mode blue on a dark card. */
+:root[data-theme="dark"] .studio.canvas-first .seo-serp {
+  background: #202124;
+  border-color: var(--fx-border);
+}
+:root[data-theme="dark"] .studio.canvas-first .seo-serp strong {
+  color: #8ab4f8;
+}
+:root[data-theme="dark"] .studio.canvas-first :is(.seo-serp span, .seo-serp p) {
+  color: #bdc1c6;
+}
+html body .studio.canvas-first .studio-modal .empty-results > svg:first-child {
+  box-sizing: content-box;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent-text, var(--fx-accent));
+}

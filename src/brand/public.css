@@ -1404,6 +1404,22 @@ html body .brand-public .pub-guides {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
+html
+  body
+  .brand-public
+  .pub-guides
+  > .pub-guide:first-child:nth-last-child(3n + 1) {
+  grid-column: 1 / -1;
+  min-height: 180px;
+}
+html
+  body
+  .brand-public
+  .pub-guides
+  > .pub-guide:first-child:nth-last-child(3n + 1)
+  h3 {
+  font-size: 26px;
+}
 html body .brand-public .pub-guide {
   display: flex;
   flex-direction: column;
@@ -2054,6 +2070,20 @@ html body .brand-public .pub-preview-frame.is-mobile {
   html body .brand-public .pub-capabilities {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  html
+    body
+    .brand-public
+    .pub-guides
+    > .pub-guide:first-child:nth-last-child(3n + 1) {
+    grid-column: auto;
+  }
+  html
+    body
+    .brand-public
+    .pub-guides
+    > .pub-guide:first-child:nth-last-child(2n + 1) {
+    grid-column: 1 / -1;
+  }
   html body .brand-public .pub-template-grid,
   html body .brand-public .pub-guides {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2132,6 +2162,11 @@ html body .brand-public .pub-preview-frame.is-mobile {
   html body .brand-public .pub-toc {
     position: static;
   }
+  /* Stacked above the article, the CTA would come before the title; the
+     article ends with the same button. */
+  html body .brand-public .pub-toc > .pub-btn {
+    display: none;
+  }
   html body .brand-public .pub-preview-title {
     display: none;
   }
@@ -2180,7 +2215,10 @@ html body .brand-public .pub-preview-frame.is-mobile {
     padding-top: 64px;
   }
   html body .brand-public .pub-section {
-    padding: 80px 0;
+    padding: 64px 0;
+  }
+  html body .brand-public .pub-section + .pub-section {
+    padding-top: 16px;
   }
   html body .brand-public .pub-section-head {
     flex-direction: column;
@@ -2194,9 +2232,23 @@ html body .brand-public .pub-preview-frame.is-mobile {
     font-size: 44px;
   }
   html body .brand-public .pub-step {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 14px;
     padding: 20px;
+  }
+  html body .brand-public .pub-step > span {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  /* Three short notes fit one line on a phone. */
+  html body .brand-public .pub-hero-notes {
+    gap: 8px 14px;
+    font-size: 13px;
+  }
+  html body .brand-public .pub-hero-notes span {
+    gap: 4px;
   }
   html body .brand-public .pub-banner,
   html body .brand-public .pub-note {
@@ -2231,7 +2283,8 @@ html body .brand-public .pub-preview-frame.is-mobile {
     padding: 28px 24px;
   }
   html body .brand-public .pub-cta {
-    margin-bottom: 80px;
+    margin-top: 16px;
+    margin-bottom: 72px;
     padding: 56px 20px;
     border-radius: 22px;
   }
@@ -2269,12 +2322,12 @@ html body .brand-public .pub-preview-frame.is-mobile {
   }
 }
 
+/* Dark: the whole phrase reads as accent, not half white like the line above. */
 :root[data-theme="dark"] .brand-public .pub-gradient-text {
   background-image: linear-gradient(
     100deg,
-    #ffffff 0%,
-    #c9d6ff 40%,
-    #8fadff 70%,
+    #9db4ff 0%,
+    #8fa8ff 45%,
     #b79bff 100%
   );
 }
@@ -2408,6 +2461,18 @@ html body .brand-public .pub-compare td {
 html body .brand-public .pub-home-paths {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+html body .brand-public .pub-section:has(+ .pub-section > .pub-home-paths) {
+  padding-bottom: 56px;
+}
+html body .brand-public .pub-section:has(> .pub-home-paths) {
+  padding-top: 0;
+}
+/* The card's link, not its numbered eyebrow (.pub-usecase > span). */
+html body .brand-public a.pub-usecase > .pub-link {
+  color: var(--fx-text);
+  font-size: 15px;
+  font-weight: 550;
+}
 html body .brand-public a.pub-usecase {
   color: inherit;
   text-decoration: none;
@@ -2422,5 +2487,132 @@ html body .brand-public a.pub-usecase .pub-link {
 @media (max-width: 640px) {
   html body .brand-public .pub-home-paths {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Password reset and recovery (AccountPage.tsx, signed out): the login page's
+   right-hand column on its own, with the commerce form classes restyled. */
+html body .brand-app.brand-public.pub-recovery {
+  display: flex;
+  min-height: 100%;
+  overflow-y: auto;
+}
+html body .brand-public.pub-recovery .pub-auth-main {
+  flex: 1;
+}
+html body .brand-public.pub-recovery .pub-auth-top > a:first-child {
+  display: inline-flex;
+}
+html body .brand-public .pub-recovery .pub-auth-card,
+html body .brand-public.pub-recovery .pub-auth-card {
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+  background: none;
+  color: var(--fx-text);
+  font-family: var(--fx-font);
+}
+html body .brand-public.pub-recovery .commerce-panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+html body .brand-public.pub-recovery .commerce-muted {
+  margin: 0;
+  color: var(--fx-text-2);
+  font-size: 15px;
+  line-height: 1.55;
+}
+html body .brand-public.pub-recovery .commerce-field {
+  display: grid;
+  gap: 8px;
+  color: var(--fx-text);
+  font-size: 14px;
+  font-weight: 550;
+}
+html body .brand-public.pub-recovery .commerce-field small {
+  color: var(--fx-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+html body .brand-public.pub-recovery .commerce-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--fx-border-strong);
+  border-radius: var(--fx-radius);
+  background: var(--fx-surface);
+  color: var(--fx-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  box-shadow: none;
+}
+html body .brand-public.pub-recovery .commerce-field input:hover {
+  border-color: var(--fx-border-hover);
+}
+html body .brand-public.pub-recovery .commerce-field input:focus {
+  outline: 0;
+  border-color: var(--fx-border-focus);
+  box-shadow: var(--fx-ring);
+}
+html body .brand-public.pub-recovery .commerce-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 46px;
+  margin: 4px 0 0;
+  border: 0;
+  border-radius: var(--fx-radius);
+  background: var(--fx-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+html body .brand-public.pub-recovery .commerce-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+html body .brand-public.pub-recovery .commerce-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+html body .brand-public.pub-recovery .commerce-panel > a:not(.commerce-button) {
+  justify-self: center;
+  color: var(--fx-text-2);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+}
+html
+  body
+  .brand-public.pub-recovery
+  .commerce-panel
+  > a:not(.commerce-button):hover {
+  color: var(--fx-text);
+}
+html body .brand-public.pub-recovery .commerce-notice {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--fx-radius);
+  background: var(--fx-success-soft);
+  color: var(--fx-text);
+  font-size: 14px;
+}
+html body .brand-public.pub-recovery .commerce-notice.error {
+  background: var(--fx-danger-soft);
+  color: var(--fx-danger);
+}
+@media (max-width: 640px) {
+  html body .brand-public.pub-recovery .pub-auth-main {
+    padding: 20px 16px 24px;
   }
 }

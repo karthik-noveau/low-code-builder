@@ -894,12 +894,12 @@ html body .studio.canvas-first .add-placement select {
   transition: opacity 0.15s;
 }
 .add-index::before {
-  left: -16px;
+  left: 0;
   margin-right: -44px;
   background: linear-gradient(90deg, var(--ui-surface) 30%, transparent);
 }
 .add-index::after {
-  right: -16px;
+  right: 0;
   margin-left: -44px;
   background: linear-gradient(270deg, var(--ui-surface) 30%, transparent);
 }
@@ -2837,7 +2837,7 @@ html
   .navigator-search {
   height: 32px;
   min-height: 32px;
-  margin: 0 var(--nav-pad) 8px;
+  margin: 12px var(--nav-pad) 8px;
   padding: 0 8px;
   gap: 8px;
   border-radius: 8px;
@@ -2854,6 +2854,23 @@ html body .studio.canvas-first .site-navigator > .navigator-insert {
   height: 32px;
   min-height: 32px;
   margin: 0 var(--nav-pad) 16px;
+  padding: 0 8px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+/* Layers view: same top gap and button shape as the Pages view's row. */
+html body .studio.canvas-first .site-navigator > .navigator-insert-row {
+  margin: 12px var(--nav-pad) 8px;
+}
+html
+  body
+  .studio.canvas-first
+  .site-navigator
+  > .navigator-insert-row
+  .navigator-insert {
+  height: 32px;
+  min-height: 32px;
   padding: 0 8px;
   gap: 8px;
   border-radius: 8px;

@@ -300,7 +300,7 @@ function Templates() {
             <span className="pub-gradient-text">Your own style.</span>
           </h1>
           <p className="pub-intro-lead">
-            Ten working businesses, not mock-ups: a shop with checkout, a
+            Eleven working businesses, not mock-ups: a shop with checkout, a
             restaurant that takes orders, bookings for salons and home services,
             admissions, event tickets, gym plans and project enquiries. Choose
             one and make every part your own.
@@ -336,7 +336,7 @@ function Templates() {
         <div className="pub-count" aria-live="polite">
           {shown.length} template{shown.length === 1 ? "" : "s"}
         </div>
-        <div className="pub-template-grid is-two">
+        <div className="pub-template-grid">
           {shown.map((item) => (
             <TemplateCard item={item} key={item.id} />
           ))}

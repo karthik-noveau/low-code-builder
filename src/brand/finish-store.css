@@ -1,0 +1,767 @@
+/*
+ * Store sections and account settings: finish rules that sit on top of
+ * polish.css (loaded after it, so equal selectors win here).
+ */
+
+/* ---------- Rhythm: 16px between cards, whatever wraps them ---------- */
+html body .admin-ui .commerce-embedded > .commerce-panel,
+html body .admin-ui .commerce-embedded > form.commerce-panel,
+html body .admin-ui .commerce-embedded > details.commerce-panel,
+html body .admin-ui .commerce-embedded > section.commerce-panel,
+html body .admin-ui .commerce-embedded > .commerce-notice,
+html body .admin-ui .commerce-embedded > .commerce-stats {
+  margin: 0 0 16px;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  > form.commerce-form:not(.commerce-panel) {
+  gap: 16px;
+}
+html body .admin-ui .commerce-embedded > form.commerce-form > .commerce-panel,
+html body .admin-ui .commerce-embedded > form.commerce-form > details {
+  margin: 0;
+}
+
+/* Notices read as a quiet info strip, not a second card. */
+html body .admin-ui .commerce-embedded > .commerce-notice:not(.error) {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--p-radius, 12px);
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--fx-accent) 18%, transparent);
+  color: var(--fx-text-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+/* ---------- Tables inside ordinary cards: flush, like the index cards ---------- */
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  .commerce-panel:not(.commerce-index):has(> .commerce-scroll) {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  .commerce-panel:not(.commerce-index)
+  > .commerce-scroll:first-child {
+  margin-top: -16px;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  .commerce-panel
+  > :is(h2, .commerce-card-head)
+  + .commerce-scroll {
+  margin-top: 12px;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  .commerce-panel
+  .commerce-table
+  tbody
+  tr:last-child
+  td {
+  border-bottom: 0;
+}
+html body .admin-ui .commerce-embedded .commerce-table td {
+  font-variant-numeric: tabular-nums;
+}
+html body .admin-ui .commerce-embedded .commerce-table td small {
+  font-size: 12px;
+  color: var(--fx-muted);
+}
+/* A card's heading row: title and line on the left, its action on the right. */
+html body .admin-ui .commerce-card-head {
+  align-items: center;
+  margin: 0;
+}
+html body .admin-ui .commerce-card-head h2 {
+  margin: 0 0 2px;
+}
+html body .admin-ui .commerce-card-head p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* Numbers line up on the right. */
+html
+  body
+  .admin-ui
+  [data-section="Customers"]
+  .commerce-table
+  :is(th, td):is(:nth-child(3), :nth-child(4)),
+html
+  body
+  .admin-ui
+  [data-section="Discounts"]
+  .commerce-table
+  :is(th, td):is(:nth-child(2), :nth-child(3)) {
+  text-align: right;
+}
+html
+  body
+  .admin-ui
+  [data-section="Discounts"]
+  .commerce-table
+  :is(th, td):nth-child(4) {
+  padding-left: 32px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Customers"]
+  .commerce-table
+  :is(th, td):nth-child(5) {
+  padding-left: 32px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Customers"]
+  .commerce-table
+  th.commerce-bulk {
+  text-align: left;
+}
+
+/* ---------- Disclosure rows: a chevron instead of the browser triangle ---------- */
+html body .admin-ui .commerce-embedded details > summary {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  details
+  > summary::-webkit-details-marker {
+  display: none;
+}
+html body .admin-ui .commerce-embedded details > summary::before {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 12px 0 2px;
+  border-right: 1.5px solid var(--fx-muted);
+  border-bottom: 1.5px solid var(--fx-muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s var(--fx-ease);
+  content: "";
+}
+html body .admin-ui .commerce-embedded details[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+/* ---------- Switches (on/off settings) ---------- */
+html body .admin-ui .commerce-embedded input[role="switch"] {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  min-height: 20px;
+  margin: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--fx-faint);
+  transition: background 0.18s var(--fx-ease);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+html body .admin-ui .commerce-embedded input[role="switch"]::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: "";
+  transition: transform 0.18s var(--fx-ease);
+}
+html body .admin-ui .commerce-embedded input[role="switch"]:checked {
+  background: var(--fx-accent);
+}
+/* The shared checkbox tick would show through the knob. */
+html body .admin-ui .commerce-embedded input[role="switch"]:checked::before {
+  display: none;
+}
+html body .admin-ui .commerce-embedded input[role="switch"]:checked::after {
+  transform: translateX(16px);
+}
+html body .admin-ui .commerce-embedded input[role="switch"]:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 2px;
+}
+/* A switch row: label on the left, switch on the right, on a soft tile. */
+html body .admin-ui .commerce-check:has(> input[role="switch"]) {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+  color: var(--fx-text);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+html
+  body
+  .admin-ui
+  .commerce-check:has(> input[role="switch"])
+  + .commerce-check:has(> input[role="switch"]) {
+  margin-top: -10px;
+}
+/* Plain checkboxes stay checkbox-sized everywhere. */
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  input[type="checkbox"]:not([role="switch"]) {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--fx-accent);
+}
+
+/* ---------- Forms: actions in line, fields on one beat ---------- */
+html body .admin-ui .commerce-embedded .commerce-form-grid {
+  gap: 16px;
+}
+html body .admin-ui .commerce-embedded .commerce-field {
+  font-size: 13.5px;
+}
+html body .admin-ui .commerce-embedded .commerce-field small {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+html
+  body
+  .admin-ui
+  .commerce-embedded
+  .commerce-panel.commerce-form
+  > .commerce-button {
+  min-width: 0;
+  padding: 0 16px;
+}
+
+/* Markets: the settings card's note sits under a hairline. */
+html body .admin-ui [data-section="Markets"] .commerce-form-grid > p.wide {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--fx-border);
+  font-size: 13px;
+}
+html body .admin-ui [data-section="Markets"] .commerce-panel .commerce-toolbar {
+  margin-bottom: 0;
+}
+/* The form's actions: add on the left, save on the right. */
+html body .admin-ui [data-section="Markets"] form > .commerce-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Markets"]
+  form
+  > .commerce-actions
+  > .secondary {
+  margin-right: auto;
+}
+
+/* Discounts: six short fields fit three to a row. */
+@media (min-width: 1100px) {
+  html body .admin-ui [data-section="Discounts"] .commerce-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+html body .admin-ui [data-section="Discounts"] form.commerce-panel {
+  gap: 16px;
+}
+html body .admin-ui [data-section="Discounts"] form.commerce-panel > h2 {
+  margin: 0;
+}
+
+/* Team: email, role and the button share one row. */
+@media (min-width: 761px) {
+  html body .admin-ui [data-section="Team"] form.commerce-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 16px;
+  }
+  html
+    body
+    .admin-ui
+    [data-section="Team"]
+    form.commerce-panel
+    > .commerce-button {
+    align-self: end;
+    height: 44px;
+  }
+}
+
+/* Integrations: events as a row of chips. */
+html body .admin-ui [data-section="Integrations"] fieldset.commerce-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Integrations"]
+  fieldset.commerce-field
+  > legend {
+  margin-bottom: 8px;
+  font-size: 13.5px;
+}
+html body .admin-ui [data-section="Integrations"] fieldset .commerce-check {
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+}
+html
+  body
+  .admin-ui
+  [data-section="Integrations"]
+  fieldset
+  .commerce-check:has(:checked) {
+  background: var(--fx-accent-soft);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--fx-accent) 35%, transparent);
+  color: var(--fx-accent-text);
+}
+html body .admin-ui [data-section="Integrations"] .commerce-step {
+  padding: 14px 0;
+  border-color: var(--fx-border);
+}
+html body .admin-ui [data-section="Integrations"] .commerce-step strong {
+  margin-bottom: 2px;
+  font-size: 14px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Integrations"]
+  .commerce-step
+  .commerce-muted {
+  font-size: 13px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Integrations"]
+  .commerce-panel:has(> .commerce-step) {
+  padding-block: 4px;
+}
+
+/* ---------- Inbox: email previews as tidy rows ---------- */
+html body .admin-ui [data-section="Inbox"] details.commerce-step {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid var(--fx-border);
+}
+html body .admin-ui [data-section="Inbox"] section > h2 + .commerce-muted {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+}
+html body .admin-ui [data-section="Inbox"] details.commerce-step > summary {
+  min-width: 0;
+  padding: 11px 0;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--fx-text);
+  white-space: nowrap;
+}
+html
+  body
+  .admin-ui
+  [data-section="Inbox"]
+  details.commerce-step
+  > summary
+  > .commerce-muted {
+  margin-left: 4px;
+  overflow: hidden;
+  min-width: 0;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html
+  body
+  .admin-ui
+  [data-section="Inbox"]
+  details.commerce-step
+  > .commerce-article {
+  margin: 0 0 12px 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+  color: var(--fx-text-2);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ---------- Usage & activity ---------- */
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  .commerce-stats
+  + .commerce-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  .commerce-stats
+  + .commerce-panel
+  > :not(button) {
+  grid-column: 1;
+  margin: 0;
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  .commerce-stats
+  + .commerce-panel
+  > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+html body .admin-ui [data-section="Usage & activity"] .commerce-stat > strong {
+  font-variant-numeric: tabular-nums;
+}
+/* Deleting the store reads as the danger zone it is. */
+html body .admin-ui [data-section="Usage & activity"] details.commerce-panel {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fx-danger) 28%, transparent),
+    0 1px 2px rgba(17, 17, 20, 0.04);
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  details.commerce-panel
+  > summary {
+  color: var(--fx-danger);
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  details.commerce-panel
+  > summary::before {
+  border-color: var(--fx-danger);
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  details.commerce-panel
+  .commerce-form {
+  max-width: 560px;
+  margin-top: 12px !important;
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  details.commerce-panel
+  .commerce-button.danger {
+  justify-self: start;
+}
+html
+  body
+  .admin-ui
+  [data-section="Usage & activity"]
+  .commerce-table
+  td:last-child {
+  color: var(--fx-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Order detail ---------- */
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  > .commerce-link:first-of-type
+  + .commerce-columns {
+  margin-top: 12px !important;
+  gap: 16px;
+  align-items: start;
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-toolbar {
+  margin-bottom: 4px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-toolbar
+  h2 {
+  margin: 0;
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-toolbar
+  + .commerce-muted {
+  margin: 0;
+  font-size: 13.5px;
+}
+html body .admin-ui [data-section="Orders"] .commerce-order-lines {
+  margin: 16px 0 12px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--fx-border);
+}
+html body .admin-ui [data-section="Orders"] .commerce-order-lines > div,
+html body .admin-ui [data-section="Orders"] .commerce-total-row {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-order-lines
+  > div
+  > span:first-child {
+  color: var(--fx-muted);
+}
+html body .admin-ui [data-section="Orders"] .commerce-order-lines strong {
+  color: var(--fx-text);
+  font-weight: 600;
+}
+html body .admin-ui [data-section="Orders"] .commerce-total-row {
+  padding: 4px 0;
+  color: var(--fx-text-2);
+}
+html body .admin-ui [data-section="Orders"] .commerce-total-row.total {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-color: var(--fx-border);
+  color: var(--fx-text);
+  font-size: 16px;
+  font-weight: 650;
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-article {
+  margin: 4px 0 0;
+  color: var(--fx-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* What you can do with the order sits under a hairline, apart from the address. */
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-panel
+  > .commerce-form {
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fx-border);
+}
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-columns
+  .commerce-form
+  > .commerce-button {
+  min-width: 0;
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund {
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-color: var(--fx-border);
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund-line {
+  font-size: 13.5px;
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund-line input {
+  height: 36px;
+  min-height: 36px;
+  text-align: right;
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund-line small,
+html body .admin-ui [data-section="Orders"] .commerce-refunds {
+  color: var(--fx-muted);
+  font-size: 12.5px;
+}
+html body .admin-ui [data-section="Orders"] .commerce-refund > .commerce-button,
+html
+  body
+  .admin-ui
+  [data-section="Orders"]
+  .commerce-refund
+  > div
+  > .commerce-button {
+  justify-self: end;
+  min-width: 0;
+}
+
+/* ---------- Product editor ---------- */
+html body .admin-ui [data-section="Products"] .commerce-variant {
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--fx-surface-2);
+}
+/* Remove sits on the inputs' centre line, not their labels'. */
+html
+  body
+  .admin-ui
+  [data-section="Products"]
+  .commerce-variant
+  > .commerce-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Products"]
+  .commerce-panel.commerce-form
+  > h2
+  + .commerce-muted,
+html
+  body
+  .admin-ui
+  [data-section="Products"]
+  .commerce-panel.commerce-form
+  > div:first-child
+  .commerce-muted {
+  margin-top: 0;
+  font-size: 13.5px;
+}
+html
+  body
+  .admin-ui
+  [data-section="Products"]
+  .commerce-panel.commerce-form
+  > .commerce-button.secondary {
+  justify-self: start;
+  min-width: 0;
+}
+html body .admin-ui [data-section="Products"] form > .commerce-form-footer,
+html body .admin-ui [data-section="Content"] .commerce-form-footer {
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+html
+  body
+  .admin-ui
+  [data-section="Content"]
+  .commerce-panel.commerce-form
+  .commerce-form-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--fx-border);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 760px) {
+  html
+    body
+    .admin-ui
+    [data-section="Products"]
+    .commerce-variant
+    > .commerce-link {
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-height: 0;
+  }
+  html
+    body
+    .admin-ui
+    [data-section="Usage & activity"]
+    .commerce-stats
+    + .commerce-panel {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+  html
+    body
+    .admin-ui
+    [data-section="Usage & activity"]
+    .commerce-stats
+    + .commerce-panel
+    > button {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+  html body .admin-ui [data-section="Inbox"] details.commerce-step > summary {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  html
+    body
+    .admin-ui
+    [data-section="Inbox"]
+    details.commerce-step
+    > summary
+    > .commerce-muted {
+    flex-basis: 100%;
+    padding-left: 22px;
+  }
+  html
+    body
+    .admin-ui
+    [data-section="Orders"]
+    .commerce-columns
+    .commerce-form
+    > .commerce-button {
+    justify-self: stretch;
+  }
+}

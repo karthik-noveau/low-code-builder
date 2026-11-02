@@ -221,14 +221,14 @@ html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary {
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
-  background: var(--fx-contrast);
-  color: var(--fx-on-contrast);
+  background: var(--fx-accent);
+  color: #fff;
   font-size: 13px;
   font-weight: 600;
   box-shadow: none;
 }
 html body .admin-ui .dashboard-site-actions > a.dashboard-site-primary:hover {
-  opacity: 0.88;
+  background: var(--fx-accent-hover);
 }
 html body .admin-ui .dashboard-site-actions > a.ws-icon-action {
   height: 30px;
@@ -803,4 +803,40 @@ html body .admin-ui .admin-setup li:not(.is-next) .admin-setup-check {
 }
 html body .admin-ui .admin-setup li > .commerce-link {
   padding: 4px 0;
+}
+
+/* Templates on phones: categories scroll in one row; full-width search. */
+@media (max-width: 720px) {
+  html body .admin-ui .tp-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  html body .admin-ui .tp-filters {
+    flex-wrap: nowrap;
+    margin: 0 -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  html body .admin-ui .tp-filters::-webkit-scrollbar {
+    display: none;
+  }
+  html body .admin-ui .tp-filters button {
+    flex: none;
+  }
+  /* Its 240px basis would become a height in the stacked toolbar. */
+  html body .admin-ui .tp-search {
+    flex: none;
+    width: 100%;
+  }
+}
+/* Template card actions: Preview as the house outline button. */
+html body .admin-ui .tp-actions .brand-button-outline {
+  border: 0;
+  background: var(--p-card);
+  box-shadow: inset 0 0 0 1px var(--fx-border-strong);
+  color: var(--fx-text);
+}
+html body .admin-ui .tp-actions .brand-button-outline:hover {
+  background: var(--fx-hover);
 }

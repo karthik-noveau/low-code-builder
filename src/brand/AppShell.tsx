@@ -16,6 +16,7 @@ import { ThemeSwitch } from "../design/ThemeSwitch";
 import "./brand.css";
 import "./admin.css";
 import "./polish.css";
+import "./finish-store.css";
 
 export type ShellArea =
   "websites" | "templates" | "insights" | "store" | "app" | "account";

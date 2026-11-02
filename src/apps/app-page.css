@@ -69,13 +69,27 @@
 }
 
 /* Dashboard. */
-.app-cards {
-  margin-bottom: 22px;
+/* As many columns as the app has cards, so three never leave a blank fourth. */
+html body .admin-ui .app-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  margin-bottom: 16px;
+}
+@media (max-width: 560px) {
+  html body .admin-ui .app-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  html body .admin-ui .app-cards > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+html body .admin-ui .app-list > p.commerce-muted {
+  margin: 0;
+  padding: 8px 0 4px;
 }
 .app-lists {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-  gap: 22px;
+  gap: 16px;
 }
 .app-list-head {
   display: flex;
@@ -83,15 +97,23 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .app-list-head h2 {
   margin: 0;
 }
+/* Rows run to the card's padding; the hover tint bleeds past it. */
 .app-mini-list {
   list-style: none;
-  margin: 0;
+  margin: 0 -8px;
   padding: 0;
+}
+.app-mini-list li + li {
+  margin: 0 8px;
+}
+.app-mini-list li + li button {
+  margin: 0 -8px;
+  width: calc(100% + 16px);
 }
 .app-mini-list li + li {
   border-top: 1px solid var(--app-line);
@@ -101,7 +123,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 11px 6px;
+  padding: 11px 8px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -145,20 +167,36 @@
   flex-shrink: 0;
 }
 
-/* Table view. */
-.app-records {
-  padding: 18px;
+/* Table view: an index card like the store's lists — tools on top, the
+   table flush to the card's edges, the count in a footer. */
+html body .admin-ui .app-records {
+  padding: 0;
+  overflow: hidden;
 }
-.app-records-toolbar {
+html body .admin-ui .app-records-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  margin-bottom: 4px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fx-border);
 }
-.app-records-toolbar .commerce-index-search {
+html body .admin-ui .app-records-toolbar .commerce-index-search {
   flex: 1 1 220px;
   min-width: 0;
+  padding: 0;
+  border: 0;
+}
+html body .admin-ui .app-records-toolbar .commerce-index-search > svg {
+  top: auto;
+  left: 10px;
+}
+html body .admin-ui .app-records-toolbar .commerce-button {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  border-radius: 8px;
 }
 .app-sort {
   display: flex;
@@ -167,18 +205,31 @@
   font-size: 13px;
   color: var(--app-muted);
 }
-.app-sort select {
-  min-height: 40px;
-  padding: 8px 10px;
+html body .admin-ui .app-sort select {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 30px 0 10px;
   border: 1px solid var(--fx-border-strong, #d4d4d8);
-  border-radius: 10px;
-  background: var(--app-surface);
+  border-radius: 8px;
+  background-color: var(--app-surface);
   color: var(--app-text);
   font: inherit;
   font-size: 13px;
 }
-.app-records .commerce-chips {
-  padding: 10px 0;
+html body .admin-ui .app-records > .commerce-chips {
+  padding: 12px 20px 0;
+}
+html body .admin-ui .app-records > .commerce-chips + .commerce-scroll {
+  margin-top: 12px;
+}
+html body .admin-ui .app-records > :is(.commerce-notice, .app-places) {
+  margin: 12px 16px 0;
+}
+html body .admin-ui .app-records .commerce-scroll {
+  margin: 0;
+}
+html body .admin-ui .app-records .app-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 .app-table tbody tr {
   cursor: pointer;
@@ -202,8 +253,9 @@
   margin-top: 2px;
   color: var(--app-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-.app-num {
+html body .admin-ui .app-table .app-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -211,12 +263,17 @@
   white-space: nowrap;
   color: var(--app-muted);
 }
-.app-no-match {
-  padding: 28px 0;
+html body .admin-ui .app-records .app-no-match {
+  margin: 0;
+  padding: 36px 20px;
   text-align: center;
 }
-.app-records-count {
-  margin-top: 10px;
+html body .admin-ui .app-records .app-records-count {
+  margin: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--fx-border);
+  font-size: 13px;
+  color: var(--fx-muted);
 }
 
 /* Phones: each row becomes a card with labelled values. */
@@ -231,9 +288,15 @@
     display: block;
     width: 100%;
   }
+  html body .admin-ui .app-table {
+    min-width: 0;
+  }
   .app-table tr {
-    padding: 12px 4px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--app-line);
+  }
+  .app-table tbody tr:last-child {
+    border-bottom: 0;
   }
   .app-table td {
     display: flex;
@@ -255,10 +318,18 @@
     margin-bottom: 4px;
   }
   .app-sort {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
   }
-  .app-sort select {
+  html body .admin-ui .app-sort select {
     flex: 1;
+    height: 40px;
+  }
+  html body .admin-ui .app-records-toolbar .commerce-button {
+    flex: 1 1 auto;
+    height: 40px;
+  }
+  html body .admin-ui .app-records > .commerce-chips {
+    padding-inline: 16px;
   }
 }
 
@@ -435,6 +506,52 @@
 }
 
 /* Forms. */
+html body .admin-ui .app-panel-form > h2 {
+  margin: 0 0 16px;
+}
+/* Yes/no fields are switches, like the store's on/off settings. */
+html body .admin-ui .app-record-form .commerce-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+html body .admin-ui .app-record-form input[role="switch"] {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--fx-faint);
+  transition: background 0.18s var(--fx-ease);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+html body .admin-ui .app-record-form input[role="switch"]::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: "";
+  transition: transform 0.18s var(--fx-ease);
+}
+html body .admin-ui .app-record-form input[role="switch"]:checked {
+  background: var(--fx-accent);
+}
+html body .admin-ui .app-record-form input[role="switch"]:checked::after {
+  transform: translateX(16px);
+}
+html body .admin-ui .app-record-form input[role="switch"]:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 2px;
+}
 .app-optional {
   font-weight: 400;
   color: var(--app-muted);
@@ -519,6 +636,15 @@
 }
 
 /* Notifications. */
+html body .admin-ui .app-push > * {
+  margin: 0;
+}
+html body .admin-ui .app-push > * + * {
+  margin-top: 12px;
+}
+html body .admin-ui .app-push > h2 + p {
+  margin-top: 4px;
+}
 .app-push-state {
   margin: 0;
   padding: 12px 14px;
@@ -585,6 +711,7 @@
   display: flex;
   justify-content: flex-end;
   min-height: 0;
+  padding: 0 16px;
 }
 .app-new-badge {
   margin-top: 8px;
@@ -616,19 +743,19 @@
 /* List / board switch. */
 .app-view-toggle {
   display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--fx-border-strong, #d4d4d8);
-  border-radius: 11px;
+  padding: 2px;
+  border: 1px solid var(--fx-border);
+  border-radius: 8px;
   background: var(--app-raised);
 }
 .app-view-toggle button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 30px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: none;
   color: var(--app-muted);
   font: inherit;
@@ -646,10 +773,9 @@
 .app-board {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(270px, 1fr);
-  gap: 14px;
-  margin-top: 12px;
-  padding-bottom: 6px;
+  grid-auto-columns: minmax(270px, 360px);
+  gap: 12px;
+  padding: 16px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
@@ -949,9 +1075,8 @@
 @media (max-width: 720px) {
   .app-board {
     grid-auto-columns: 84%;
-    margin-left: -6px;
-    margin-right: -6px;
-    padding: 0 6px 8px;
+    padding: 12px;
+    scroll-padding-inline: 12px;
   }
   .app-board-actions {
     width: 100%;
@@ -962,7 +1087,7 @@
     min-height: 46px;
   }
   .app-view-toggle button {
-    min-height: 40px;
+    min-height: 38px;
   }
   .app-stepper button {
     width: 44px;

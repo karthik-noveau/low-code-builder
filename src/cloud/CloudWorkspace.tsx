@@ -467,16 +467,6 @@ export function CloudWorkspace({
             )}
             <div className="cloud-actions">
               <button
-                className="primary-button"
-                disabled={busy || !!publishing}
-                onClick={() => void publish("publish")}
-              >
-                {busy || publishing ? "Publishing…" : "Publish now"}
-              </button>
-              <button disabled={busy} onClick={() => setConfirmPublish(false)}>
-                Cancel
-              </button>
-              <button
                 className="cloud-text-button"
                 disabled={busy}
                 onClick={() => {
@@ -485,6 +475,16 @@ export function CloudWorkspace({
                 }}
               >
                 Open My sites
+              </button>
+              <button disabled={busy} onClick={() => setConfirmPublish(false)}>
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                disabled={busy || !!publishing}
+                onClick={() => void publish("publish")}
+              >
+                {busy || publishing ? "Publishing…" : "Publish now"}
               </button>
             </div>
           </div>
