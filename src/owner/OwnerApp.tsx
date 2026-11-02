@@ -490,6 +490,9 @@ function Shell({
       return !c;
     });
   const primary = model.primaryPeople?.table;
+  // That list's own header already offers "New …"; don't repeat it above.
+  const onPrimaryList =
+    route.page === "table" && route.table === primary?.id && !route.record;
 
   const nav: { route: Route; label: string; icon: IconName; count?: number }[] =
     [
@@ -658,7 +661,7 @@ function Shell({
                 <Icon name={theme.resolved === "dark" ? "sun" : "moon"} />
               </button>
               <Bell model={model} />
-              {primary && (
+              {primary && !onPrimaryList && (
                 <Button
                   variant="primary"
                   size="sm"

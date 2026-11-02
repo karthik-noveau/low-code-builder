@@ -156,7 +156,7 @@ export function Dashboard() {
                 href={ctx.href({ page: "table", table: w.table.id })}
                 onGo={() => ctx.go({ page: "table", table: w.table.id })}
               >
-                {`Review ${w.submitted ? "submissions" : w.table.name.toLowerCase()}`}
+                {`Review ${w.table.name.toLowerCase()}`}
               </ButtonLink>
             )}
           </>

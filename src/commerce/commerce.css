@@ -522,13 +522,6 @@ details.commerce-panel[open] > summary {
   gap: 20px;
   align-items: center;
 }
-.store-nav > button:not(.commerce-button) {
-  background: none;
-  border: 0;
-  color: var(--ui-text);
-  padding: 8px;
-  font-size: 13px;
-}
 .store-hero {
   padding: 64px 0 44px;
   display: flex;
@@ -594,10 +587,6 @@ details.commerce-panel[open] > summary {
   align-items: center;
   margin-top: 12px;
 }
-.store-cart {
-  max-width: 900px;
-  margin: 40px auto;
-}
 .store-cart h1 {
   font-size: 36px;
   letter-spacing: -1px;
@@ -623,15 +612,6 @@ details.commerce-panel[open] > summary {
   border: 1px solid var(--ui-border-strong);
   padding: 10px;
   border-radius: 9px;
-}
-.store-sandbox {
-  background: #fff7e6;
-  color: #735019;
-  border: 1px solid #e8d8aa;
-  padding: 12px 18px;
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.5;
 }
 .store-article-card {
   cursor: pointer;
@@ -705,10 +685,6 @@ details.commerce-panel[open] > summary {
   }
   .store-nav {
     gap: 9px;
-  }
-  .store-nav > button:not(.commerce-button) {
-    font-size: 12px;
-    padding: 5px;
   }
   .store-hero {
     padding: 34px 0 24px;

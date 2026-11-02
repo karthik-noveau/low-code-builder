@@ -414,8 +414,8 @@ describe("customers", () => {
     go("/owner?site=s1&page=customers");
     mount();
     await screen.findByText("All customers");
-    // The topbar and the page header both offer it.
-    fireEvent.click(screen.getAllByRole("button", { name: "New customer" })[1]);
+    // Only the page header offers it here, not the topbar as well.
+    fireEvent.click(screen.getByRole("button", { name: "New customer" }));
     const drawer = screen.getAllByRole("dialog").at(-1)!;
     fireEvent.change(within(drawer).getByLabelText("Name"), {
       target: { value: "Ravi K" },

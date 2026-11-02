@@ -371,6 +371,21 @@ export function Storefront({ siteId }: { siteId: string }) {
       : [...lines, { productId, variantId, quantity }];
     if (await updateCart(updated)) {
       setNotice("Added to your cart.");
+      // Adding straight from the catalog still means the shopper chose this
+      // product: count it as viewed (once per visit) so the funnel adds up.
+      try {
+        const key = `forma-store-view-${siteId}-${productId}`;
+        if (!sessionStorage.getItem(key)) {
+          const id = crypto.randomUUID();
+          sessionStorage.setItem(key, id);
+          void storeRequest(siteId, "events", {
+            id,
+            name: "product.view",
+          }).catch(() => undefined);
+        }
+      } catch {
+        /* Analytics must never prevent shopping. */
+      }
       const product = data?.products.find((p) => p.id === productId);
       const variant = product?.variants.find((v) => v.id === variantId);
       if (product && variant && data)

@@ -24,8 +24,8 @@ html body .admin-ui .commerce-embedded > form.commerce-form > details {
   margin: 0;
 }
 
-/* Notices read as a quiet info strip, not a second card. */
-html body .admin-ui .commerce-embedded > .commerce-notice:not(.error) {
+/* Notices read as a quiet info strip, not a second card (anywhere). */
+html body .admin-ui .commerce-notice:not(.error) {
   padding: 12px 16px;
   border: 0;
   border-radius: var(--p-radius, 12px);
@@ -314,7 +314,7 @@ html body .admin-ui [data-section="Discounts"] form.commerce-panel > h2 {
     form.commerce-panel
     > .commerce-button {
     align-self: end;
-    height: 44px;
+    height: 40px;
   }
 }
 
@@ -665,7 +665,7 @@ html
   > .commerce-link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 40px;
 }
 html
   body

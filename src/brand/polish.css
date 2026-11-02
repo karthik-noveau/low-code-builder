@@ -840,3 +840,32 @@ html body .admin-ui .tp-actions .brand-button-outline {
 html body .admin-ui .tp-actions .brand-button-outline:hover {
   background: var(--fx-hover);
 }
+
+/* One control height for workspace forms: 40px fields and buttons, so a
+   field and the button beside it line up (toolbars stay at 36px). */
+html
+  body
+  .admin-ui
+  :is(.commerce-field, .commerce-toolbar)
+  :is(
+    input:not([type="checkbox"], [type="radio"], [type="color"], [type="file"]),
+    select
+  ) {
+  height: 40px;
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 8px;
+}
+html body .admin-ui .commerce-button {
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 8px;
+}
+/* Page-level actions stay toolbar-sized next to the title. */
+html body .admin-ui .dashboard-heading-actions .commerce-button {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+}

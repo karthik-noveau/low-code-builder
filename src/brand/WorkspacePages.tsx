@@ -185,7 +185,7 @@ export function AuthPage({
                         required
                         placeholder={
                           signup
-                            ? "At least 10 characters"
+                            ? "Choose a password"
                             : "Your workspace password"
                         }
                         value={password}

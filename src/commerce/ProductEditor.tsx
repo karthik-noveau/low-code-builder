@@ -63,6 +63,9 @@ export function ProductEditor({
   return (
     <form className="commerce-form" onSubmit={(e) => void submit(e)}>
       <div className="commerce-panel commerce-form-grid">
+        <h2 className="wide">
+          {product ? `Edit ${product.title}` : "New product"}
+        </h2>
         <label className="commerce-field">
           Product name
           <input

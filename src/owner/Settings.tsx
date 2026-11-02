@@ -556,16 +556,6 @@ function AppearanceSettings() {
   return (
     <Card padded className="ow-stack">
       <h3 className="ow-sectionTitle">Appearance</h3>
-      <Switch
-        label="Dark theme"
-        description={
-          theme.pref === "system"
-            ? "Following this device's setting."
-            : "Chosen by you on this device."
-        }
-        checked={theme.resolved === "dark"}
-        onChange={(on) => theme.setPref(on ? "dark" : "light")}
-      />
       <div className="ow-field">
         <span className="ow-label">Theme</span>
         <Segmented
@@ -574,6 +564,11 @@ function AppearanceSettings() {
           options={options}
           onChange={theme.setPref}
         />
+        <span className="ow-fieldHint">
+          {theme.pref === "system"
+            ? "Following this device's setting."
+            : "Chosen by you on this device."}
+        </span>
       </div>
     </Card>
   );
