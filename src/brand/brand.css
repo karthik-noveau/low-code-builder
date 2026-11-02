@@ -68,6 +68,13 @@
   letter-spacing: -2px;
   font-weight: 650;
   line-height: 0.85;
+  white-space: nowrap;
+}
+/* "Builder" names the product beside the company wordmark: lighter, same ink. */
+.brand-wordmark-product {
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  opacity: 0.62;
 }
 .brand-period {
   color: inherit;
@@ -2658,8 +2665,8 @@
   --brand-paper: var(--ui-ink);
 }
 .studio-header .brand-lockup .brand-wordmark {
-  font-size: 27px;
-  letter-spacing: -1.6px;
+  font-size: 21px;
+  letter-spacing: -0.04em;
 }
 .studio-header .forma-brand.brand-editor-home {
   cursor: pointer;

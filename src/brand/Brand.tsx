@@ -46,7 +46,11 @@ export function Brand({
           d="M26.5 7c.3 1.9 1.4 3 3.3 3.3-1.9.3-3 1.4-3.3 3.3-.3-1.9-1.4-3-3.3-3.3 1.9-.3 3-1.4 3.3-3.3Z"
         />
       </svg>
-      {!compact && <span className="brand-wordmark">skynoveau</span>}
+      {!compact && (
+        <span className="brand-wordmark">
+          skynoveau <span className="brand-wordmark-product">Builder</span>
+        </span>
+      )}
     </span>
   );
 }

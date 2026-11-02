@@ -86,14 +86,15 @@ html body .admin-ui .admin-logo {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 206px;
+  min-width: 206px;
+  padding-right: 20px;
 }
 html body .admin-ui .admin-logo .brand-mark {
   width: 26px;
   height: 26px;
 }
 html body .admin-ui .admin-logo .brand-wordmark {
-  font-size: 22px;
+  font-size: 20px;
   color: var(--a-top-text);
 }
 html body .admin-ui .admin-logo .brand-mark-background {
